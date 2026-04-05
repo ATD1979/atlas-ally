@@ -87,7 +87,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .so-update{font-family:var(--mono);font-size:9px;color:var(--dm);margin-top:4px;}
 
 /* FAB group */
-.fab-group{position:absolute;bottom:84px;right:10px;z-index:30;display:flex;flex-direction:column;gap:8px;}
+.fab-group{position:absolute;bottom:84px;right:10px;z-index:30;display:none;flex-direction:column;gap:8px;}
 .fab-btn{width:48px;height:48px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:18px;}
 .fab-report{background:rgba(220,38,38,0.15);border:2px solid rgba(220,38,38,0.55);box-shadow:0 2px 16px rgba(220,38,38,0.2);}
 .fab-safe{background:rgba(22,163,74,0.15);border:2px solid rgba(22,163,74,0.5);}
@@ -294,6 +294,73 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
+/* ── Pull-up travel drawer ────────────────────────────────── */
+.travel-drawer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
+.drawer-handle-wrap{padding:8px 0 4px;display:flex;justify-content:center;}
+.drawer-handle{width:40px;height:4px;background:var(--db2);border-radius:2px;}
+.drawer-expanded{display:none;overflow-y:auto;max-height:70vh;}
+.travel-drawer.open .drawer-expanded{display:block;}
+
+/* Peek strip */
+.drawer-peek{display:flex;align-items:center;gap:12px;padding:8px 16px 14px;cursor:pointer;}
+.peek-score-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.peek-score-num{font-family:var(--display);font-size:26px;font-weight:800;line-height:1;color:var(--safe);}
+.peek-score-label{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.1em;}
+.peek-status{flex:1;min-width:0;}
+.peek-country{font-family:var(--display);font-size:14px;font-weight:700;color:var(--dt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.peek-sub{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:1px;}
+.peek-actions{display:flex;gap:8px;flex-shrink:0;}
+.peek-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--dk3);border:1px solid var(--db2);border-radius:10px;padding:7px 10px;cursor:pointer;font-size:18px;}
+.peek-btn span{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;}
+.peek-safe{border-color:rgba(22,163,74,0.3);background:rgba(22,163,74,0.08);}
+.peek-warn{border-color:rgba(220,38,38,0.3);background:rgba(220,38,38,0.08);}
+
+/* Score card */
+.score-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--dk3);margin:0 14px 10px;border-radius:14px;border:1px solid var(--db);}
+.score-card-left{flex:1;}
+.score-num-big{font-family:var(--display);font-size:44px;font-weight:800;line-height:1;color:var(--safe);}
+.score-label-big{font-family:var(--display);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dt);margin-top:2px;}
+.score-factors-text{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:4px;line-height:1.5;}
+.score-donut-wrap{position:relative;width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.score-donut-num{position:absolute;font-family:var(--display);font-size:18px;font-weight:800;color:var(--dt);}
+
+/* Journey card */
+.journey-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--dk3);margin:0 14px 10px;border-radius:12px;border:1px solid var(--db);}
+.journey-card-info{flex:1;}
+.journey-card-title{font-family:var(--display);font-size:14px;font-weight:700;color:var(--dt);}
+.journey-card-sub{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:2px;line-height:1.4;}
+.journey-toggle-btn{background:var(--brand);color:white;border:none;border-radius:9px;padding:9px 18px;font-family:var(--display);font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s;}
+.journey-toggle-btn.active{background:var(--danger);}
+.journey-card.tracking{border-color:rgba(22,163,74,0.4);background:rgba(22,163,74,0.06);}
+
+/* Quick actions */
+.quick-row{display:flex;gap:8px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none;}
+.quick-row::-webkit-scrollbar{display:none;}
+.qbtn{display:flex;flex-direction:column;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db);border-radius:12px;padding:12px 14px;cursor:pointer;flex-shrink:0;min-width:64px;transition:all .15s;}
+.qbtn:active{background:var(--dk2);transform:scale(.96);}
+.qico{font-size:22px;}
+.qlbl{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+
+/* Nearby alerts */
+.nearby-section{padding:0 14px 10px;}
+.nearby-title{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dm);margin-bottom:8px;}
+.no-nearby{font-family:var(--mono);font-size:11px;color:var(--dm);padding:12px 0;}
+.nearby-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--db);cursor:pointer;}
+.nearby-item:last-child{border-bottom:none;}
+.nearby-ico{font-size:20px;flex-shrink:0;}
+.nearby-title-text{font-size:13px;font-weight:600;color:var(--dt);}
+.nearby-dist{font-family:var(--mono);font-size:10px;color:var(--dm);}
+
+/* Drawer nav */
+.drawer-nav{display:flex;border-top:1px solid var(--db);background:var(--dk2);padding-bottom:env(safe-area-inset-bottom,0);}
+.dnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 12px;background:none;border:none;cursor:pointer;color:var(--dm);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;transition:color .15s;}
+.dnav-btn.active{color:var(--brand2);}
+.dnav-btn.active::before{content:'';position:absolute;top:0;height:2px;background:var(--brand2);border-radius:0 0 2px 2px;width:40px;}
+
+/* Danger zone flash */
+@keyframes danger-flash{0%,100%{background:transparent;}50%{background:rgba(220,38,38,0.15);}}
+.danger-zone-active{animation:danger-flash 1s ease-in-out 3;}
+
 </style>
 </head>
 <body>
@@ -347,12 +414,42 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
     </div>
   </div>
 
-  <div id="bnav">
-    <button class="nbtn active" onclick="nav('map',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg><span>Map</span></button>
-    <button class="nbtn" onclick="nav('feed',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Feed</span></button>
-    <button class="nbtn" onclick="nav('checklists',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>Packing</span></button>
-    <button class="nbtn" onclick="nav('countries',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span>Countries</span></button>
-    <button class="nbtn" onclick="nav('account',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Account</span></button>
+  <!-- Pull-up travel drawer -->
+  <div id="travel-drawer" class="travel-drawer">
+    <div class="drawer-handle-wrap" onclick="toggleDrawer()"><div class="drawer-handle"></div></div>
+    <div class="drawer-peek" onclick="toggleDrawer()">
+      <div class="peek-score-wrap"><div class="peek-score-num" id="peek-score">—</div><div class="peek-score-label" id="peek-label">SAFETY</div></div>
+      <div class="peek-status"><div class="peek-country" id="peek-country">Select a country to begin</div><div class="peek-sub" id="peek-sub">Tap to expand ↑</div></div>
+      <div class="peek-actions">
+        <button class="peek-btn peek-safe" onclick="event.stopPropagation();openCheckin()">✅<span>Safe</span></button>
+        <button class="peek-btn peek-warn" onclick="event.stopPropagation();openReport()">⚠️<span>Report</span></button>
+      </div>
+    </div>
+    <div class="drawer-expanded" id="drawer-expanded">
+      <div class="score-card">
+        <div class="score-card-left"><div class="score-num-big" id="score-big">—</div><div class="score-label-big" id="score-label-big">Safety Score</div><div class="score-factors-text" id="score-factors">Enable GPS for live scoring</div></div>
+        <div class="score-donut-wrap">
+          <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/><circle id="score-arc" cx="36" cy="36" r="28" fill="none" stroke="var(--safe)" stroke-width="6" stroke-dasharray="176" stroke-dashoffset="176" stroke-linecap="round" transform="rotate(-90 36 36)" style="transition:all 1s ease"/></svg>
+          <div class="score-donut-num" id="score-ring-num">—</div>
+        </div>
+      </div>
+      <div class="journey-card"><div class="journey-card-info"><div class="journey-card-title" id="journey-title">🧭 Journey Mode</div><div class="journey-card-sub" id="journey-sub">Tracks location · alerts contacts on danger zones</div></div><button class="journey-toggle-btn" id="journey-toggle" onclick="toggleJourney()">Start</button></div>
+      <div class="quick-row">
+        <button class="qbtn" onclick="openCheckin()"><span class="qico">✅</span><span class="qlbl">I'm Safe</span></button>
+        <button class="qbtn" onclick="openReport()"><span class="qico">⚠️</span><span class="qlbl">Report</span></button>
+        <button class="qbtn" onclick="openRouteSheet()"><span class="qico">🗺️</span><span class="qlbl">Route</span></button>
+        <button class="qbtn" onclick="toggleHeatmap()"><span class="qico">🔥</span><span class="qlbl">Risk Map</span></button>
+        <button class="qbtn" onclick="locateUser()"><span class="qico">📍</span><span class="qlbl">Find Me</span></button>
+      </div>
+      <div class="nearby-section"><div class="nearby-title">Nearby alerts</div><div id="nearby-alerts"><div class="no-nearby">No active alerts in your area</div></div></div>
+      <div class="drawer-nav">
+        <button class="dnav-btn active" onclick="drawerNav('map',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>Map</button>
+        <button class="dnav-btn" onclick="drawerNav('feed',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Feed</button>
+        <button class="dnav-btn" onclick="drawerNav('checklists',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Packing</button>
+        <button class="dnav-btn" onclick="drawerNav('countries',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>Countries</button>
+        <button class="dnav-btn" onclick="drawerNav('account',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Account</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -815,6 +912,10 @@ async function setActiveCountry(code) {
     if(currentLat && currentLng) updateSafetyScore();
     // Refresh heatmap if active
     if(heatVisible) { heatVisible = false; toggleHeatmap(); }
+    // Smart journey activation
+    smartActivateJourney(code);
+    // Update peek strip country
+    updatePeekStrip(code, null, null, null);
   } catch(e){}
 }
 
@@ -1287,6 +1388,219 @@ function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // ── PWA ────────────────────────────────────────────────────────────────────────
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 
+
+// ── Pull-up Drawer ─────────────────────────────────────────────────────────────
+let drawerOpen = false;
+let journeyActive = false;
+let journeyWatchId = null;
+let lastDangerAlert = 0;
+
+function toggleDrawer() {
+  drawerOpen = !drawerOpen;
+  const drawer = document.getElementById('travel-drawer');
+  drawer.classList.toggle('open', drawerOpen);
+  const sub = document.getElementById('peek-sub');
+  sub.textContent = drawerOpen ? 'Tap to collapse ↓' : 'Tap to expand ↑';
+}
+
+function drawerNav(name, el) {
+  document.querySelectorAll('.dnav-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (name === 'map') { toggleDrawer(); return; }
+  openPanel(name + '-panel');
+  if (name === 'feed') loadFeed();
+  if (name === 'checklists') { loadChecklists(); renderOfflineList(); }
+  if (name === 'countries') renderCountriesPanel();
+  if (name === 'account') loadContacts();
+}
+
+// Update the peek strip with current country + score
+function updatePeekStrip(countryCode, score, label, color) {
+  const c = allCountries.find(x => x.code === countryCode);
+  if (c) {
+    document.getElementById('peek-country').textContent = c.flag + ' ' + c.name;
+  }
+  if (score != null) {
+    document.getElementById('peek-score').textContent = score;
+    document.getElementById('peek-score').style.color = color || 'var(--safe)';
+    document.getElementById('peek-label').textContent = label || 'SAFETY';
+  }
+  document.getElementById('peek-sub').textContent = drawerOpen ? 'Tap to collapse ↓' : 'Tap to expand ↑';
+}
+
+// Update the expanded score donut
+function updateScoreDonut(score, label, color, factors) {
+  const circumference = 176;
+  const offset = circumference - (score / 100) * circumference;
+  const arc = document.getElementById('score-arc');
+  if (arc) { arc.style.strokeDashoffset = offset; arc.style.stroke = color; }
+  const numEl = document.getElementById('score-ring-num');
+  if (numEl) numEl.textContent = score;
+  const bigEl = document.getElementById('score-big');
+  if (bigEl) { bigEl.textContent = score; bigEl.style.color = color; }
+  const lblEl = document.getElementById('score-label-big');
+  if (lblEl) lblEl.textContent = label;
+  const factEl = document.getElementById('score-factors');
+  if (factEl && factors?.length) {
+    factEl.textContent = factors.map(f => f.label).join(' · ');
+  }
+}
+
+// Override updateSafetyScore to also update the drawer
+const _origUpdateSafetyScore = updateSafetyScore;
+async function updateSafetyScore() {
+  if (!currentLat || !currentLng) return;
+  try {
+    const r = await fetch(API+'/api/safety-score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:currentLat,lng:currentLng,country_code:activeCountry})});
+    const d = await r.json();
+    safetyScore = d;
+    const color = d.score >= 60 ? 'var(--safe)' : d.score >= 35 ? 'var(--warn)' : 'var(--danger)';
+
+    // Update header pill
+    document.getElementById('score-pill').style.display = 'flex';
+    document.getElementById('score-num').textContent = d.score;
+    document.getElementById('score-emoji').textContent = d.emoji || '🛡';
+    document.getElementById('score-overlay').classList.add('visible');
+    document.getElementById('so-score').textContent = d.score;
+    document.getElementById('so-score').style.color = color;
+    document.getElementById('so-text').textContent = d.label;
+    document.getElementById('so-text').style.color = color;
+    document.getElementById('so-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Update drawer
+    updatePeekStrip(activeCountry, d.score, d.label?.toUpperCase(), color);
+    updateScoreDonut(d.score, d.label, color, d.factors);
+
+    // Danger zone detection + vibration
+    if (d.score < 35 && journeyActive) {
+      const now = Date.now();
+      if (now - lastDangerAlert > 5 * 60 * 1000) { // max once per 5 min
+        lastDangerAlert = now;
+        triggerDangerAlert(d);
+      }
+    }
+
+    // Auto-detect country
+    if (!activeCountry && d.country_code) {
+      const code = d.country_code;
+      if (!myCountries.includes(code)) myCountries.push(code);
+      setActiveCountry(code);
+      toast('📍 Detected: ' + (allCountries.find(c=>c.code===code)?.name || code), 'ok');
+    }
+
+    // Update nearby alerts
+    updateNearbyAlerts(d.nearbyEvents || []);
+
+  } catch(e) {}
+}
+
+function triggerDangerAlert(scoreData) {
+  // Vibrate in a warning pattern — short-long-short
+  if ('vibrate' in navigator) {
+    navigator.vibrate([200, 100, 400, 100, 200]);
+  }
+  // Flash the screen
+  document.body.classList.add('danger-zone-active');
+  setTimeout(() => document.body.classList.remove('danger-zone-active'), 3000);
+
+  // Show prominent toast
+  toast('⚠️ DANGER ZONE — Safety score: ' + scoreData.score, 'err');
+
+  // Alert contacts via API
+  if (userWA && activeCountry) {
+    fetch(API+'/api/zone-alert',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({whatsapp:userWA,zone_name:scoreData.nearbyEvents?.[0]?.location||'high-risk area',
+        country_code:activeCountry,lat:currentLat,lng:currentLng,alert_type:'entry'})
+    }).catch(()=>{});
+  }
+}
+
+function updateNearbyAlerts(events) {
+  const el = document.getElementById('nearby-alerts');
+  if (!el) return;
+  if (!events.length) {
+    el.innerHTML = '<div class="no-nearby">No active alerts in your area</div>';
+    return;
+  }
+  el.innerHTML = events.slice(0,5).map(e => {
+    const c = ICFG[e.type] || ICFG.siren;
+    const dist = e.dist ? e.dist + 'km away' : '';
+    return `<div class="nearby-item" onclick="flyTo(${e.lat},${e.lng})">
+      <div class="nearby-ico">${c.icon}</div>
+      <div style="flex:1"><div class="nearby-title-text">${escH(e.title)}</div><div class="nearby-dist">${dist}</div></div>
+    </div>`;
+  }).join('');
+}
+
+// Journey mode — smart GPS tracking
+function toggleJourney() {
+  journeyActive = !journeyActive;
+  const btn = document.getElementById('journey-toggle');
+  const card = document.getElementById('journey-card');
+  const sub = document.getElementById('journey-sub');
+
+  if (journeyActive) {
+    btn.textContent = 'Stop';
+    btn.classList.add('active');
+    card.classList.add('tracking');
+    sub.textContent = '🟢 Tracking active · contacts alerted on danger zones';
+
+    // Start GPS watch
+    if (navigator.geolocation) {
+      journeyWatchId = navigator.geolocation.watchPosition(p => {
+        currentLat = p.coords.latitude;
+        currentLng = p.coords.longitude;
+        updateSafetyScore();
+
+        // Detect country crossing
+        fetch(API+'/api/detect-country',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({lat:currentLat,lng:currentLng})
+        }).then(r=>r.json()).then(d => {
+          if (d.country_code && d.country_code !== lastCountryCode) {
+            lastCountryCode = d.country_code;
+            if (!myCountries.includes(d.country_code)) myCountries.push(d.country_code);
+            setActiveCountry(d.country_code);
+            toast('🛂 Entered ' + (d.country?.name || d.country_code), 'warn');
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            if (userWA) {
+              fetch(API+'/api/zone-alert',{method:'POST',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({whatsapp:userWA,zone_name:d.country?.name,country_code:d.country_code,
+                  lat:currentLat,lng:currentLng,alert_type:'entry'})
+              }).catch(()=>{});
+            }
+          }
+        }).catch(()=>{});
+
+      }, null, {enableHighAccuracy:true, maximumAge:30000});
+    }
+    toast('🧭 Journey mode active', 'ok');
+    if (navigator.vibrate) navigator.vibrate(100);
+  } else {
+    btn.textContent = 'Start';
+    btn.classList.remove('active');
+    card.classList.remove('tracking');
+    sub.textContent = 'Tracks location · alerts contacts on danger zones';
+    if (journeyWatchId) { navigator.geolocation.clearWatch(journeyWatchId); journeyWatchId = null; }
+    toast('Journey mode stopped');
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+  }
+}
+
+// Smart activation: when user selects a country, check if they're near it
+async function smartActivateJourney(countryCode) {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(p => {
+    fetch(API+'/api/detect-country',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lat:p.coords.latitude,lng:p.coords.longitude})
+    }).then(r=>r.json()).then(d => {
+      if (d.country_code === countryCode && !journeyActive) {
+        // User is in the selected country — suggest journey mode
+        toast('📍 You appear to be in ' + (allCountries.find(c=>c.code===countryCode)?.name||countryCode) + ' — start Journey Mode?', 'warn');
+      }
+    }).catch(()=>{});
+  }, null, {timeout:5000});
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 // Restore saved WA
 if(userWA){
@@ -1308,6 +1622,7 @@ loadCountries().then(()=>{
   myCountries=['JO'];
   setActiveCountry('JO');
   renderCountriesPanel();
+  updatePeekStrip('JO', null, null, null);
 });
 
 setInterval(loadFeed,60000);
