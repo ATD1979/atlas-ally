@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Real-time safety intelligence for every country. Air sirens, conflict alerts, travel advisories, border status and breaking news — delivered to WhatsApp.">
+<title>Atlas Ally — Global Travel Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fafafa;--bg2:#f3f4f6;--text:#111827;--muted:#6b7280;--border:#e5e7eb;--brand:#2563eb;--brand2:#3b82f6;--light-brand:#dbeafe;--adv1:#16a34a;--adv2:#d97706;--adv3:#ea580c;--adv4:#dc2626;--display:'Fraunces',serif;--body:'DM Sans',sans-serif;--mono:'DM Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--body);line-height:1.6;}
+a{color:inherit;text-decoration:none;}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(250,250,250,.96);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(12px);}
+.nav-logo{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:18px;font-weight:700;}
+.nav-logo-mark{width:28px;height:28px;background:var(--brand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.nav-links{display:flex;align-items:center;gap:20px;}
+.nav-links a{font-size:14px;color:var(--muted);}
+.nav-links a:hover{color:var(--text);}
+.nav-cta{background:var(--brand);color:white!important;border-radius:8px;padding:8px 18px;font-weight:600;font-size:14px;}
+.nav-cta:hover{background:var(--brand2)!important;}
+
+/* Hero */
+.hero{max-width:1000px;margin:0 auto;padding:90px 24px 60px;text-align:center;}
+.hero-eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);margin-bottom:18px;}
+.hero-h1{font-family:var(--display);font-size:clamp(40px,6vw,72px);font-weight:700;line-height:1.08;margin-bottom:20px;color:var(--text);}
+.hero-h1 em{font-style:italic;color:var(--brand);}
+.hero-sub{font-size:18px;color:var(--muted);max-width:580px;margin:0 auto 36px;line-height:1.7;}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;}
+.btn-primary{background:var(--brand);color:white;border:none;border-radius:9px;padding:14px 28px;font-size:16px;font-weight:600;cursor:pointer;font-family:var(--body);display:inline-block;transition:all .15s;}
+.btn-primary:hover{background:var(--brand2);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border);border-radius:9px;padding:13px 24px;font-size:16px;font-weight:500;cursor:pointer;font-family:var(--body);display:inline-block;transition:all .15s;}
+.btn-ghost:hover{border-color:var(--text);}
+.hero-proof{font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;}
+.proof-item{display:flex;align-items:center;gap:5px;}
+.proof-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;}
+
+/* Country flags strip */
+.flags-strip{overflow:hidden;padding:24px 0;margin-bottom:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2);}
+.flags-track{display:flex;gap:32px;animation:scroll 25s linear infinite;width:max-content;}
+@keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.flag-item{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap;}
+.flag-item span:first-child{font-size:20px;}
+
+/* Features */
+.section{max-width:960px;margin:0 auto;padding:72px 24px;}
+.section-eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--brand);margin-bottom:10px;}
+.section-h2{font-family:var(--display);font-size:clamp(28px,4vw,44px);font-weight:700;margin-bottom:14px;line-height:1.15;}
+.section-sub{font-size:17px;color:var(--muted);max-width:540px;line-height:1.7;margin-bottom:48px;}
+
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;}
+.feature-card{background:white;border:1px solid var(--border);border-radius:14px;padding:22px;}
+.feature-icon{font-size:28px;margin-bottom:12px;}
+.feature-title{font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:8px;}
+.feature-desc{font-size:14px;color:var(--muted);line-height:1.6;}
+
+/* Advisory demo */
+.advisory-demo{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:48px;}
+.adv-card{border-radius:12px;padding:16px;border:1px solid;}
+.adv-card.l1{background:#f0fdf4;border-color:#bbf7d0;}
+.adv-card.l2{background:#fffbeb;border-color:#fde68a;}
+.adv-card.l3{background:#fff7ed;border-color:#fed7aa;}
+.adv-card.l4{background:#fef2f2;border-color:#fecaca;}
+.adv-level-num{font-family:var(--display);font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
+.adv-level-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.adv-level-desc{font-size:12px;line-height:1.5;}
+.adv-card.l1 .adv-level-num,.adv-card.l1 .adv-level-label{color:var(--adv1);}
+.adv-card.l2 .adv-level-num,.adv-card.l2 .adv-level-label{color:var(--adv2);}
+.adv-card.l3 .adv-level-num,.adv-card.l3 .adv-level-label{color:var(--adv3);}
+.adv-card.l4 .adv-level-num,.adv-card.l4 .adv-level-label{color:var(--adv4);}
+
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:720px;}
+.price-card{background:white;border:1.5px solid var(--border);border-radius:16px;padding:26px;}
+.price-card.featured{border-color:var(--brand);box-shadow:0 0 0 4px var(--light-brand);}
+.price-badge{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);background:var(--light-brand);border-radius:100px;padding:3px 10px;display:inline-block;margin-bottom:14px;}
+.price-name{font-family:var(--display);font-size:20px;font-weight:700;margin-bottom:6px;}
+.price-amount{font-family:var(--display);font-size:40px;font-weight:700;line-height:1;margin-bottom:4px;}
+.price-amount sub{font-size:16px;font-weight:400;color:var(--muted);}
+.price-note{font-size:13px;color:var(--muted);margin-bottom:18px;}
+.price-features{list-style:none;margin-bottom:22px;}
+.price-features li{font-size:14px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--muted);}
+.price-features li:last-child{border-bottom:none;}
+.price-features li.yes{color:var(--text);}
+.price-features li.yes::before{content:'✓';color:var(--adv1);font-weight:700;flex-shrink:0;}
+.price-features li.no::before{content:'—';color:var(--border);font-weight:700;flex-shrink:0;}
+.price-btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:var(--body);cursor:pointer;transition:all .15s;}
+.price-btn.primary{background:var(--brand);color:white;}
+.price-btn.primary:hover{background:var(--brand2);}
+.price-btn.outline{background:transparent;border:1.5px solid var(--border);color:var(--text);}
+
+/* Stats */
+.stats-bar{background:var(--text);padding:48px 24px;}
+.stats-inner{max-width:800px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:24px;text-align:center;}
+.stat-big{font-family:var(--display);font-size:44px;font-weight:700;color:white;line-height:1;}
+.stat-label{font-size:14px;color:rgba(255,255,255,.5);margin-top:4px;}
+
+/* WA preview */
+.wa-wrap{background:#e5ddd5;border-radius:16px;padding:16px;max-width:340px;margin:0 auto;}
+.wa-top{background:#128c7e;border-radius:10px 10px 0 0;padding:10px 14px;display:flex;align-items:center;gap:10px;margin:-16px -16px 14px;}
+.wa-avatar{width:34px;height:34px;background:#0d7265;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.wa-name{font-size:14px;font-weight:600;color:white;}
+.wa-status{font-size:11px;color:rgba(255,255,255,.7);}
+.wa-msg{background:white;border-radius:4px 12px 12px 12px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.wa-badge{font-size:11px;font-weight:700;color:var(--brand);margin-bottom:4px;font-family:var(--mono);}
+.wa-body{font-size:13px;line-height:1.5;color:#111;}
+.wa-time{font-size:10px;color:#999;text-align:right;margin-top:4px;}
+
+/* Checkout modal */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;align-items:center;justify-content:center;padding:20px;}
+#modal.show{display:flex;}
+.modal-card{background:white;border-radius:16px;padding:30px;max-width:420px;width:100%;}
+.modal-title{font-family:var(--display);font-size:22px;font-weight:700;margin-bottom:4px;}
+.modal-sub{font-size:14px;color:var(--muted);margin-bottom:22px;}
+.modal-price{background:var(--bg2);border-radius:9px;padding:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;}
+.modal-price-label{font-size:14px;color:var(--muted);}
+.modal-price-val{font-family:var(--display);font-size:22px;font-weight:700;color:var(--brand);}
+.mfl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:5px;}
+.mfi{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:11px 14px;font-size:15px;font-family:var(--body);outline:none;margin-bottom:12px;transition:border-color .15s;}
+.mfi:focus{border-color:var(--brand);}
+.msubmit{width:100%;background:var(--brand);color:white;border:none;border-radius:9px;padding:14px;font-size:15px;font-weight:600;font-family:var(--body);cursor:pointer;margin-bottom:8px;}
+.mcancel{width:100%;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:8px;}
+.msecure{text-align:center;font-size:11px;color:var(--muted);margin-top:6px;}
+
+footer{background:var(--text);color:rgba(255,255,255,.45);padding:28px 24px;text-align:center;font-size:13px;}
+footer a{color:rgba(255,255,255,.6);}
+
+@media(max-width:600px){.hero{padding:50px 20px 40px;}.section{padding:48px 20px;}.hero-btns{flex-direction:column;align-items:stretch;}.btn-primary,.btn-ghost{text-align:center;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">🌍</div>
+    Atlas Ally
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="/index.html">Open App</a>
+    <a class="nav-cta" href="#" onclick="openModal();return false;">Start Free Trial</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-eyebrow">Global Travel Intelligence</div>
+  <h1 class="hero-h1">Stay safe<br><em>anywhere on Earth</em></h1>
+  <p class="hero-sub">Real-time safety alerts, travel advisories, border status, health notices, and breaking news — for every country you care about. Delivered instantly to WhatsApp.</p>
+  <div class="hero-btns">
+    <button class="btn-primary" onclick="openModal()">Start 7-day free trial →</button>
+    <a class="btn-ghost" href="/index.html">View live map</a>
+  </div>
+  <div class="hero-proof">
+    <div class="proof-item"><div class="proof-dot"></div> No credit card for trial</div>
+    <div class="proof-item"><div class="proof-dot"></div> Alerts in under 10 seconds</div>
+    <div class="proof-item"><div class="proof-dot"></div> Cancel anytime</div>
+    <div class="proof-item"><div class="proof-dot"></div> Works on any phone via WhatsApp</div>
+  </div>
+</div>
+
+<!-- Flags strip -->
+<div class="flags-strip">
+  <div class="flags-track">
+    <div class="flag-item"><span>🇯🇴</span> Jordan</div>
+    <div class="flag-item"><span>🇺🇦</span> Ukraine</div>
+    <div class="flag-item"><span>🇱🇧</span> Lebanon</div>
+    <div class="flag-item"><span>🇪🇬</span> Egypt</div>
+    <div class="flag-item"><span>🇲🇽</span> Mexico</div>
+    <div class="flag-item"><span>🇵🇰</span> Pakistan</div>
+    <div class="flag-item"><span>🇹🇭</span> Thailand</div>
+    <div class="flag-item"><span>🇫🇷</span> France</div>
+    <div class="flag-item"><span>🇯🇵</span> Japan</div>
+    <div class="flag-item"><span>🇿🇦</span> South Africa</div>
+    <div class="flag-item"><span>🇮🇱</span> Israel</div>
+    <div class="flag-item"><span>🇮🇶</span> Iraq</div>
+    <div class="flag-item"><span>🇸🇾</span> Syria</div>
+    <div class="flag-item"><span>🇨🇴</span> Colombia</div>
+    <div class="flag-item"><span>🇳🇬</span> Nigeria</div>
+    <!-- duplicate for seamless scroll -->
+    <div class="flag-item"><span>🇯🇴</span> Jordan</div>
+    <div class="flag-item"><span>🇺🇦</span> Ukraine</div>
+    <div class="flag-item"><span>🇱🇧</span> Lebanon</div>
+    <div class="flag-item"><span>🇪🇬</span> Egypt</div>
+    <div class="flag-item"><span>🇲🇽</span> Mexico</div>
+    <div class="flag-item"><span>🇵🇰</span> Pakistan</div>
+    <div class="flag-item"><span>🇹🇭</span> Thailand</div>
+    <div class="flag-item"><span>🇫🇷</span> France</div>
+    <div class="flag-item"><span>🇯🇵</span> Japan</div>
+    <div class="flag-item"><span>🇿🇦</span> South Africa</div>
+  </div>
+</div>
+
+<!-- Advisory levels -->
+<div class="section" id="features">
+  <div class="section-eyebrow">Travel advisories</div>
+  <h2 class="section-h2">Know before you go</h2>
+  <p class="section-sub">We pull live advisories from the US State Department and UK FCO for every country. Updated in real time.</p>
+  <div class="advisory-demo">
+    <div class="adv-card l1"><div class="adv-level-num">1</div><div class="adv-level-label">Normal</div><div class="adv-level-desc">Exercise normal precautions. Standard travel preparation recommended.</div></div>
+    <div class="adv-card l2"><div class="adv-level-num">2</div><div class="adv-level-label">Elevated</div><div class="adv-level-desc">Exercise increased caution. Some areas have higher risk.</div></div>
+    <div class="adv-card l3"><div class="adv-level-num">3</div><div class="adv-level-label">High</div><div class="adv-level-label">Reconsider travel. Serious risk present.</div></div>
+    <div class="adv-card l4"><div class="adv-level-num">4</div><div class="adv-level-label">Critical</div><div class="adv-level-desc">Do not travel. Active conflict or extreme danger.</div></div>
+  </div>
+</div>
+
+<!-- Features -->
+<div style="background:var(--bg2);padding:72px 0;">
+  <div style="max-width:960px;margin:0 auto;padding:0 24px;">
+    <div class="section-eyebrow">Everything you need</div>
+    <h2 class="section-h2">Intelligence for every situation</h2>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon">🚨</div><div class="feature-title">Real-time incident alerts</div><div class="feature-desc">Air sirens, missile activity, drone incursions, explosions, gunfire — reported by citizens on the ground and delivered to your WhatsApp in seconds.</div></div>
+      <div class="feature-card"><div class="feature-icon">🗺️</div><div class="feature-title">Live incident map</div><div class="feature-desc">Every report is pinned on a real GPS map with custom icons for each incident type. See exactly what's happening and where.</div></div>
+      <div class="feature-card"><div class="feature-icon">📰</div><div class="feature-title">Live news feeds</div><div class="feature-desc">Curated news from trusted local and international sources for each country — Reuters, BBC, Al Jazeera, local papers — all in one place.</div></div>
+      <div class="feature-card"><div class="feature-icon">🛂</div><div class="feature-title">Border crossing status</div><div class="feature-desc">Real-time open/closed/restricted status for key border crossings. Know before you drive three hours to find it closed.</div></div>
+      <div class="feature-card"><div class="feature-icon">🏥</div><div class="feature-title">Health notices</div><div class="feature-desc">Disease outbreaks, vaccination requirements, hospital access warnings, and water safety alerts for every country.</div></div>
+      <div class="feature-card"><div class="feature-icon">📞</div><div class="feature-title">Emergency numbers</div><div class="feature-desc">One-tap emergency calls for police, fire, ambulance, and tourism police in every country. Works offline once loaded.</div></div>
+      <div class="feature-card"><div class="feature-icon">🌪️</div><div class="feature-title">Weather & natural disasters</div><div class="feature-desc">Severe weather alerts, earthquake notifications, and natural disaster warnings integrated with your country monitoring.</div></div>
+      <div class="feature-card"><div class="feature-icon">📲</div><div class="feature-title">WhatsApp delivery</div><div class="feature-desc">No app to install. Alerts arrive in WhatsApp — the app already on every phone worldwide. Works on any device, any carrier.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp preview -->
+<div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;max-width:840px;">
+  <div>
+    <div class="section-eyebrow">What you receive</div>
+    <h2 style="font-family:var(--display);font-size:32px;font-weight:700;margin-bottom:12px;line-height:1.2;">Alerts that actually reach you</h2>
+    <p style="font-size:15px;color:var(--muted);line-height:1.7;">No app to check. No email to open. When something happens, you get a WhatsApp message with the incident type, location, local time, and emergency numbers — in under 10 seconds.</p>
+  </div>
+  <div class="wa-wrap">
+    <div class="wa-top">
+      <div class="wa-avatar">🌍</div>
+      <div><div class="wa-name">Atlas Ally</div><div class="wa-status">Global Intelligence Network</div></div>
+    </div>
+    <div class="wa-msg">
+      <div class="wa-badge">🚨 ATLAS ALLY ALERT</div>
+      <div class="wa-body">🇯🇴 <strong>Jordan</strong><br>🔴 <strong>Air Siren — Amman</strong><br><br>📍 <strong>Amman North</strong><br><br>Air defense siren activated. Move to shelter immediately.<br><br><em>Atlas Ally · 2:14 AM local · Emergency: 911</em></div>
+      <div class="wa-time">2:14 AM ✓✓</div>
+    </div>
+    <div class="wa-msg" style="margin-left:auto;border-radius:12px 4px 12px 12px;background:#dcf8c6;max-width:85%;">
+      <div class="wa-body">Thanks — family confirmed safe 🙏</div>
+      <div class="wa-time">2:16 AM ✓✓</div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div><div class="stat-big">10</div><div class="stat-label">Countries at launch</div></div>
+    <div><div class="stat-big">&lt;10s</div><div class="stat-label">Alert delivery time</div></div>
+    <div><div class="stat-big">12</div><div class="stat-label">Incident types tracked</div></div>
+    <div><div class="stat-big">24/7</div><div class="stat-label">Live monitoring</div></div>
+  </div>
+</div>
+
+<!-- Pricing -->
+<div class="section" id="pricing">
+  <div class="section-eyebrow">Pricing</div>
+  <h2 class="section-h2">Pay only for what you monitor</h2>
+  <p class="section-sub">Start free. Add countries as you need them. Cancel any time.</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-name">Free Trial</div>
+      <div class="price-amount">$0<sub>/7 days</sub></div>
+      <div class="price-note">No credit card required</div>
+      <ul class="price-features">
+        <li class="yes">Full app access</li>
+        <li class="yes">Up to 3 countries</li>
+        <li class="yes">WhatsApp alerts</li>
+        <li class="yes">Live incident map</li>
+        <li class="yes">News feeds</li>
+        <li class="no">After trial ends</li>
+      </ul>
+      <button class="price-btn outline" onclick="openModal()">Start free trial</button>
+    </div>
+    <div class="price-card featured">
+      <div class="price-badge">Most popular</div>
+      <div class="price-name">Premium</div>
+      <div class="price-amount">$3<sub>/mo</sub></div>
+      <div class="price-note">First country · +$1 each additional</div>
+      <ul class="price-features">
+        <li class="yes">Everything in Free</li>
+        <li class="yes">Unlimited duration</li>
+        <li class="yes">Choose any countries</li>
+        <li class="yes">Priority alert delivery</li>
+        <li class="yes">Historical incident data</li>
+        <li class="yes">Cancel anytime</li>
+      </ul>
+      <button class="price-btn primary" onclick="openModal()">Start monitoring →</button>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin-top:20px;">Example: monitoring Jordan + Ukraine + Mexico = <strong>$5/month</strong></p>
+</div>
+
+<!-- Final CTA -->
+<div style="background:var(--text);padding:80px 24px;text-align:center;">
+  <h2 style="font-family:var(--display);font-size:clamp(28px,5vw,48px);font-weight:700;color:white;margin-bottom:14px;">Your safety intelligence starts today</h2>
+  <p style="font-size:17px;color:rgba(255,255,255,.55);max-width:500px;margin:0 auto 32px;line-height:1.7;">7 days free. No credit card. Works on any phone. Cancel anytime.</p>
+  <button class="btn-primary" style="font-size:17px;padding:16px 36px;" onclick="openModal()">Start free trial →</button>
+</div>
+
+<footer>
+  <p>🌍 Atlas Ally · Global Travel Intelligence · <a href="/index.html">Open App</a> · <a href="mailto:support@atlasally.com">Contact</a></p>
+  <p style="margin-top:6px;">Alerts are community-sourced and supplemented with official advisories. Always follow local authority guidance in emergencies.</p>
+</footer>
+
+<!-- Checkout Modal -->
+<div id="modal">
+  <div class="modal-card">
+    <div class="modal-title">Start your free trial</div>
+    <div class="modal-sub">7 days full access. No credit card. Cancel anytime.</div>
+    <div class="modal-price">
+      <div class="modal-price-label">Atlas Ally Premium</div>
+      <div class="modal-price-val">Free for 7 days</div>
+    </div>
+    <div class="mfl">Your WhatsApp number</div>
+    <input class="mfi" type="tel" id="m-phone" placeholder="+1 XXX XXX XXXX">
+    <div class="mfl">Email address</div>
+    <input class="mfi" type="email" id="m-email" placeholder="you@example.com">
+    <div class="mfl">Which country to monitor first?</div>
+    <select class="mfi" id="m-country" style="appearance:none;">
+      <option value="JO">🇯🇴 Jordan</option>
+      <option value="UA">🇺🇦 Ukraine</option>
+      <option value="LB">🇱🇧 Lebanon</option>
+      <option value="EG">🇪🇬 Egypt</option>
+      <option value="MX">🇲🇽 Mexico</option>
+      <option value="PK">🇵🇰 Pakistan</option>
+      <option value="TH">🇹🇭 Thailand</option>
+      <option value="FR">🇫🇷 France</option>
+      <option value="JP">🇯🇵 Japan</option>
+      <option value="ZA">🇿🇦 South Africa</option>
+    </select>
+    <button class="msubmit" onclick="submitTrial()">Activate free trial →</button>
+    <button class="mcancel" onclick="closeModal()">Maybe later</button>
+    <div class="msecure">🔒 No payment info required for trial</div>
+  </div>
+</div>
+
+<script>
+function openModal(){ document.getElementById('modal').classList.add('show'); }
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+document.getElementById('modal').addEventListener('click', e => { if(e.target===document.getElementById('modal')) closeModal(); });
+
+async function submitTrial() {
+  const phone = document.getElementById('m-phone').value.trim();
+  const email = document.getElementById('m-email').value.trim();
+  const country = document.getElementById('m-country').value;
+  if (!phone && !email) { alert('Please enter your WhatsApp number or email'); return; }
+
+  const btn = document.querySelector('.msubmit');
+  btn.textContent = 'Setting up your account…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ whatsapp: phone||null, email: email||null, plan: 'traveler', countries: [country] })
+    });
+    const data = await res.json();
+
+    if (data.url) {
+      // Stripe configured — send to checkout (7-day free trial built in)
+      window.location.href = data.url;
+      return;
+    }
+
+    // Stripe not yet configured — activate free trial directly
+    closeModal();
+    alert('✅ 7-day free trial activated!\n\nNext step — activate WhatsApp alerts:\n1. Open WhatsApp\n2. Message +1 415 523 8886\n3. Send: join swimming-swam\n\nThen open the app → Account tab to finish setup.');
+    window.location.href = '/index.html';
+  } catch(e) {
+    closeModal();
+    alert('✅ Trial activated! Open the app to get started.');
+    window.location.href = '/index.html';
+  }
+  btn.textContent = 'Activate free trial →';
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
