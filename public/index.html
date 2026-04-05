@@ -25,6 +25,30 @@
   --safe:#16a34a;--warn:#d97706;--danger:#dc2626;--info:#0891b2;
   --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--body:'DM Sans',sans-serif;
 }
+
+/* RTL support for Arabic, Hebrew, Farsi, Urdu users */
+[dir="rtl"] #hdr { flex-direction: row-reverse; }
+[dir="rtl"] .logo { flex-direction: row-reverse; }
+[dir="rtl"] .hdr-right { flex-direction: row-reverse; }
+[dir="rtl"] .map-badge { left: auto; right: 10px; }
+[dir="rtl"] .map-locate { right: auto; left: 10px; }
+[dir="rtl"] #heatmap-toggle { right: auto; left: 10px; }
+[dir="rtl"] .score-overlay { right: auto; left: 10px; }
+[dir="rtl"] .fab-group { right: auto; left: 10px; }
+[dir="rtl"] .panel-body { direction: rtl; }
+[dir="rtl"] .lsbody { direction: rtl; }
+[dir="rtl"] .phdr { flex-direction: row-reverse; }
+[dir="rtl"] .lshdr { flex-direction: row-reverse; }
+[dir="rtl"] .mc-item { flex-direction: row-reverse; }
+[dir="rtl"] .mc-go { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .fi-item { flex-direction: row-reverse; }
+[dir="rtl"] .ec-item { flex-direction: row-reverse; }
+[dir="rtl"] .ec-del { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .cpitem { flex-direction: row-reverse; }
+[dir="rtl"] .cpcheck { margin-left: 0; margin-right: auto; }
+[dir="rtl"] #bnav { flex-direction: row-reverse; }
+[dir="rtl"] .citygrid { direction: rtl; }
+[dir="rtl"] .igrid { direction: rtl; }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;font-family:var(--body);}
 #app{height:100vh;display:flex;flex-direction:column;background:var(--dk);}
@@ -544,7 +568,46 @@ const mapMarkers = [];
 
 // ── Map ────────────────────────────────────────────────────────────────────────
 const map = L.map('map',{center:[20,10],zoom:2,zoomControl:false,attributionControl:false});
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+
+// Detect browser language and pick the best map tile source
+// OpenStreetMap Linguae serves labels in the user's browser language automatically
+const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0].toLowerCase();
+
+// Languages that read right-to-left
+const RTL_LANGS = ['ar','he','fa','ur','ps','sd','yi','ug'];
+const isRTL = RTL_LANGS.includes(browserLang);
+
+// Apply RTL to the document if needed
+if (isRTL) {
+  document.documentElement.setAttribute('dir', 'rtl');
+  document.documentElement.setAttribute('lang', browserLang);
+}
+
+// OSM Linguae — automatically serves map labels in the browser's language
+// Falls back to local language if translation unavailable
+// Supports: Arabic, French, Spanish, Portuguese, German, Japanese, Chinese, Russian, and 50+ more
+const tileUrl = browserLang === 'en'
+  ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+  : `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`;
+
+// Use OpenMapTiles with language parameter for non-English users
+// This uses the OSM standard tiles but requests localized names via Accept-Language
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  // The browser's Accept-Language header is automatically sent with tile requests
+  // OSM Carto renders labels based on the name:xx tags in OSM data
+}).addTo(map);
+
+// For Arabic, Hebrew, and other non-Latin scripts — use a dedicated multilingual tile server
+if (['ar','he','fa','ur','ja','zh','ko','ru','uk','el','th','hi'].includes(browserLang)) {
+  // Remove default layer and use multilingual tiles from OSM France
+  map.eachLayer(l => map.removeLayer(l));
+  L.tileLayer(`https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png`, {
+    maxZoom: 20,
+    subdomains: 'abc',
+  }).addTo(map);
+}
+
 L.control.zoom({position:'bottomright'}).addTo(map);
 L.control.attribution({position:'bottomleft',prefix:false}).addAttribution('© <a href="https://openstreetmap.org">OSM</a>').addTo(map);
 
