@@ -54,7 +54,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 #app{height:100vh;display:flex;flex-direction:column;background:var(--dk);position:relative;}
 
 /* Header */
-#hdr{background:rgba(13,17,23,0.97);border-bottom:1px solid var(--db);padding:0 14px 0 62px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+#hdr{background:rgba(13,17,23,0.97);border-bottom:1px solid var(--db);padding:0 14px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;transition:margin-left .3s ease;}
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;}
 .logo-mark{width:28px;height:28px;background:var(--brand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
 .logo-name{font-family:var(--display);font-size:17px;font-weight:800;color:var(--dt);letter-spacing:-.01em;}
@@ -64,7 +64,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .country-btn{display:flex;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;color:var(--dt);}
 
 /* Map */
-#map-wrap{flex:1;position:relative;overflow:hidden;margin-bottom:90px;margin-left:48px;}
+#map-wrap{flex:1;position:relative;overflow:hidden;margin-bottom:90px;transition:margin-left .3s ease;}
 #map{width:100%;height:100%;}
 .leaflet-container{background:#e8e4dd;}
 .map-scan{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden;}
@@ -294,26 +294,53 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
-/* ── Left side navigation strip ──────────────────────────── */
-#sidenav{position:fixed;left:0;top:0;bottom:0;width:48px;z-index:200;background:rgba(13,17,23,0.97);border-right:1px solid var(--db);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(12px);}
-.snav-logo{width:32px;height:32px;background:var(--brand);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:8px;flex-shrink:0;}
-.snav-btn{width:36px;height:36px;border-radius:9px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--dm);transition:all .15s;position:relative;flex-shrink:0;}
-.snav-btn:active,.snav-btn.active{background:rgba(37,99,235,0.15);color:var(--brand2);}
-.snav-btn.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--brand2);border-radius:0 2px 2px 0;}
-.snav-btn[data-danger]{color:var(--danger);}
-.snav-btn[data-danger]:active{background:rgba(220,38,38,0.15);}
-.snav-sep{width:24px;height:1px;background:var(--db);margin:4px 0;flex-shrink:0;}
-.snav-spacer{flex:1;}
+/* ── Expandable left navigation ───────────────────────────── */
+#nav-panel{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:300;background:var(--dk2);border-right:1px solid var(--db2);transform:translateX(-280px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:4px 0 32px rgba(0,0,0,.5);}
+#nav-panel.open{transform:translateX(0);}
 
-/* Side panel (slides out from left over map) */
-#side-panel{position:fixed;left:48px;top:0;bottom:0;width:280px;z-index:190;background:var(--dk2);border-right:1px solid var(--db2);transform:translateX(-280px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.4);}
-#side-panel.open{transform:translateX(0);}
-.sp-hdr{padding:14px 16px;border-bottom:1px solid var(--db);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.sp-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--dt);}
-.sp-close{width:28px;height:28px;border:1px solid var(--db2);border-radius:6px;background:none;color:var(--dm);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
-.sp-body{flex:1;overflow-y:auto;}
-#side-backdrop{position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;}
-#side-backdrop.on{opacity:1;pointer-events:all;}
+/* When nav is open, push map right */
+#app.nav-open #hdr{margin-left:280px;}
+#app.nav-open #map-wrap{margin-left:280px;}
+#app.nav-open .travel-drawer{left:280px;}
+
+.nav-panel-hdr{padding:16px;border-bottom:1px solid var(--db);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.nav-panel-logo{width:34px;height:34px;background:var(--brand);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.nav-panel-title{font-family:var(--display);font-size:17px;font-weight:800;color:var(--dt);}
+.nav-panel-sub{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:1px;}
+.nav-close-btn{margin-left:auto;width:28px;height:28px;border:1px solid var(--db2);border-radius:6px;background:none;color:var(--dm);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+.nav-body{flex:1;overflow-y:auto;padding:8px 0;}
+.nav-section-label{font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.12em;padding:12px 16px 6px;}
+.nav-item{display:flex;align-items:center;gap:13px;padding:12px 16px;cursor:pointer;transition:background .15s;border-radius:0;}
+.nav-item:active,.nav-item.active{background:rgba(37,99,235,0.1);}
+.nav-item-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--dk3);}
+.nav-item.active .nav-item-icon{background:rgba(37,99,235,0.15);}
+.nav-item-text{flex:1;}
+.nav-item-title{font-family:var(--display);font-size:14px;font-weight:700;color:var(--dt);}
+.nav-item.active .nav-item-title{color:var(--brand2);}
+.nav-item-desc{font-size:12px;color:var(--dm);margin-top:1px;line-height:1.3;}
+.nav-item-arrow{color:var(--dm);font-size:16px;flex-shrink:0;}
+.nav-divider{height:1px;background:var(--db);margin:6px 16px;}
+
+/* Action items at bottom of nav */
+.nav-actions{padding:12px;border-top:1px solid var(--db);display:flex;flex-direction:column;gap:8px;flex-shrink:0;}
+.nav-action-btn{display:flex;align-items:center;gap:11px;padding:12px 14px;border:none;border-radius:11px;cursor:pointer;width:100%;text-align:left;font-family:var(--body);transition:all .15s;}
+.nav-action-btn:active{opacity:.85;}
+.nav-action-safe{background:rgba(22,163,74,0.12);border:1px solid rgba(22,163,74,0.25);}
+.nav-action-report{background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.2);}
+.nav-action-route{background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);}
+.nav-action-icon{font-size:20px;flex-shrink:0;}
+.nav-action-label{font-family:var(--display);font-size:14px;font-weight:700;}
+.nav-action-sub{font-size:11px;opacity:.7;margin-top:1px;}
+
+/* Hamburger button in header */
+.hamburger-btn{width:36px;height:36px;background:var(--dk3);border:1px solid var(--db2);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;flex-shrink:0;transition:all .15s;}
+.hamburger-btn:active{background:var(--dk2);}
+.hamburger-btn span{display:block;width:16px;height:2px;background:var(--dt);border-radius:1px;transition:all .3s;}
+.hamburger-btn.open span:nth-child(1){transform:rotate(45deg) translate(5px,5px);}
+.hamburger-btn.open span:nth-child(2){opacity:0;}
+.hamburger-btn.open span:nth-child(3){transform:rotate(-45deg) translate(5px,-5px);}
+
 
 /* ── Onboarding card ──────────────────────────────────────── */
 #onboarding{position:fixed;inset:0;z-index:900;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;padding-bottom:100px;}
@@ -347,7 +374,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .ob-country-chip:active,.ob-country-chip.sel{border-color:var(--brand2);background:rgba(37,99,235,0.1);color:var(--brand2);}
 
 /* ── Pull-up travel drawer ────────────────────────────────── */
-.travel-drawer{position:fixed;bottom:0;left:48px;right:0;z-index:100;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
+.travel-drawer{position:fixed;bottom:0;left:0;right:0;z-index:100;transition:left .3s ease;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
 .drawer-handle-wrap{padding:8px 0 4px;display:flex;justify-content:center;}
 .drawer-handle{width:40px;height:4px;background:var(--db2);border-radius:2px;}
 .drawer-expanded{display:none;overflow-y:auto;max-height:70vh;}
@@ -418,9 +445,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 <body>
 <div id="app">
   <div id="hdr">
-    <div class="logo" onclick="showPicker()">
-      <div class="logo-mark">🌍</div>
-      <div><div class="logo-name">Atlas Ally</div></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="hamburger-btn" id="hamburger" onclick="toggleNav()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="logo" onclick="showPicker()" style="cursor:pointer;">
+        <div class="logo-mark">🌍</div>
+        <div><div class="logo-name">Atlas Ally</div></div>
+      </div>
     </div>
     <div class="hdr-right">
       <div class="score-pill" id="score-pill" onclick="openCheckin()" style="display:none;">
@@ -505,29 +537,111 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
   </div>
 </div>
 
-<!-- Left side navigation -->
-<div id="sidenav">
-  <div class="snav-logo">🌍</div>
-  <button class="snav-btn" onclick="openSidePanel('countries-panel')" title="My Countries">🗺️</button>
-  <button class="snav-btn" onclick="openSidePanel('feed-panel')" title="Live Feed">📡</button>
-  <button class="snav-btn" onclick="openSidePanel('checklists-panel')" title="Checklists">✅</button>
-  <button class="snav-btn" onclick="showCountryPicker()" title="Add Country">➕</button>
-  <div class="snav-sep"></div>
-  <button class="snav-btn" onclick="openSidePanel('account-panel')" title="Account">👤</button>
-  <div class="snav-spacer"></div>
-  <button class="snav-btn" data-danger onclick="openCheckin()" title="I'm Safe">🟢</button>
-  <button class="snav-btn" data-danger onclick="openReport()" title="Report Incident">🚨</button>
+
+
+<!-- Left nav panel -->
+<div id="nav-panel">
+  <div class="nav-panel-hdr">
+    <div class="nav-panel-logo">🌍</div>
+    <div>
+      <div class="nav-panel-title">Atlas Ally</div>
+      <div class="nav-panel-sub">Global Travel Intelligence</div>
+    </div>
+    <button class="nav-close-btn" onclick="closeNav()">✕</button>
+  </div>
+  <div class="nav-body">
+    <div class="nav-section-label">Monitoring</div>
+    <div class="nav-item active" onclick="closeNav()">
+      <div class="nav-item-icon">🗺️</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Live Map</div>
+        <div class="nav-item-desc">Real-time incident map with GPS tracking</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="openNavSection('feed-panel')">
+      <div class="nav-item-icon">📡</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Live Feed</div>
+        <div class="nav-item-desc">Latest alerts and incidents by country</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="openNavSection('countries-panel')">
+      <div class="nav-item-icon">🌍</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">My Countries</div>
+        <div class="nav-item-desc">Manage countries you are monitoring</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="showCountryPicker();closeNav()">
+      <div class="nav-item-icon">➕</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Add Country</div>
+        <div class="nav-item-desc">Monitor a new country or region</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Travel Tools</div>
+    <div class="nav-item" onclick="openNavSection('checklists-panel')">
+      <div class="nav-item-icon">✅</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Travel Checklists</div>
+        <div class="nav-item-desc">Pre-departure, go-bag, family, business</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="openRouteSheet();closeNav()">
+      <div class="nav-item-icon">🛣️</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Safe Route Planner</div>
+        <div class="nav-item-desc">Plan routes avoiding high-risk areas</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="toggleHeatmap();closeNav()">
+      <div class="nav-item-icon">🔥</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Risk Heatmap</div>
+        <div class="nav-item-desc">Visualize crime and danger zones on map</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Account</div>
+    <div class="nav-item" onclick="openNavSection('account-panel')">
+      <div class="nav-item-icon">👤</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">My Account</div>
+        <div class="nav-item-desc">Subscription, WhatsApp alerts, contacts</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="window.open('/landing','_blank');closeNav()">
+      <div class="nav-item-icon">⭐</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Upgrade to Premium</div>
+        <div class="nav-item-desc">From $3/month · Family plan $8/month</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <button class="nav-action-btn nav-action-safe" onclick="openCheckin();closeNav()">
+      <span class="nav-action-icon">✅</span>
+      <div><div class="nav-action-label" style="color:#4ade80;">I'm Safe</div><div class="nav-action-sub" style="color:#4ade80;">Notify emergency contacts</div></div>
+    </button>
+    <button class="nav-action-btn nav-action-report" onclick="openReport();closeNav()">
+      <span class="nav-action-icon">⚠️</span>
+      <div><div class="nav-action-label" style="color:#f87171;">Report Incident</div><div class="nav-action-sub" style="color:#f87171;">Post alert to the network</div></div>
+    </button>
+  </div>
 </div>
 
-<!-- Side panel container -->
-<div id="side-panel">
-  <div class="sp-hdr">
-    <div class="sp-title" id="sp-title">Menu</div>
-    <button class="sp-close" onclick="closeSidePanel()">✕</button>
-  </div>
-  <div class="sp-body" id="sp-body"></div>
-</div>
-<div id="side-backdrop" onclick="closeSidePanel()"></div>
+<!-- Nav backdrop -->
+<div id="nav-backdrop" onclick="closeNav()" style="position:fixed;inset:0;z-index:299;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .3s;"></div>
 
 <!-- Onboarding card -->
 <div id="onboarding">
@@ -1739,66 +1853,46 @@ async function smartActivateJourney(countryCode) {
 }
 
 
-// ── Side Panel ─────────────────────────────────────────────────────────────────
-let sidePanelOpen = false;
-let currentSidePanel = null;
 
-const SIDE_PANEL_CONTENT = {
-  'feed-panel': {
-    title: '📡 Live Feed',
-    render: () => { loadFeed(); return document.getElementById('feed-body').innerHTML || '<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--dm);">Loading...</div>'; }
-  },
-  'checklists-panel': {
-    title: '✅ Checklists',
-    render: () => { loadChecklists(); renderOfflineList(); return document.getElementById('checklists-panel').querySelector('.pbody').innerHTML; }
-  },
-  'countries-panel': {
-    title: '🗺️ My Countries',
-    render: () => { renderCountriesPanel(); return document.getElementById('countries-body').innerHTML + '<div style="padding:14px;"><button onclick="showCountryPicker()" style="width:100%;background:var(--dk3);color:var(--dt);border:1px solid var(--db2);border-radius:9px;padding:12px;font-family:var(--display);font-size:14px;font-weight:600;cursor:pointer;">+ Add Country</button></div>'; }
-  },
-  'account-panel': {
-    title: '👤 Account',
-    render: () => document.getElementById('account-panel').querySelector('.pbody').innerHTML
-  },
-};
+// ── Left Navigation Panel ──────────────────────────────────────────────────────
+let navOpen = false;
 
-function openSidePanel(panelId) {
-  currentSidePanel = panelId;
-  const panel = document.getElementById('side-panel');
-  const body = document.getElementById('sp-body');
-  const title = document.getElementById('sp-title');
+function toggleNav() {
+  navOpen ? closeNav() : openNav();
+}
 
-  // Set title
-  const config = SIDE_PANEL_CONTENT[panelId];
-  if (config) {
-    title.textContent = config.title;
-    // Clone content from existing panel
-    const sourcePanel = document.getElementById(panelId);
-    if (sourcePanel) {
-      const pbody = sourcePanel.querySelector('.pbody') || sourcePanel;
-      body.innerHTML = pbody.innerHTML;
-    }
-    // Trigger data loads
+function openNav() {
+  navOpen = true;
+  document.getElementById('nav-panel').classList.add('open');
+  document.getElementById('app').classList.add('nav-open');
+  document.getElementById('hamburger').classList.add('open');
+  const bd = document.getElementById('nav-backdrop');
+  bd.style.opacity = '1';
+  bd.style.pointerEvents = 'all';
+}
+
+function closeNav() {
+  navOpen = false;
+  document.getElementById('nav-panel').classList.remove('open');
+  document.getElementById('app').classList.remove('nav-open');
+  document.getElementById('hamburger').classList.remove('open');
+  const bd = document.getElementById('nav-backdrop');
+  bd.style.opacity = '0';
+  bd.style.pointerEvents = 'none';
+}
+
+function openNavSection(panelId) {
+  closeNav();
+  // Small delay so nav closes first
+  setTimeout(() => {
+    openPanel(panelId);
     if (panelId === 'feed-panel') loadFeed();
     if (panelId === 'checklists-panel') { loadChecklists(); renderOfflineList(); }
     if (panelId === 'countries-panel') renderCountriesPanel();
     if (panelId === 'account-panel') loadContacts();
-  }
-
-  panel.classList.add('open');
-  document.getElementById('side-backdrop').classList.add('on');
-  sidePanelOpen = true;
-
-  // Mark active sidenav button
-  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+  }, 300);
 }
 
-function closeSidePanel() {
-  document.getElementById('side-panel').classList.remove('open');
-  document.getElementById('side-backdrop').classList.remove('on');
-  sidePanelOpen = false;
-  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
-}
 
 // ── Onboarding ─────────────────────────────────────────────────────────────────
 let obSelectedCountry = null;
