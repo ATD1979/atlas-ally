@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Atlas Ally">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="/manifest.json">
+<title>Atlas Ally — Global Travel Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+:root{
+  --dk:#0d1117;--dk2:#161b22;--dk3:#21262d;
+  --db:rgba(255,255,255,0.07);--db2:rgba(255,255,255,0.14);
+  --dt:#e6edf3;--dm:#8b949e;
+  --lt:#ffffff;--lt2:#f6f8fa;--lt3:#eaeef2;
+  --lb:#d0d7de;--ltt:#24292f;--lm:#57606a;
+  --brand:#2563eb;--brand2:#3b82f6;--brandl:#dbeafe;
+  --gold:#d97706;--gold2:#fbbf24;
+  --safe:#16a34a;--warn:#d97706;--danger:#dc2626;--info:#0891b2;
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--body:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:var(--body);}
+#app{height:100vh;display:flex;flex-direction:column;background:var(--dk);}
+
+/* Header */
+#hdr{background:rgba(13,17,23,0.97);border-bottom:1px solid var(--db);padding:0 14px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.logo-mark{width:28px;height:28px;background:var(--brand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.logo-name{font-family:var(--display);font-size:17px;font-weight:800;color:var(--dt);letter-spacing:-.01em;}
+.hdr-right{display:flex;align-items:center;gap:7px;}
+.score-pill{display:flex;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db2);border-radius:100px;padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--dt);cursor:pointer;transition:all .2s;}
+.score-num{font-size:15px;font-weight:700;font-family:var(--display);}
+.country-btn{display:flex;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;color:var(--dt);}
+
+/* Map */
+#map-wrap{flex:1;position:relative;overflow:hidden;}
+#map{width:100%;height:100%;}
+.leaflet-container{background:#e8e4dd;}
+.map-scan{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden;}
+.map-scan::after{content:'';position:absolute;left:0;right:0;height:120px;background:linear-gradient(180deg,rgba(37,99,235,0.04),transparent);animation:scan 10s linear infinite;top:-120px;}
+@keyframes scan{from{top:-120px;}to{top:100%;}}
+
+/* Map overlays */
+.map-badge{position:absolute;top:10px;left:10px;z-index:20;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:10px;padding:8px 11px;backdrop-filter:blur(12px);cursor:pointer;display:flex;align-items:center;gap:8px;max-width:200px;}
+.mb-flag{font-size:18px;flex-shrink:0;}
+.mb-name{font-family:var(--display);font-size:13px;font-weight:700;color:var(--dt);white-space:nowrap;}
+.mb-adv{font-family:var(--mono);font-size:9px;margin-top:1px;}
+.map-locate{position:absolute;top:10px;right:10px;z-index:20;width:34px;height:34px;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+
+/* Safety score overlay */
+.score-overlay{position:absolute;top:90px;right:10px;z-index:20;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:10px;padding:10px 12px;backdrop-filter:blur(12px);display:none;}
+.score-overlay.visible{display:block;}
+.so-label{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
+.so-score{font-family:var(--display);font-size:32px;font-weight:800;line-height:1;}
+.so-text{font-family:var(--mono);font-size:10px;margin-top:2px;}
+.so-update{font-family:var(--mono);font-size:9px;color:var(--dm);margin-top:4px;}
+
+/* FAB group */
+.fab-group{position:absolute;bottom:84px;right:10px;z-index:30;display:flex;flex-direction:column;gap:8px;}
+.fab-btn{width:48px;height:48px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:18px;}
+.fab-report{background:rgba(220,38,38,0.15);border:2px solid rgba(220,38,38,0.55);box-shadow:0 2px 16px rgba(220,38,38,0.2);}
+.fab-safe{background:rgba(22,163,74,0.15);border:2px solid rgba(22,163,74,0.5);}
+.fab-ring{position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(220,38,38,0.2);animation:fpulse 2s ease-in-out infinite;}
+@keyframes fpulse{0%,100%{opacity:.5;transform:scale(1);}50%{opacity:0;transform:scale(1.1);}}
+.fab-btn:active{transform:scale(.95);}
+
+/* Bottom nav */
+#bnav{background:rgba(13,17,23,0.97);border-top:1px solid var(--db);display:flex;flex-shrink:0;z-index:50;}
+.nbtn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 11px;background:none;border:none;cursor:pointer;color:var(--dm);gap:2px;position:relative;transition:color .15s;}
+.nbtn.active{color:var(--brand2);}
+.nbtn.active::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:var(--brand2);border-radius:0 0 2px 2px;}
+.nbtn svg{width:19px;height:19px;}
+.nbtn span{font-size:9px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;}
+
+/* Dark panels */
+.panel{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;background:var(--dk);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+.panel.open{transform:translateY(0);pointer-events:all;}
+.phdr{background:var(--dk2);border-bottom:1px solid var(--db);padding:0 14px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.ptitle{font-family:var(--display);font-size:16px;font-weight:700;color:var(--dt);}
+.pclose{width:28px;height:28px;border:1px solid var(--db2);border-radius:5px;background:none;color:var(--dm);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.pbody{flex:1;overflow-y:auto;background:var(--dk);}
+
+/* Light sheet (slide from right) */
+.lsheet{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;background:var(--lt);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+.lsheet.open{transform:translateX(0);pointer-events:all;}
+.lshdr{background:var(--lt);border-bottom:1px solid var(--lb);padding:0 14px;height:50px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.lsback{width:28px;height:28px;border:1px solid var(--lb);border-radius:5px;background:none;color:var(--lm);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.lstitle{font-family:var(--display);font-size:16px;font-weight:700;color:var(--ltt);}
+.lsbody{flex:1;overflow-y:auto;background:var(--lt2);}
+
+/* Country picker */
+#cpicker{position:fixed;inset:0;z-index:600;display:flex;flex-direction:column;background:var(--lt);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+#cpicker.open{transform:translateY(0);pointer-events:all;}
+.cphdr{background:var(--lt);border-bottom:1px solid var(--lb);padding:14px;flex-shrink:0;}
+.cptitle{font-family:var(--display);font-size:20px;font-weight:800;color:var(--ltt);margin-bottom:4px;}
+.cpsub{font-size:13px;color:var(--lm);margin-bottom:10px;}
+.cpsearch{width:100%;background:var(--lt2);border:1px solid var(--lb);border-radius:9px;padding:10px 13px;font-size:15px;font-family:var(--body);outline:none;}
+.cplist{flex:1;overflow-y:auto;}
+.cpitem{display:flex;align-items:center;gap:11px;padding:13px 14px;border-bottom:1px solid var(--lb);cursor:pointer;transition:background .1s;}
+.cpitem:active,.cpitem.sel{background:var(--brandl);}
+.cpflag{font-size:22px;}
+.cpname{font-size:14px;font-weight:600;color:var(--ltt);}
+.cpcap{font-size:11px;color:var(--lm);font-family:var(--mono);}
+.cpadv{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:100px;}
+.cpcheck{font-size:18px;opacity:0;margin-left:auto;flex-shrink:0;}
+.cpitem.sel .cpcheck{opacity:1;}
+.cpfoot{background:var(--lt);border-top:1px solid var(--lb);padding:12px 14px;}
+.cpconfirm{width:100%;background:var(--brand);color:white;border:none;border-radius:9px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;}
+.cpconfirm:disabled{opacity:.4;}
+
+/* Report sheet */
+#rsheet{position:fixed;bottom:0;left:0;right:0;z-index:400;background:var(--dk2);border-top:1px solid rgba(220,38,38,0.3);border-radius:18px 18px 0 0;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:90vh;overflow-y:auto;}
+#rsheet.open{transform:translateY(0);}
+.rh{width:34px;height:4px;background:var(--db2);border-radius:2px;margin:10px auto 8px;}
+.rt{font-family:var(--display);font-size:15px;font-weight:700;color:var(--dt);padding:0 14px 2px;text-transform:uppercase;letter-spacing:.04em;}
+.rs{font-family:var(--mono);font-size:10px;color:var(--dm);padding:0 14px 12px;}
+.steps{display:flex;align-items:center;gap:5px;padding:0 14px 11px;}
+.sdot{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--db2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--dm);flex-shrink:0;}
+.sdot.active{border-color:var(--brand2);color:var(--brand2);}
+.sdot.done{background:var(--brand2);border-color:var(--brand2);color:white;}
+.sline{flex:1;height:1px;background:var(--db);}
+.sline.done{background:var(--brand2);}
+.igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 14px 14px;}
+.ibtn{background:var(--dk3);border:1.5px solid var(--db);border-radius:9px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all .15s;}
+.ibtn:active{transform:scale(.95);}
+.ibtn.sel{border-color:var(--brand2);background:rgba(59,130,246,0.08);}
+.iico{font-size:22px;}
+.ilbl{font-family:var(--display);font-size:10px;font-weight:700;text-transform:uppercase;text-align:center;color:var(--dt);letter-spacing:.04em;line-height:1.2;}
+.isub{font-family:var(--mono);font-size:9px;color:var(--dm);text-align:center;}
+#sloc{display:none;padding:0 14px 14px;}
+#sloc.on{display:block;}
+.loc-hint{background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:8px 11px;margin-bottom:10px;font-family:var(--mono);font-size:10px;color:var(--brand2);display:flex;align-items:center;gap:7px;}
+.citygrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:9px;}
+.citybtn{background:var(--dk3);border:1px solid var(--db);border-radius:7px;padding:8px 11px;font-family:var(--display);font-size:12px;font-weight:600;text-transform:uppercase;color:var(--dt);cursor:pointer;text-align:center;}
+.citybtn:active,.citybtn.sel{background:rgba(37,99,235,0.12);border-color:var(--brand2);color:var(--brand2);}
+.gpsbtn{width:100%;background:rgba(37,99,235,0.07);border:1px solid rgba(37,99,235,0.2);border-radius:7px;padding:9px;font-family:var(--mono);font-size:10px;color:var(--brand2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:9px;}
+.nxtbtn{width:100%;border:none;border-radius:8px;padding:12px;font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;background:var(--brand);color:white;}
+.nxtbtn:disabled{opacity:.35;}
+#sconfirm{display:none;padding:0 14px 14px;}
+#sconfirm.on{display:block;}
+.csumm{background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:12px;margin-bottom:9px;display:flex;gap:11px;align-items:center;}
+.cico{font-size:26px;flex-shrink:0;}
+.ctype{font-family:var(--display);font-size:15px;font-weight:700;text-transform:uppercase;color:var(--dt);}
+.cloc{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:2px;}
+.nota{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:7px;padding:10px 12px;color:var(--dt);font-size:14px;font-family:var(--body);outline:none;resize:none;height:64px;margin-bottom:9px;}
+.nota:focus{border-color:var(--brand);}
+.nota::placeholder{color:var(--dm);}
+.sndbtn{width:100%;padding:13px;border:none;border-radius:9px;font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;background:#dc2626;color:white;display:flex;align-items:center;justify-content:center;gap:9px;}
+.backbtn{width:100%;background:none;border:none;color:var(--dm);font-family:var(--mono);font-size:10px;padding:9px;cursor:pointer;}
+
+/* Safe check-in sheet */
+#checkin-sheet{position:fixed;bottom:0;left:0;right:0;z-index:450;background:var(--dk2);border-top:2px solid rgba(22,163,74,0.4);border-radius:18px 18px 0 0;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);padding:0 0 20px;}
+#checkin-sheet.open{transform:translateY(0);}
+.ci-score{text-align:center;padding:16px 14px 8px;}
+.ci-score-num{font-family:var(--display);font-size:56px;font-weight:800;line-height:1;}
+.ci-score-label{font-family:var(--mono);font-size:12px;margin-top:2px;}
+.ci-score-sub{font-size:13px;color:var(--dm);margin-top:6px;}
+.ci-factors{padding:0 14px 12px;display:flex;flex-direction:column;gap:5px;}
+.ci-factor{background:var(--dk3);border-radius:7px;padding:8px 11px;font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px;}
+.ci-factor-icon{font-size:14px;}
+.msg-input{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px 12px;color:var(--dt);font-size:14px;font-family:var(--body);outline:none;margin:0 14px 10px;width:calc(100% - 28px);}
+.msg-input:focus{border-color:var(--safe);}
+.msg-input::placeholder{color:var(--dm);}
+.safe-send-btn{background:var(--safe);color:white;border:none;border-radius:9px;padding:13px;font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin:0 14px;width:calc(100% - 28px);display:flex;align-items:center;justify-content:center;gap:8px;}
+.safe-send-btn:active{opacity:.9;}
+
+/* Section styling */
+.sec{padding:16px;}
+.sec-title{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dm);margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--db);}
+.sec-title-lt{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lm);margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--lb);}
+
+/* Checklist panel */
+.cl-template{background:var(--dk3);border:1px solid var(--db);border-radius:10px;padding:14px;margin-bottom:9px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .15s;}
+.cl-template:active{background:var(--dk2);}
+.cl-icon{font-size:26px;flex-shrink:0;}
+.cl-name{font-family:var(--display);font-size:15px;font-weight:700;color:var(--dt);}
+.cl-desc{font-size:12px;color:var(--dm);margin-top:2px;}
+.cl-prog{font-family:var(--mono);font-size:10px;margin-top:4px;}
+.cl-arrow{color:var(--dm);font-size:18px;margin-left:auto;}
+
+/* Checklist detail */
+.cl-cat{background:var(--lt);margin-bottom:2px;}
+.cl-cat-title{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lm);padding:12px 14px 8px;}
+.cl-item{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-top:1px solid var(--lb);cursor:pointer;}
+.cl-item:active{background:var(--lt2);}
+.cl-check{width:20px;height:20px;border:1.5px solid var(--lb);border-radius:5px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.cl-check.done{background:var(--safe);border-color:var(--safe);color:white;font-size:11px;}
+.cl-text{font-size:13px;line-height:1.5;color:var(--ltt);flex:1;}
+.cl-text.struck{text-decoration:line-through;color:var(--lm);}
+.cl-priority{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:100px;flex-shrink:0;}
+.pri-high{background:#fee2e2;color:#b91c1c;}
+.pri-med{background:#fef9c3;color:#a16207;}
+.pri-low{background:#f0fdf4;color:#15803d;}
+
+/* Countries panel */
+.mc-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--db);cursor:pointer;}
+.mc-flag{font-size:20px;}
+.mc-name{font-size:14px;font-weight:600;color:var(--dt);}
+.mc-adv{font-family:var(--mono);font-size:10px;margin-top:2px;}
+.mc-go{margin-left:auto;background:var(--dk3);border:1px solid var(--db2);color:var(--dm);border-radius:6px;padding:5px 9px;font-size:11px;font-family:var(--mono);cursor:pointer;}
+
+/* Account panel */
+.acc-section{padding:16px;}
+.acc-reg-ok{background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.2);border-radius:8px;padding:11px 13px;margin-bottom:14px;font-family:var(--mono);font-size:11px;color:#4ade80;display:none;}
+.trial-card{background:linear-gradient(135deg,rgba(37,99,235,0.14),rgba(37,99,235,0.04));border:1px solid rgba(37,99,235,0.25);border-radius:11px;padding:14px;margin-bottom:16px;}
+.trial-days{font-family:var(--display);font-size:40px;font-weight:800;color:var(--brand2);line-height:1;}
+.trial-lbl{font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.08em;}
+.prem-card{background:linear-gradient(135deg,rgba(217,119,6,0.12),rgba(217,119,6,0.03));border:1px solid rgba(217,119,6,0.25);border-radius:11px;padding:14px;margin-bottom:16px;}
+.prem-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--gold2);margin-bottom:4px;}
+.prem-price{font-size:13px;color:var(--dm);margin-bottom:10px;}
+.prem-price strong{color:var(--gold2);font-size:18px;}
+.prem-btn{width:100%;background:var(--gold);color:white;border:none;border-radius:8px;padding:11px;font-family:var(--display);font-size:14px;font-weight:700;cursor:pointer;}
+.fl{font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
+.fi{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:7px;padding:10px 12px;color:var(--dt);font-size:14px;font-family:var(--body);outline:none;margin-bottom:10px;transition:border-color .15s;}
+.fi:focus{border-color:var(--brand);}
+.fi::placeholder{color:var(--dm);}
+.subm-btn{width:100%;background:var(--brand);color:white;border:none;border-radius:8px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px;}
+.subm-btn:disabled{opacity:.5;}
+
+/* Emergency contacts */
+.ec-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--db);}
+.ec-avatar{width:34px;height:34px;border-radius:50%;background:var(--dk3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.ec-name{font-size:13px;font-weight:600;color:var(--dt);}
+.ec-wa{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:1px;}
+.ec-del{margin-left:auto;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.2);color:#f87171;border-radius:5px;padding:5px 9px;font-size:11px;font-family:var(--mono);cursor:pointer;}
+.add-contact-form{padding:14px;background:var(--dk2);border-top:1px solid var(--db);}
+
+/* Offline download */
+.offline-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--db);}
+.offline-flag{font-size:20px;}
+.offline-name{font-size:13px;font-weight:600;color:var(--dt);flex:1;}
+.offline-status{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:1px;}
+.dl-btn{background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.25);color:var(--brand2);border-radius:6px;padding:6px 10px;font-size:11px;font-family:var(--mono);cursor:pointer;}
+.dl-btn.done{background:rgba(22,163,74,0.1);border-color:rgba(22,163,74,0.25);color:#4ade80;}
+
+/* Feed */
+.fi-item{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--db);cursor:pointer;}
+.fi-ico{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid;}
+.fi-country{font-family:var(--mono);font-size:10px;color:var(--dm);margin-bottom:2px;}
+.fi-title{font-size:13px;font-weight:600;color:var(--dt);line-height:1.3;margin-bottom:2px;}
+.fi-meta{font-family:var(--mono);font-size:10px;color:var(--dm);display:flex;gap:8px;}
+
+/* Route sheet */
+#route-sheet{position:fixed;bottom:0;left:0;right:0;z-index:410;background:var(--dk2);border-top:1px solid rgba(37,99,235,0.3);border-radius:18px 18px 0 0;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);padding:0 0 20px;}
+#route-sheet.open{transform:translateY(0);}
+.route-input{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px 12px;color:var(--dt);font-size:14px;font-family:var(--body);outline:none;margin-bottom:9px;}
+.route-input:focus{border-color:var(--brand);}
+.route-input::placeholder{color:var(--dm);}
+.route-opt{background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:12px;margin-bottom:7px;display:flex;align-items:center;gap:11px;cursor:pointer;text-decoration:none;}
+.route-opt:active{background:var(--dk2);}
+.route-opt-icon{font-size:22px;flex-shrink:0;}
+.route-opt-title{font-size:14px;font-weight:600;color:var(--dt);}
+.route-opt-sub{font-size:12px;color:var(--dm);font-family:var(--mono);}
+
+/* Toast + backdrop */
+#bd{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:350;opacity:0;pointer-events:none;transition:opacity .3s;}
+#bd.on{opacity:1;pointer-events:all;}
+#toast{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--dk3);border:1px solid var(--db2);border-radius:5px;padding:8px 16px;font-family:var(--mono);font-size:11px;color:var(--dt);opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(22,163,74,.4);color:#4ade80;}
+#toast.err{border-color:rgba(220,38,38,.4);color:#f87171;}
+#toast.warn{border-color:rgba(217,119,6,.4);color:var(--gold2);}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <div class="logo" onclick="showPicker()">
+      <div class="logo-mark">🌍</div>
+      <div><div class="logo-name">Atlas Ally</div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="score-pill" id="score-pill" onclick="openCheckin()" style="display:none;">
+        <span id="score-emoji">🟢</span>
+        <span class="score-num" id="score-num">—</span>
+        <span style="font-size:9px;color:var(--dm);">SAFETY</span>
+      </div>
+      <div class="country-btn" onclick="showPicker()">
+        <span id="hdr-flag">🌍</span>
+        <span id="hdr-country">Select</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div class="map-scan"></div>
+    <div class="map-badge" id="map-badge" onclick="openCountryDetail(activeCountry)">
+      <div class="mb-flag" id="badge-flag">🌍</div>
+      <div>
+        <div class="mb-name" id="badge-name">Select country</div>
+        <div class="mb-adv" id="badge-adv"></div>
+      </div>
+    </div>
+    <div class="map-locate" onclick="locateUser()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    </div>
+    <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Toggle crime/risk heatmap" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">🔥</div>
+    <div class="score-overlay" id="score-overlay">
+      <div class="so-label">Safety Score</div>
+      <div class="so-score" id="so-score" style="color:var(--safe)">—</div>
+      <div class="so-text" id="so-text" style="color:var(--safe)">Loading…</div>
+      <div class="so-update" id="so-update"></div>
+    </div>
+    <div class="fab-group">
+      <div style="position:relative;">
+        <div class="fab-ring"></div>
+        <button class="fab-btn fab-report" onclick="openReport()" title="Report incident">⚠️</button>
+      </div>
+      <button class="fab-btn fab-safe" onclick="openCheckin()" title="I'm safe check-in">✅</button>
+      <button class="fab-btn" style="background:rgba(37,99,235,0.15);border:2px solid rgba(37,99,235,0.45);" onclick="openRouteSheet()" title="Safe route">🗺️</button>
+    </div>
+  </div>
+
+  <div id="bnav">
+    <button class="nbtn active" onclick="nav('map',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg><span>Map</span></button>
+    <button class="nbtn" onclick="nav('feed',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Feed</span></button>
+    <button class="nbtn" onclick="nav('checklists',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>Packing</span></button>
+    <button class="nbtn" onclick="nav('countries',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span>Countries</span></button>
+    <button class="nbtn" onclick="nav('account',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Account</span></button>
+  </div>
+</div>
+
+<!-- Country Picker -->
+<div id="cpicker">
+  <div class="cphdr">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="cptitle">Choose Countries</div>
+      <button onclick="hidePicker()" style="background:none;border:1px solid var(--lb);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--lm);">Done</button>
+    </div>
+    <div class="cpsub">Free trial: up to 3 · Premium: $3 first + $1 each additional</div>
+    <input class="cpsearch" id="cpsearch" placeholder="Search countries…" oninput="filterCountries(this.value)">
+  </div>
+  <div class="cplist" id="cplist"></div>
+  <div class="cpfoot">
+    <button class="cpconfirm" id="cpconfirm" onclick="confirmCountries()">View Selected →</button>
+  </div>
+</div>
+
+<!-- Country detail -->
+<div id="cdetail" class="lsheet">
+  <div class="lshdr">
+    <button class="lsback" onclick="closeSheet('cdetail')">‹</button>
+    <span class="lstitle" id="cd-title">Country</span>
+  </div>
+  <div class="lsbody" id="cd-body"></div>
+</div>
+
+<!-- Checklist detail -->
+<div id="cl-detail" class="lsheet">
+  <div class="lshdr">
+    <button class="lsback" onclick="closeSheet('cl-detail')">‹</button>
+    <span class="lstitle" id="cl-title">Checklist</span>
+    <span id="cl-progress" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--lm);"></span>
+  </div>
+  <div class="lsbody" id="cl-body"></div>
+</div>
+
+<!-- Feed Panel -->
+<div id="feed-panel" class="panel">
+  <div class="phdr"><div class="ptitle">Live Feed</div><button class="pclose" onclick="closePanel('feed-panel')">✕</button></div>
+  <div class="pbody" id="feed-body"><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">Loading…</div></div>
+</div>
+
+<!-- Checklists Panel -->
+<div id="checklists-panel" class="panel">
+  <div class="phdr"><div class="ptitle">Travel Checklists</div><button class="pclose" onclick="closePanel('checklists-panel')">✕</button></div>
+  <div class="pbody">
+    <div class="sec">
+      <div class="sec-title">Templates</div>
+      <div id="cl-list"></div>
+    </div>
+    <div class="sec" style="border-top:1px solid var(--db);">
+      <div class="sec-title">Offline Country Briefs</div>
+      <div style="font-size:12px;color:var(--dm);margin-bottom:11px;font-family:var(--mono);line-height:1.5;">Download a full country brief to your device. Works without internet while traveling.</div>
+      <div id="offline-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Countries Panel -->
+<div id="countries-panel" class="panel">
+  <div class="phdr"><div class="ptitle">My Countries</div><button class="pclose" onclick="closePanel('countries-panel')">✕</button></div>
+  <div class="pbody">
+    <div id="countries-body"></div>
+    <div style="padding:14px;">
+      <button onclick="showPicker()" style="width:100%;background:var(--dk3);color:var(--dt);border:1px solid var(--db2);border-radius:9px;padding:12px;font-family:var(--display);font-size:14px;font-weight:600;cursor:pointer;">+ Add Country</button>
+    </div>
+  </div>
+</div>
+
+<!-- Account Panel -->
+<div id="account-panel" class="panel">
+  <div class="phdr"><div class="ptitle">My Account</div><button class="pclose" onclick="closePanel('account-panel')">✕</button></div>
+  <div class="pbody">
+    <div class="acc-section">
+      <div class="acc-reg-ok" id="acc-ok">✅ Registered — <span id="acc-display"></span></div>
+      <div class="trial-card">
+        <div class="trial-days" id="trial-days">7</div>
+        <div class="trial-lbl">Days free trial remaining</div>
+        <div style="font-size:12px;color:var(--dm);margin-top:6px;">Full access. No credit card needed.</div>
+      </div>
+      <div class="prem-card">
+        <div class="prem-title">⭐ Atlas Ally Premium</div>
+        <div style="font-size:13px;color:var(--dm);line-height:1.5;margin-bottom:10px;">Monitor multiple countries, geofencing alerts, family plan, offline briefs.</div>
+        <div class="prem-price">From <strong>$3</strong>/month · +$1 per country · Family: <strong>$8</strong>/month</div>
+        <button class="prem-btn" onclick="window.open('/landing','_blank')">Upgrade to Premium →</button>
+      </div>
+      <div class="sec-title">WhatsApp number</div>
+      <div class="fl">Your WhatsApp</div>
+      <input class="fi" type="tel" id="acc-phone" placeholder="+1 XXX XXX XXXX">
+      <div class="fl">Your name</div>
+      <input class="fi" type="text" id="acc-name" placeholder="Your name">
+      <button class="subm-btn" id="acc-submit" onclick="register()">Save & Activate Alerts</button>
+
+      <div class="sec-title">Emergency contacts</div>
+      <div style="font-size:12px;color:var(--dm);margin-bottom:11px;line-height:1.5;font-family:var(--mono);">These people receive WhatsApp alerts when you check in or enter a danger zone.</div>
+      <div id="contacts-list"></div>
+      <div style="margin-top:11px;">
+        <div class="fl">Contact name</div>
+        <input class="fi" id="ec-name" placeholder="e.g. Mom, John Smith">
+        <div class="fl">Their WhatsApp number</div>
+        <input class="fi" id="ec-wa" type="tel" placeholder="+1 XXX XXX XXXX">
+        <div class="fl">Relation</div>
+        <input class="fi" id="ec-rel" placeholder="e.g. Spouse, Parent, Work">
+        <button onclick="addContact()" style="width:100%;background:var(--dk3);border:1px solid var(--db2);color:var(--dt);border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:600;cursor:pointer;">+ Add Emergency Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report Sheet -->
+<div id="rsheet">
+  <div class="rh"></div>
+  <div class="rt">Report Incident</div>
+  <div class="rs" id="rsub">SELECT TYPE</div>
+  <div class="steps"><div class="sdot active" id="sd1">1</div><div class="sline" id="sl1"></div><div class="sdot" id="sd2">2</div><div class="sline" id="sl2"></div><div class="sdot" id="sd3">3</div></div>
+  <div id="stype">
+    <div class="igrid">
+      <div class="ibtn" onclick="pick(this,'siren','🔴','Air Siren','warn')"><div class="iico">🔴</div><div class="ilbl">Air Siren</div><div class="isub">Active alarm</div></div>
+      <div class="ibtn" onclick="pick(this,'drone','🛸','Drone/UAV','danger')"><div class="iico">🛸</div><div class="ilbl">Drone/UAV</div><div class="isub">Overhead</div></div>
+      <div class="ibtn" onclick="pick(this,'missile','🚀','Missile','danger')"><div class="iico">🚀</div><div class="ilbl">Missile</div><div class="isub">Launch/impact</div></div>
+      <div class="ibtn" onclick="pick(this,'troop','🪖','Troops','warn')"><div class="iico">🪖</div><div class="ilbl">Troops</div><div class="isub">Movement</div></div>
+      <div class="ibtn" onclick="pick(this,'strike','💥','Explosion','danger')"><div class="iico">💥</div><div class="ilbl">Explosion</div><div class="isub">Blast/strike</div></div>
+      <div class="ibtn" onclick="pick(this,'gunfire','🔫','Gunfire','danger')"><div class="iico">🔫</div><div class="ilbl">Gunfire</div><div class="isub">Small arms</div></div>
+      <div class="ibtn" onclick="pick(this,'weather','🌪️','Weather','warn')"><div class="iico">🌪️</div><div class="ilbl">Weather</div><div class="isub">Severe event</div></div>
+      <div class="ibtn" onclick="pick(this,'health','🏥','Health Alert','info')"><div class="iico">🏥</div><div class="ilbl">Health</div><div class="isub">Medical alert</div></div>
+      <div class="ibtn" onclick="pick(this,'checkpoint','🚧','Checkpoint','info')"><div class="iico">🚧</div><div class="ilbl">Checkpoint</div><div class="isub">Road blocked</div></div>
+      <div class="ibtn" onclick="pick(this,'chemical','☣️','Chemical','danger')"><div class="iico">☣️</div><div class="ilbl">Chemical</div><div class="isub">Hazard</div></div>
+      <div class="ibtn" onclick="pick(this,'news','📰','News Alert','info')"><div class="iico">📰</div><div class="ilbl">News</div><div class="isub">Development</div></div>
+      <div class="ibtn" onclick="pick(this,'clear','✅','All Clear','safe')"><div class="iico">✅</div><div class="ilbl">All Clear</div><div class="isub">Area safe</div></div>
+    </div>
+  </div>
+  <div id="sloc">
+    <div class="loc-hint"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Tap city or use GPS to pin exact location</div>
+    <div class="citygrid" id="city-grid"></div>
+    <button class="gpsbtn" id="gpsbtn" onclick="useGPS()">📡 Use exact GPS location</button>
+    <button class="nxtbtn" id="nxtbtn" onclick="goConfirm()" disabled>Confirm Location →</button>
+  </div>
+  <div id="sconfirm">
+    <div class="csumm"><div class="cico" id="cico">💥</div><div><div class="ctype" id="ctype">INCIDENT</div><div class="cloc" id="cloc">📍 Location</div></div></div>
+    <textarea class="nota" id="rnotes" placeholder="Optional: direction, count, altitude, details…"></textarea>
+    <button class="sndbtn" id="sndbtn" onclick="submitReport()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>SEND ALERT</button>
+    <button class="backbtn" onclick="goBack()">← back</button>
+  </div>
+</div>
+
+<!-- Safe Check-in Sheet -->
+<div id="checkin-sheet">
+  <div class="rh"></div>
+  <div class="ci-score">
+    <div class="ci-score-num" id="ci-num" style="color:var(--safe)">—</div>
+    <div class="ci-score-label" id="ci-label" style="color:var(--safe)">SAFETY SCORE</div>
+    <div class="ci-score-sub" id="ci-sub">Getting your location…</div>
+  </div>
+  <div class="ci-factors" id="ci-factors"></div>
+  <input class="msg-input" id="ci-msg" placeholder="Optional message to your contacts (e.g. 'At the hotel, all good')">
+  <button class="safe-send-btn" id="ci-send" onclick="sendCheckin()">
+    ✅ I'M SAFE — NOTIFY CONTACTS
+  </button>
+</div>
+
+<!-- Route Sheet -->
+<div id="route-sheet">
+  <div class="rh"></div>
+  <div style="padding:0 14px 14px;">
+    <div style="font-family:var(--display);font-size:15px;font-weight:700;color:var(--dt);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">Safe Route</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);margin-bottom:14px;">Plan your route avoiding high-risk areas</div>
+    <div class="fl">From (start point)</div>
+    <input class="route-input" id="route-from" placeholder="e.g. Amman city center, or use GPS">
+    <div class="fl">To (destination)</div>
+    <input class="route-input" id="route-to" placeholder="e.g. Zarqa, Aqaba, airport…">
+    <div style="font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dm);margin-bottom:10px;">Open in:</div>
+    <a class="route-opt" id="osm-link" href="#" target="_blank" onclick="buildOSMRoute()">
+      <div class="route-opt-icon">🗺️</div>
+      <div><div class="route-opt-title">OpenStreetMap</div><div class="route-opt-sub">Free · Works offline · No account needed</div></div>
+    </a>
+    <a class="route-opt" id="gmaps-link" href="#" target="_blank" onclick="buildGMapsRoute()">
+      <div class="route-opt-icon">📍</div>
+      <div><div class="route-opt-title">Google Maps</div><div class="route-opt-sub">Real-time traffic · Turn-by-turn navigation</div></div>
+    </a>
+    <button onclick="closeSheet('route-sheet')" style="width:100%;background:none;border:none;color:var(--dm);font-family:var(--mono);font-size:11px;padding:10px;cursor:pointer;margin-top:6px;">Cancel</button>
+  </div>
+</div>
+
+<div id="bd" onclick="closeAll()"></div>
+<div id="toast"></div>
+
+<script>
+const API = '';
+const ICFG = {
+  siren:{color:'#ef4444',icon:'🔴'},drone:{color:'#f97316',icon:'🛸'},
+  missile:{color:'#dc2626',icon:'🚀'},troop:{color:'#8b5cf6',icon:'🪖'},
+  strike:{color:'#f97316',icon:'💥'},gunfire:{color:'#ef4444',icon:'🔫'},
+  weather:{color:'#0ea5e9',icon:'🌪️'},health:{color:'#10b981',icon:'🏥'},
+  checkpoint:{color:'#f59e0b',icon:'🚧'},chemical:{color:'#84cc16',icon:'☣️'},
+  news:{color:'#6366f1',icon:'📰'},clear:{color:'#16a34a',icon:'✅'},
+};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let allCountries = [];
+let myCountries = [];
+let activeCountry = null;
+let selectedInPicker = new Set();
+let currentLat = null, currentLng = null;
+let safetyScore = null;
+let userWA = localStorage.getItem('atlas_wa') || null;
+let geofenceInterval = null;
+let lastCountryCode = null;
+let checklistProgress = JSON.parse(localStorage.getItem('atlas_cl_progress') || '{}');
+let offlineCache = JSON.parse(localStorage.getItem('atlas_offline') || '{}');
+const mapMarkers = [];
+
+// ── Map ────────────────────────────────────────────────────────────────────────
+const map = L.map('map',{center:[20,10],zoom:2,zoomControl:false,attributionControl:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.control.attribution({position:'bottomleft',prefix:false}).addAttribution('© <a href="https://openstreetmap.org">OSM</a>').addTo(map);
+
+const pStyle = document.createElement('style');
+pStyle.textContent='.leaflet-popup-content-wrapper{background:#161b22!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;padding:0!important;overflow:hidden;}.leaflet-popup-content{margin:0!important;}.leaflet-popup-tip{background:#161b22!important;}';
+document.head.appendChild(pStyle);
+
+map.on('mousemove touchmove', e => {
+  const el = document.getElementById('coord');
+  if(el){ el.textContent=`${(e.latlng||map.getCenter()).lat.toFixed(4)}°N  ${(e.latlng||map.getCenter()).lng.toFixed(4)}°E`; el.classList.add('on'); }
+});
+
+// ── Crime / Risk Heatmap ───────────────────────────────────────────────────────
+let heatLayer = null;
+let heatVisible = false;
+
+function buildHeatData(country, events) {
+  const points = [];
+  if (!country) return points;
+  const baseIntensity = [0, 0.2, 0.45, 0.7, 0.95][country.advisoryLevel || 1] || 0.2;
+  (country.cities || []).forEach(city => {
+    points.push([city.lat, city.lng, baseIntensity]);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const spread = 0.15 + Math.random() * 0.25;
+      points.push([city.lat + Math.sin(angle)*spread, city.lng + Math.cos(angle)*spread, baseIntensity*(0.4+Math.random()*0.4)]);
+    }
+  });
+  events.forEach(e => {
+    if (!e.lat || !e.lng) return;
+    const boost = {danger:0.9,warn:0.6,info:0.3,safe:0}[e.severity]||0.4;
+    points.push([e.lat, e.lng, boost]);
+    for(let i=0;i<4;i++) points.push([e.lat+(Math.random()-.5)*.1, e.lng+(Math.random()-.5)*.1, boost*0.5]);
+  });
+  return points;
+}
+
+async function toggleHeatmap() {
+  const btn = document.getElementById('heatmap-toggle');
+  heatVisible = !heatVisible;
+  if (!heatVisible) {
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    btn.style.background = 'rgba(13,17,23,0.92)';
+    btn.style.borderColor = 'var(--db2)';
+    toast('Risk heatmap off');
+    return;
+  }
+  btn.style.background = 'rgba(239,68,68,0.2)';
+  btn.style.borderColor = 'rgba(239,68,68,0.5)';
+  toast('Loading risk heatmap…');
+  try {
+    const code = activeCountry || 'JO';
+    const r = await fetch(`${API}/api/country/${code}`);
+    const d = await r.json();
+    const points = buildHeatData(d, d.events || []);
+    if (heatLayer) map.removeLayer(heatLayer);
+    if (typeof L.heatLayer === 'function') {
+      heatLayer = L.heatLayer(points, {
+        radius:35, blur:25, maxZoom:12, max:1.0,
+        gradient:{0.0:'#16a34a', 0.35:'#d97706', 0.65:'#f97316', 1.0:'#ef4444'},
+      });
+      heatLayer.addTo(map);
+      toast('🔥 Risk heatmap on — red = higher risk','warn');
+    } else {
+      toast('Heatmap plugin loading, try again in a moment','warn');
+      heatVisible = false;
+    }
+  } catch(e) {
+    toast('Heatmap unavailable offline','err');
+    heatVisible = false;
+    btn.style.background = 'rgba(13,17,23,0.92)';
+  }
+}
+
+// ── Locate & geofence ─────────────────────────────────────────────────────────
+function locateUser() {
+  if(!navigator.geolocation){toast('GPS not available','err');return;}
+  navigator.geolocation.getCurrentPosition(p => {
+    currentLat = p.coords.latitude;
+    currentLng = p.coords.longitude;
+    map.flyTo([currentLat, currentLng], 13, {duration:1.5});
+    L.circleMarker([currentLat,currentLng],{radius:8,fillColor:'#2563eb',color:'white',weight:2,fillOpacity:.9}).addTo(map).bindPopup('📍 Your location');
+    document.getElementById('score-pill').style.display = 'flex';
+    document.getElementById('score-overlay').classList.add('visible');
+    updateSafetyScore();
+    startGeofenceWatch();
+    toast('📍 Location found','ok');
+  },()=>toast('GPS unavailable','err'));
+}
+
+async function updateSafetyScore() {
+  if(!currentLat || !currentLng) return;
+  try {
+    const r = await fetch(API+'/api/safety-score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:currentLat,lng:currentLng,country_code:activeCountry})});
+    const d = await r.json();
+    safetyScore = d;
+    const colors = {safe:'#16a34a',warn:'#d97706',danger:'#dc2626'};
+    const color = d.score >= 60 ? colors.safe : d.score >= 35 ? colors.warn : colors.danger;
+    document.getElementById('score-num').textContent = d.score;
+    document.getElementById('score-emoji').textContent = d.emoji || '🛡';
+    document.getElementById('so-score').textContent = d.score;
+    document.getElementById('so-score').style.color = color;
+    document.getElementById('so-text').textContent = d.label;
+    document.getElementById('so-text').style.color = color;
+    document.getElementById('so-update').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Auto-detect country from GPS if not set
+    if(!activeCountry && d.country_code) {
+      const code = d.country_code;
+      if(!myCountries.includes(code)) myCountries.push(code);
+      setActiveCountry(code);
+      toast(`📍 Detected: ${allCountries.find(c=>c.code===code)?.name || code}`,'ok');
+    }
+
+    // Check for zone entry if score is dangerous
+    if(d.score < 35 && userWA) {
+      const zoneName = d.nearbyEvents?.[0]?.location || activeCountry || 'high-risk area';
+      fetch(API+'/api/zone-alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:userWA,zone_name:zoneName,country_code:activeCountry,lat:currentLat,lng:currentLng,alert_type:'entry'})}).catch(()=>{});
+    }
+  } catch(e){}
+}
+
+function startGeofenceWatch() {
+  if(geofenceInterval) clearInterval(geofenceInterval);
+  // Update every 30 minutes while in danger zone, every 5 min check GPS
+  navigator.geolocation.watchPosition(p => {
+    const prevCountry = lastCountryCode;
+    currentLat = p.coords.latitude;
+    currentLng = p.coords.longitude;
+    // Detect country change
+    fetch(API+'/api/detect-country',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:currentLat,lng:currentLng})})
+      .then(r=>r.json()).then(d => {
+        if(d.country_code && d.country_code !== prevCountry) {
+          lastCountryCode = d.country_code;
+          if(!myCountries.includes(d.country_code)) myCountries.push(d.country_code);
+          setActiveCountry(d.country_code);
+          toast(`🛂 Entered ${d.country?.name || d.country_code}`,'warn');
+          if(userWA) {
+            fetch(API+'/api/zone-alert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:userWA,zone_name:d.country?.name,country_code:d.country_code,lat:currentLat,lng:currentLng,alert_type:'entry'})}).catch(()=>{});
+          }
+        }
+      }).catch(()=>{});
+  }, null, {enableHighAccuracy:true,maximumAge:300000});
+
+  // Safety score update every 30 min
+  geofenceInterval = setInterval(() => {
+    if(safetyScore && safetyScore.score < 60) updateSafetyScore();
+  }, 30 * 60 * 1000);
+}
+
+// ── Load countries ─────────────────────────────────────────────────────────────
+async function loadCountries() {
+  try {
+    const r = await fetch(API+'/api/countries');
+    allCountries = await r.json();
+    renderPicker();
+    renderCountriesPanel();
+    renderOfflineList();
+  } catch(e){}
+}
+
+// ── Country picker ─────────────────────────────────────────────────────────────
+function showPicker() {
+  renderPicker();
+  document.getElementById('cpicker').classList.add('open');
+  document.getElementById('bd').classList.add('on');
+  setTimeout(()=>document.getElementById('cpsearch').focus(), 300);
+}
+function hidePicker() { document.getElementById('cpicker').classList.remove('open'); document.getElementById('bd').classList.remove('on'); }
+
+function renderPicker(filter='') {
+  const list = document.getElementById('cplist');
+  const filtered = filter ? allCountries.filter(c=>c.name.toLowerCase().includes(filter.toLowerCase())) : allCountries;
+  list.innerHTML = filtered.map(c => `
+    <div class="cpitem ${selectedInPicker.has(c.code)||myCountries.includes(c.code)?'sel':''}" onclick="togglePick('${c.code}')">
+      <div class="cpflag">${c.flag}</div>
+      <div style="flex:1"><div class="cpname">${c.name}</div><div class="cpcap">${c.capital}</div></div>
+      <div class="cpadv" style="background:${c.advisoryColor}18;color:${c.advisoryColor};border:1px solid ${c.advisoryColor}44;">${c.advisoryEmoji} ${c.advisoryLabel}</div>
+      <div class="cpcheck">✓</div>
+    </div>`).join('');
+  document.getElementById('cpconfirm').disabled = selectedInPicker.size === 0 && myCountries.length === 0;
+}
+
+function filterCountries(v) { renderPicker(v); }
+
+function togglePick(code) {
+  if(selectedInPicker.has(code)) selectedInPicker.delete(code);
+  else selectedInPicker.add(code);
+  renderPicker(document.getElementById('cpsearch').value);
+}
+
+function confirmCountries() {
+  const codes = [...new Set([...myCountries,...selectedInPicker])];
+  if(!codes.length){toast('Select at least one country','err');return;}
+  myCountries = codes;
+  setActiveCountry(myCountries[0]);
+  hidePicker();
+  renderCountriesPanel();
+  renderOfflineList();
+  toast('✅ Countries updated','ok');
+}
+
+// ── Active country ─────────────────────────────────────────────────────────────
+async function setActiveCountry(code) {
+  activeCountry = code;
+  const c = allCountries.find(x=>x.code===code);
+  if(!c) return;
+  document.getElementById('hdr-flag').textContent = c.flag;
+  document.getElementById('hdr-country').textContent = c.name;
+  document.getElementById('badge-flag').textContent = c.flag;
+  document.getElementById('badge-name').textContent = c.name;
+  document.getElementById('badge-adv').innerHTML = `<span style="color:${c.advisoryColor}">${c.advisoryEmoji} ${c.advisoryLabel}</span>`;
+  try {
+    const r = await fetch(`${API}/api/country/${code}`);
+    const d = await r.json();
+    if(d.center) map.flyTo(d.center, d.zoom||7, {duration:1.3});
+    renderMapMarkers(d.events||[]);
+    populateCityGrid(d.cities||[]);
+    if(currentLat && currentLng) updateSafetyScore();
+    // Refresh heatmap if active
+    if(heatVisible) { heatVisible = false; toggleHeatmap(); }
+  } catch(e){}
+}
+
+function renderMapMarkers(events) {
+  mapMarkers.forEach(m=>map.removeLayer(m));
+  mapMarkers.length=0;
+  events.forEach(e=>{
+    if(!e.lat||!e.lng) return;
+    const c=ICFG[e.type]||ICFG.siren;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="48" viewBox="0 0 38 48"><ellipse cx="19" cy="44" rx="5" ry="2" fill="rgba(0,0,0,.3)"/><path d="M19 2C12 2 5 8 5 16c0 10 14 26 14 26s14-16 14-26C33 8 26 2 19 2Z" fill="${c.color}" fill-opacity=".18" stroke="${c.color}" stroke-width="1.8"/><circle cx="19" cy="16" r="10" fill="white" fill-opacity=".95"/><text x="19" y="20" text-anchor="middle" font-size="11">${c.icon}</text></svg>`;
+    const icon=L.divIcon({html:svg,className:'',iconSize:[38,48],iconAnchor:[19,44],popupAnchor:[0,-44]});
+    const m=L.marker([e.lat,e.lng],{icon});
+    m.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:155px;"><div style="background:${c.color}22;border-bottom:1px solid ${c.color}44;padding:8px 11px;display:flex;align-items:center;gap:7px;"><span style="font-size:15px;">${c.icon}</span><span style="font-size:13px;font-weight:700;color:#e6edf3;">${(e.type||'').toUpperCase()}</span></div><div style="padding:8px 11px;background:#161b22;"><div style="font-size:11px;color:#8b949e;font-family:monospace;">📍 ${escH(e.location||'Unknown')}</div><div style="font-size:11px;color:#8b949e;font-family:monospace;margin-top:2px;">🕐 ${timeAgo(e.created_at)}</div>${e.description?`<div style="font-size:12px;margin-top:5px;color:#e6edf3;">${escH(e.description)}</div>`:''}</div></div>`);
+    m.addTo(map); mapMarkers.push(m);
+  });
+}
+
+function populateCityGrid(cities) {
+  document.getElementById('city-grid').innerHTML = cities.slice(0,10).map(c=>
+    `<div class="citybtn" onclick="setCity(this,'${c.name}',${c.lat},${c.lng})">${c.name}</div>`
+  ).join('');
+}
+
+// ── Country detail ─────────────────────────────────────────────────────────────
+async function openCountryDetail(code) {
+  if(!code) return;
+  const c = allCountries.find(x=>x.code===code);
+  document.getElementById('cd-title').textContent = `${c?.flag||''} ${c?.name||code}`;
+  document.getElementById('cdetail').classList.add('open');
+  const body = document.getElementById('cd-body');
+  body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--lm);">Loading…</div>';
+  try {
+    const offline = offlineCache[code];
+    const d = offline || await (await fetch(`${API}/api/country/${code}`)).json();
+    const adv = d.advisoryConfig || {};
+    const bsClass = s=>({open:'bs-open',restricted:'bs-restricted',closed:'bs-closed'}[s]||'bs-restricted');
+    body.innerHTML = `
+      <div style="background:${adv.bg||'#fff'};border-bottom:3px solid ${adv.color||'#888'};padding:14px 14px 12px;display:flex;gap:11px;align-items:flex-start;">
+        <span style="font-size:26px;">${adv.emoji||'⚪'}</span>
+        <div><div style="font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${adv.color||'#888'};margin-bottom:4px;">Level ${d.advisoryLevel} — ${adv.label||'Unknown'}</div>
+        <div style="font-size:14px;line-height:1.6;color:var(--ltt);">${d.advisoryText||''}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--lm);margin-top:7px;"><a href="${d.stateDeptUrl||'#'}" target="_blank" style="color:var(--brand);">US State Dept ↗</a> · <a href="${d.fcoUrl||'#'}" target="_blank" style="color:var(--brand);">UK FCO ↗</a></div></div>
+      </div>
+      <div style="background:var(--lt);padding:14px;margin-bottom:2px;">
+        <div class="sec-title-lt">Quick info</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${[['Capital',d.capital],['Currency',d.currency],['Language',d.language],['Timezone',d.timezone]].map(([l,v])=>`<div style="background:var(--lt2);border:1px solid var(--lb);border-radius:8px;padding:8px 11px;"><div style="font-family:var(--mono);font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">${l}</div><div style="font-size:13px;font-weight:600;color:var(--ltt);">${v||'—'}</div></div>`).join('')}
+        </div>
+      </div>
+      <div style="background:var(--lt);padding:14px;margin-bottom:2px;">
+        <div class="sec-title-lt">Emergency numbers</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${Object.entries(d.emergency||{}).map(([k,v])=>`<div style="background:var(--lt2);border:1px solid var(--lb);border-radius:8px;padding:9px 11px;"><div style="font-family:var(--mono);font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">${k}</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--brand);">${v}</div><a href="tel:${v}" style="display:block;margin-top:5px;background:var(--brand);color:white;border:none;border-radius:6px;padding:5px;font-size:11px;font-weight:600;text-align:center;text-decoration:none;">Call ${v}</a></div>`).join('')}
+        </div>
+      </div>
+      <div style="background:var(--lt);padding:14px;margin-bottom:2px;">
+        <div class="sec-title-lt">Border crossings</div>
+        ${(d.borderCrossings||[]).map(b=>`<div style="display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--lb);"><span style="font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:100px;" class="${bsClass(b.status)}">${b.status.toUpperCase()}</span><div style="flex:1"><div style="font-size:13px;font-weight:500;">${b.name}</div><div style="font-size:11px;color:var(--lm);font-family:var(--mono);">${b.note||''}</div></div></div>`).join('')}
+      </div>
+      <div style="background:var(--lt);padding:14px;margin-bottom:2px;">
+        <div class="sec-title-lt">Health notices</div>
+        ${(d.healthNotices||[]).map(h=>`<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--lb);font-size:13px;line-height:1.5;"><span>💉</span>${h}</div>`).join('')}
+      </div>
+      ${d.news?.length?`<div style="background:var(--lt);padding:14px;margin-bottom:2px;"><div class="sec-title-lt">Latest news</div>${d.news.slice(0,6).map(n=>`<a href="${n.url}" target="_blank" style="text-decoration:none;display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px solid var(--lb);cursor:pointer;"><div style="flex:1"><div style="font-family:var(--mono);font-size:9px;color:var(--brand);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">${n.source_name||'News'}</div><div style="font-size:13px;font-weight:500;color:var(--ltt);line-height:1.4;">${escH(n.title)}</div><div style="font-family:var(--mono);font-size:10px;color:var(--lm);margin-top:2px;">${timeAgo(n.published_at)}</div></div><span style="color:var(--lm);font-size:17px;">›</span></a>`).join('')}</div>`:''}
+      <div id="weather-section-${code}" style="background:var(--lt);padding:14px;margin-bottom:2px;">
+        <div class="sec-title-lt">Current weather</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--lm);">Loading…</div>
+      </div>
+      <div style="padding:14px 14px 24px;background:var(--lt);">
+        <div class="sec-title-lt">Safe route from this country</div>
+        <button onclick="closeSheet('cdetail');openRouteSheet();" style="width:100%;background:var(--brand);color:white;border:none;border-radius:9px;padding:12px;font-family:var(--display);font-size:14px;font-weight:700;cursor:pointer;">🗺️ Plan Safe Route</button>
+      </div>`;
+  } catch(e){ body.innerHTML='<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--lm);">Failed to load. Check connection.</div>'; }
+
+  // Fetch weather asynchronously after detail renders
+  fetch(`${API}/api/country/${code}/weather`)
+    .then(r => r.json())
+    .then(w => {
+      const ws = document.getElementById(`weather-section-${code}`);
+      if (!ws) return;
+      const WMO = {0:'☀️ Clear',1:'🌤️ Mainly clear',2:'⛅ Partly cloudy',3:'☁️ Overcast',45:'🌫️ Fog',48:'🌫️ Freezing fog',51:'🌦️ Light drizzle',61:'🌧️ Rain',71:'🌨️ Snow',80:'🌧️ Heavy showers',82:'⛈️ Violent showers',95:'⛈️ Thunderstorm',96:'⛈️ Thunderstorm + hail',99:'🌩️ Heavy thunderstorm'};
+      if (w?.current) {
+        const desc = WMO[w.current.code] || '🌡️ Conditions vary';
+        ws.innerHTML = `
+          <div class="sec-title-lt">Current weather</div>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:${w.alerts?.length?'12':'0'}px;">
+            <div style="font-size:36px;">${desc.split(' ')[0]}</div>
+            <div>
+              <div style="font-size:20px;font-weight:700;color:var(--ltt);">${w.current.temp}°C</div>
+              <div style="font-size:13px;color:var(--lm);">${desc.replace(/^[^ ]+ /,'')} · Wind ${w.current.wind} km/h</div>
+            </div>
+          </div>
+          ${(w.alerts||[]).map(a=>`
+            <div style="background:${a.severity==='danger'?'#fee2e2':a.severity==='warn'?'#fffbeb':'#f0f9ff'};border:1px solid ${a.severity==='danger'?'#fecaca':a.severity==='warn'?'#fde68a':'#bae6fd'};border-radius:8px;padding:10px 12px;margin-top:8px;">
+              <div style="font-size:12px;font-weight:600;color:${a.severity==='danger'?'#b91c1c':a.severity==='warn'?'#a16207':'#0369a1'};margin-bottom:3px;">${a.title}</div>
+              <div style="font-size:12px;color:var(--lm);line-height:1.4;">${a.description||''}</div>
+            </div>`).join('')}
+          <div style="font-family:var(--mono);font-size:9px;color:var(--lm);margin-top:8px;">Source: Open-Meteo · Updated now</div>`;
+      } else {
+        ws.innerHTML = `<div class="sec-title-lt">Current weather</div><div style="font-family:var(--mono);font-size:11px;color:var(--lm);">Weather data unavailable</div>`;
+      }
+    }).catch(() => {
+      const ws = document.getElementById(`weather-section-${code}`);
+      if (ws) ws.innerHTML = `<div class="sec-title-lt">Current weather</div><div style="font-family:var(--mono);font-size:11px;color:var(--lm);">Weather unavailable offline</div>`;
+    });
+}
+
+// ── Check-in sheet ─────────────────────────────────────────────────────────────
+function openCheckin() {
+  document.getElementById('checkin-sheet').classList.add('open');
+  document.getElementById('bd').classList.add('on');
+  if(safetyScore) {
+    renderCheckinScore(safetyScore);
+  } else if(currentLat && currentLng) {
+    updateSafetyScore().then(()=>{ if(safetyScore) renderCheckinScore(safetyScore); });
+  } else {
+    document.getElementById('ci-sub').textContent = 'Enable GPS for safety score';
+  }
+}
+
+function renderCheckinScore(d) {
+  const color = d.score >= 60 ? 'var(--safe)' : d.score >= 35 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('ci-num').textContent = d.score;
+  document.getElementById('ci-num').style.color = color;
+  document.getElementById('ci-label').textContent = d.label?.toUpperCase() || 'SAFETY SCORE';
+  document.getElementById('ci-label').style.color = color;
+  document.getElementById('ci-sub').textContent = d.factors?.length ? 'Based on advisory level and recent incidents' : 'Based on country advisory level';
+  const factors = document.getElementById('ci-factors');
+  factors.innerHTML = (d.factors||[]).map(f=>`<div class="ci-factor"><span class="ci-factor-icon">${f.type==='advisory'?'🛡':f.type==='incidents'?'⚠️':'🕐'}</span>${f.label}</div>`).join('');
+}
+
+async function sendCheckin() {
+  if(!userWA){toast('Register your WhatsApp number first','err');return;}
+  const msg = document.getElementById('ci-msg').value.trim();
+  const btn = document.getElementById('ci-send');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch(API+'/api/checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:userWA,lat:currentLat,lng:currentLng,country_code:activeCountry,message:msg||null})});
+    const d = await r.json();
+    if(d.success){
+      document.getElementById('checkin-sheet').classList.remove('open');
+      document.getElementById('bd').classList.remove('on');
+      toast(`✅ Safe check-in sent to ${d.contacts_notified} contact${d.contacts_notified!==1?'s':''}`, 'ok');
+      document.getElementById('ci-msg').value = '';
+    } else { toast(d.error||'Failed','err'); }
+  } catch(e) { toast('Check-in sent (offline mode)','ok'); document.getElementById('checkin-sheet').classList.remove('open'); document.getElementById('bd').classList.remove('on'); }
+  btn.disabled=false; btn.innerHTML='✅ I\'M SAFE — NOTIFY CONTACTS';
+}
+
+// ── Report flow ────────────────────────────────────────────────────────────────
+let RS = {step:1,type:null,icon:null,label:null,severity:null,lat:null,lng:null,city:null};
+
+function openReport(){
+  if(!activeCountry){showPicker();return;}
+  RS={step:1,type:null,icon:null,label:null,severity:null,lat:null,lng:null,city:null};
+  document.getElementById('stype').style.display='block';
+  document.getElementById('sloc').classList.remove('on');
+  document.getElementById('sconfirm').classList.remove('on');
+  document.querySelectorAll('.ibtn').forEach(b=>b.classList.remove('sel'));
+  document.querySelectorAll('.citybtn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('rnotes').value='';
+  document.getElementById('nxtbtn').disabled=true;
+  document.getElementById('rsub').textContent='SELECT TYPE';
+  document.getElementById('gpsbtn').textContent='📡 Use exact GPS location';
+  setSteps(1);
+  document.getElementById('rsheet').classList.add('open');
+  document.getElementById('bd').classList.add('on');
+}
+
+function setSteps(s){
+  [1,2,3].forEach(i=>{
+    const d=document.getElementById('sd'+i);
+    d.classList.remove('active','done');
+    if(i<s){d.classList.add('done');d.textContent='✓';}
+    else if(i===s){d.classList.add('active');d.textContent=i;}
+    else d.textContent=i;
+  });
+  [1,2].forEach(i=>document.getElementById('sl'+i).classList.toggle('done',i<s));
+}
+
+function pick(el,type,icon,label,severity){
+  document.querySelectorAll('.ibtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  RS={...RS,type,icon,label,severity};
+  setTimeout(()=>{document.getElementById('stype').style.display='none';document.getElementById('sloc').classList.add('on');document.getElementById('rsub').textContent=`${icon} ${label.toUpperCase()} — LOCATION`;setSteps(2);},180);
+}
+
+function setCity(el,city,lat,lng){
+  document.querySelectorAll('.citybtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  RS={...RS,lat,lng,city};
+  document.getElementById('nxtbtn').disabled=false;
+}
+
+function useGPS(){
+  if(!navigator.geolocation){toast('GPS not available','err');return;}
+  const btn=document.getElementById('gpsbtn');
+  btn.textContent='⏳ Getting GPS…';
+  navigator.geolocation.getCurrentPosition(p=>{
+    RS={...RS,lat:p.coords.latitude,lng:p.coords.longitude,city:`${p.coords.latitude.toFixed(4)}°N`};
+    document.getElementById('nxtbtn').disabled=false;
+    btn.textContent='✅ GPS locked';
+    document.querySelectorAll('.citybtn').forEach(b=>b.classList.remove('sel'));
+  },()=>{btn.textContent='⚠ GPS failed — tap a city';},{timeout:8000});
+}
+
+function goConfirm(){
+  if(!RS.lat){toast('Select a location','err');return;}
+  document.getElementById('sloc').classList.remove('on');
+  document.getElementById('sconfirm').classList.add('on');
+  document.getElementById('cico').textContent=RS.icon;
+  document.getElementById('ctype').textContent=RS.label;
+  document.getElementById('cloc').textContent='📍 '+RS.city;
+  document.getElementById('sndbtn').style.background=ICFG[RS.type]?.color||'#dc2626';
+  document.getElementById('rsub').textContent='CONFIRM & SEND';
+  setSteps(3);
+}
+
+function goBack(){
+  document.getElementById('sconfirm').classList.remove('on');
+  document.getElementById('sloc').classList.add('on');
+  document.getElementById('rsub').textContent=`${RS.icon} ${RS.label?.toUpperCase()} — LOCATION`;
+  setSteps(2);
+}
+
+async function submitReport(){
+  const btn=document.getElementById('sndbtn');
+  btn.disabled=true;btn.innerHTML='⏳ SENDING…';
+  const body={country_code:activeCountry,type:RS.type,title:`${RS.label} — ${RS.city}`,description:document.getElementById('rnotes').value.trim()||null,location:RS.city,lat:RS.lat,lng:RS.lng,severity:RS.severity,submitted_by:'community'};
+  try{
+    const r=await fetch(API+'/api/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.success){renderMapMarkers([{...body,created_at:new Date().toISOString()}]);map.flyTo([RS.lat,RS.lng],13,{duration:1.3});closeSheet('rsheet');document.getElementById('bd').classList.remove('on');toast(`✅ ${RS.label} reported`,'ok');}
+    else toast(d.error||'Failed','err');
+  }catch(e){map.flyTo([RS.lat,RS.lng],13,{duration:1.3});closeSheet('rsheet');document.getElementById('bd').classList.remove('on');toast(`✅ ${RS.label} reported`,'ok');}
+  btn.disabled=false;btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> SEND ALERT';
+}
+
+// ── Route sheet ────────────────────────────────────────────────────────────────
+function openRouteSheet(){
+  document.getElementById('route-sheet').classList.add('open');
+  document.getElementById('bd').classList.add('on');
+  if(currentLat && currentLng){
+    document.getElementById('route-from').value=`${currentLat.toFixed(4)},${currentLng.toFixed(4)}`;
+  }
+}
+
+function buildOSMRoute(e){
+  if(e) e.preventDefault();
+  const from=document.getElementById('route-from').value.trim();
+  const to=document.getElementById('route-to').value.trim();
+  if(!from||!to){toast('Enter from and to','err');return false;}
+  const url=`https://www.openstreetmap.org/directions?engine=osrm_car&route=${encodeURIComponent(from)};${encodeURIComponent(to)}`;
+  document.getElementById('osm-link').href=url;
+  window.open(url,'_blank');
+  return false;
+}
+
+function buildGMapsRoute(e){
+  if(e) e.preventDefault();
+  const from=document.getElementById('route-from').value.trim();
+  const to=document.getElementById('route-to').value.trim();
+  if(!from||!to){toast('Enter from and to','err');return false;}
+  const url=`https://www.google.com/maps/dir/${encodeURIComponent(from)}/${encodeURIComponent(to)}`;
+  document.getElementById('gmaps-link').href=url;
+  window.open(url,'_blank');
+  return false;
+}
+
+// ── Feed ───────────────────────────────────────────────────────────────────────
+async function loadFeed(){
+  const body=document.getElementById('feed-body');
+  try{
+    const r=await fetch(`${API}/api/country/${activeCountry||'JO'}`);
+    const d=await r.json();
+    const events=d.events||[];
+    if(!events.length){body.innerHTML='<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No events yet.</div>';return;}
+    body.innerHTML=events.map(e=>{const c=ICFG[e.type]||ICFG.siren;return`<div class="fi-item" onclick="${e.lat&&e.lng?`flyTo(${e.lat},${e.lng})`:''}"><div class="fi-ico" style="border-color:${c.color};background:${c.color}18;">${c.icon}</div><div style="flex:1;"><div class="fi-country">${e.country_code}</div><div class="fi-title">${escH(e.title)}</div><div class="fi-meta"><span>📍 ${escH(e.location||'Unknown')}</span><span>🕐 ${timeAgo(e.created_at)}</span></div></div></div>`;}).join('');
+  }catch(e){}
+}
+
+function flyTo(lat,lng){closeAll();map.flyTo([lat,lng],13,{duration:1.2});}
+
+// ── Checklists ─────────────────────────────────────────────────────────────────
+async function loadChecklists(){
+  const list=document.getElementById('cl-list');
+  try{
+    const r=await fetch(`${API}/api/checklists`);
+    const cls=await r.json();
+    list.innerHTML=cls.map(c=>{
+      const prog=checklistProgress[c.id]||{};
+      const done=Object.values(prog).filter(Boolean).length;
+      return`<div class="cl-template" onclick="openChecklist('${c.id}')"><div class="cl-icon">${c.icon}</div><div style="flex:1"><div class="cl-name">${c.name}</div><div class="cl-desc">${c.desc}</div><div class="cl-prog" style="color:${done>0?'var(--safe)':'var(--dm)'};">${done}/${c.totalItems} complete</div></div><div class="cl-arrow">›</div></div>`;
+    }).join('');
+  }catch(e){}
+}
+
+async function openChecklist(id){
+  const r=await fetch(`${API}/api/checklists/${id}`);
+  const cl=await r.json();
+  document.getElementById('cl-title').textContent=`${cl.icon} ${cl.name}`;
+  const prog=checklistProgress[id]||{};
+  const total=cl.categories.reduce((n,c)=>n+c.items.length,0);
+  const done=Object.values(prog).filter(Boolean).length;
+  document.getElementById('cl-progress').textContent=`${done}/${total}`;
+  const body=document.getElementById('cl-body');
+  body.innerHTML=cl.categories.map(cat=>`
+    <div class="cl-cat">
+      <div class="cl-cat-title">${cat.name}</div>
+      ${cat.items.map(item=>`
+        <div class="cl-item" onclick="toggleChecklistItem('${id}','${item.id}',this)">
+          <div class="cl-check ${prog[item.id]?'done':''}">${prog[item.id]?'✓':''}</div>
+          <div class="cl-text ${prog[item.id]?'struck':''}">${item.text}</div>
+          <div class="cl-priority pri-${item.priority}">${item.priority}</div>
+        </div>`).join('')}
+    </div>`).join('');
+  document.getElementById('cl-detail').classList.add('open');
+}
+
+function toggleChecklistItem(clId,itemId,el){
+  if(!checklistProgress[clId]) checklistProgress[clId]={};
+  checklistProgress[clId][itemId]=!checklistProgress[clId][itemId];
+  localStorage.setItem('atlas_cl_progress',JSON.stringify(checklistProgress));
+  const chk=el.querySelector('.cl-check');
+  const txt=el.querySelector('.cl-text');
+  const isDone=checklistProgress[clId][itemId];
+  chk.classList.toggle('done',isDone); chk.textContent=isDone?'✓':'';
+  txt.classList.toggle('struck',isDone);
+  // Update progress counter
+  const cl=document.getElementById('cl-body');
+  const total=cl.querySelectorAll('.cl-item').length;
+  const done=cl.querySelectorAll('.cl-check.done').length;
+  document.getElementById('cl-progress').textContent=`${done}/${total}`;
+}
+
+// ── Offline cache ──────────────────────────────────────────────────────────────
+function renderOfflineList(){
+  const list=document.getElementById('offline-list');
+  if(!list) return;
+  list.innerHTML=myCountries.map(code=>{
+    const c=allCountries.find(x=>x.code===code);
+    if(!c) return '';
+    const cached=offlineCache[code];
+    return`<div class="offline-item"><div class="offline-flag">${c.flag}</div><div style="flex:1"><div class="offline-name">${c.name}</div><div class="offline-status">${cached?'✅ Cached — '+new Date(cached.cachedAt).toLocaleDateString():'Not downloaded'}</div></div><button class="dl-btn ${cached?'done':''}" onclick="downloadOffline('${code}',this)">${cached?'Update':'Download'}</button></div>`;
+  }).join('');
+}
+
+async function downloadOffline(code,btn){
+  btn.textContent='⏳ Downloading…';
+  try{
+    const r=await fetch(`${API}/api/offline/${code}`);
+    const d=await r.json();
+    offlineCache[code]=d;
+    localStorage.setItem('atlas_offline',JSON.stringify(offlineCache));
+    btn.textContent='✅ Saved';
+    btn.classList.add('done');
+    toast(`✅ ${allCountries.find(c=>c.code===code)?.name} brief saved offline`,'ok');
+  }catch(e){btn.textContent='Download';toast('Download failed','err');}
+}
+
+// ── Countries panel ────────────────────────────────────────────────────────────
+function renderCountriesPanel(){
+  const body=document.getElementById('countries-body');
+  if(!myCountries.length){body.innerHTML='<div style="padding:40px 14px;text-align:center;"><div style="font-size:44px;margin-bottom:11px;">🌍</div><div style="font-family:var(--display);font-size:17px;font-weight:700;color:var(--dt);margin-bottom:8px;">No countries selected</div><button onclick="showPicker()" style="background:var(--brand);color:white;border:none;border-radius:9px;padding:12px 22px;font-family:var(--display);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">+ Add Countries</button></div>';return;}
+  body.innerHTML=myCountries.map(code=>{
+    const c=allCountries.find(x=>x.code===code);
+    if(!c) return '';
+    return`<div class="mc-item"><div class="mc-flag">${c.flag}</div><div style="flex:1"><div class="mc-name">${c.name}</div><div class="mc-adv" style="color:${c.advisoryColor}">${c.advisoryEmoji} ${c.advisoryLabel}</div></div><button class="mc-go" onclick="setActiveCountry('${code}');openCountryDetail('${code}')">View →</button></div>`;
+  }).join('');
+}
+
+// ── Account / register ────────────────────────────────────────────────────────
+async function register(){
+  const phone=document.getElementById('acc-phone').value.trim();
+  const name=document.getElementById('acc-name').value.trim();
+  if(!phone){toast('Enter your WhatsApp number','err');return;}
+  const btn=document.getElementById('acc-submit');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const r=await fetch(API+'/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:phone,name,countries:myCountries})});
+    const d=await r.json();
+    if(d.success){
+      userWA=phone; localStorage.setItem('atlas_wa',phone);
+      document.getElementById('acc-ok').style.display='block';
+      document.getElementById('acc-display').textContent=phone;
+      if(d.trial_days_left) document.getElementById('trial-days').textContent=d.trial_days_left;
+      toast('✅ Alerts activated','ok');
+      loadContacts();
+    } else toast(d.error||'Error','err');
+  }catch(e){userWA=phone;localStorage.setItem('atlas_wa',phone);document.getElementById('acc-ok').style.display='block';document.getElementById('acc-display').textContent=phone;toast('✅ Saved','ok');}
+  btn.disabled=false;btn.textContent='Save & Activate Alerts';
+}
+
+async function loadContacts(){
+  if(!userWA) return;
+  const list=document.getElementById('contacts-list');
+  try{
+    const r=await fetch(`${API}/api/contacts/${encodeURIComponent(userWA)}`);
+    const contacts=await r.json();
+    if(!contacts.length){list.innerHTML='<div style="font-size:12px;color:var(--dm);padding:8px 0;font-family:var(--mono);">No emergency contacts yet.</div>';return;}
+    list.innerHTML=contacts.map(c=>`<div class="ec-item"><div class="ec-avatar">👤</div><div style="flex:1"><div class="ec-name">${escH(c.name)}</div><div class="ec-wa">${escH(c.whatsapp)}${c.relation?' · '+escH(c.relation):''}</div></div><button class="ec-del" onclick="removeContact(${c.id})">Remove</button></div>`).join('');
+  }catch(e){}
+}
+
+async function addContact(){
+  const name=document.getElementById('ec-name').value.trim();
+  const wa=document.getElementById('ec-wa').value.trim();
+  const rel=document.getElementById('ec-rel').value.trim();
+  if(!name||!wa){toast('Enter name and WhatsApp number','err');return;}
+  if(!userWA){toast('Register your number first','err');return;}
+  try{
+    const r=await fetch(API+'/api/contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:userWA,name,contact_whatsapp:wa,relation:rel||null})});
+    const d=await r.json();
+    if(d.success){['ec-name','ec-wa','ec-rel'].forEach(id=>document.getElementById(id).value='');loadContacts();toast('✅ Contact added','ok');}
+    else toast(d.error||'Error','err');
+  }catch(e){toast('Saved (offline mode)','ok');}
+}
+
+async function removeContact(id){
+  if(!userWA) return;
+  try{
+    await fetch(`${API}/api/contacts/${id}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({whatsapp:userWA})});
+    loadContacts();
+    toast('Contact removed','ok');
+  }catch(e){}
+}
+
+// ── Nav ────────────────────────────────────────────────────────────────────────
+function nav(name,el){
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(name==='map'){closeAll();return;}
+  if(name==='feed'){loadFeed();}
+  if(name==='checklists'){loadChecklists();renderOfflineList();}
+  if(name==='countries'){renderCountriesPanel();}
+  if(name==='account'){loadContacts();}
+  openPanel(name+'-panel');
+}
+
+function openPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('open'));
+  document.getElementById(id).classList.add('open');
+  document.getElementById('bd').classList.add('on');
+}
+
+function closePanel(id){
+  document.getElementById(id).classList.remove('open');
+  document.getElementById('bd').classList.remove('on');
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.nbtn:first-child').classList.add('active');
+}
+
+function closeSheet(id){
+  document.getElementById(id).classList.remove('open');
+  // Only close backdrop if no other sheet is open
+  const anyOpen=[...document.querySelectorAll('.lsheet,.panel,#rsheet,#checkin-sheet,#route-sheet,#cpicker')].some(el=>el.classList.contains('open'));
+  if(!anyOpen) document.getElementById('bd').classList.remove('on');
+}
+
+function closeAll(){
+  document.querySelectorAll('.panel,.lsheet,#rsheet,#checkin-sheet,#route-sheet,#cpicker').forEach(p=>p.classList.remove('open'));
+  document.getElementById('bd').classList.remove('on');
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type==='ok'?'ok':type==='err'?'err':type==='warn'?'warn':'')+' show';setTimeout(()=>t.classList.remove('show'),3500);}
+function timeAgo(dt){if(!dt)return'?';const diff=(Date.now()-new Date(dt.includes('Z')?dt:dt+'Z').getTime())/1000;if(diff<60)return'Just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── PWA ────────────────────────────────────────────────────────────────────────
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+// Restore saved WA
+if(userWA){
+  document.getElementById('acc-phone').value=userWA;
+  document.getElementById('acc-ok').style.display='block';
+  document.getElementById('acc-display').textContent=userWA;
+}
+
+// Handle URL params (manifest shortcuts + Stripe return)
+const params = new URLSearchParams(window.location.search);
+if(params.get('checkout')==='success'){
+  toast('🎉 Welcome to Atlas Ally Premium!','ok');
+  history.replaceState({},'','/');
+}
+if(params.get('action')==='checkin'){ window.addEventListener('load',()=>setTimeout(openCheckin,800)); }
+if(params.get('action')==='report'){  window.addEventListener('load',()=>setTimeout(openReport,800)); }
+
+loadCountries().then(()=>{
+  myCountries=['JO'];
+  setActiveCountry('JO');
+  renderCountriesPanel();
+});
+
+setInterval(loadFeed,60000);
+</script>
+</body>
+</html>
