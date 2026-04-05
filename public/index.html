@@ -51,10 +51,10 @@
 [dir="rtl"] .igrid { direction: rtl; }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;font-family:var(--body);}
-#app{height:100vh;display:flex;flex-direction:column;background:var(--dk);}
+#app{height:100vh;display:flex;flex-direction:column;background:var(--dk);position:relative;}
 
 /* Header */
-#hdr{background:rgba(13,17,23,0.97);border-bottom:1px solid var(--db);padding:0 14px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+#hdr{background:rgba(13,17,23,0.97);border-bottom:1px solid var(--db);padding:0 14px 0 62px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;}
 .logo-mark{width:28px;height:28px;background:var(--brand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
 .logo-name{font-family:var(--display);font-size:17px;font-weight:800;color:var(--dt);letter-spacing:-.01em;}
@@ -64,7 +64,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .country-btn{display:flex;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;color:var(--dt);}
 
 /* Map */
-#map-wrap{flex:1;position:relative;overflow:hidden;}
+#map-wrap{flex:1;position:relative;overflow:hidden;margin-bottom:90px;margin-left:48px;}
 #map{width:100%;height:100%;}
 .leaflet-container{background:#e8e4dd;}
 .map-scan{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden;}
@@ -294,8 +294,60 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
+/* ── Left side navigation strip ──────────────────────────── */
+#sidenav{position:fixed;left:0;top:0;bottom:0;width:48px;z-index:200;background:rgba(13,17,23,0.97);border-right:1px solid var(--db);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(12px);}
+.snav-logo{width:32px;height:32px;background:var(--brand);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;margin-bottom:8px;flex-shrink:0;}
+.snav-btn{width:36px;height:36px;border-radius:9px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--dm);transition:all .15s;position:relative;flex-shrink:0;}
+.snav-btn:active,.snav-btn.active{background:rgba(37,99,235,0.15);color:var(--brand2);}
+.snav-btn.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--brand2);border-radius:0 2px 2px 0;}
+.snav-btn[data-danger]{color:var(--danger);}
+.snav-btn[data-danger]:active{background:rgba(220,38,38,0.15);}
+.snav-sep{width:24px;height:1px;background:var(--db);margin:4px 0;flex-shrink:0;}
+.snav-spacer{flex:1;}
+
+/* Side panel (slides out from left over map) */
+#side-panel{position:fixed;left:48px;top:0;bottom:0;width:280px;z-index:190;background:var(--dk2);border-right:1px solid var(--db2);transform:translateX(-280px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,.4);}
+#side-panel.open{transform:translateX(0);}
+.sp-hdr{padding:14px 16px;border-bottom:1px solid var(--db);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sp-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--dt);}
+.sp-close{width:28px;height:28px;border:1px solid var(--db2);border-radius:6px;background:none;color:var(--dm);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.sp-body{flex:1;overflow-y:auto;}
+#side-backdrop{position:fixed;inset:0;z-index:180;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .3s;}
+#side-backdrop.on{opacity:1;pointer-events:all;}
+
+/* ── Onboarding card ──────────────────────────────────────── */
+#onboarding{position:fixed;inset:0;z-index:900;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;padding-bottom:100px;}
+#onboarding.active{pointer-events:all;}
+.ob-card{background:var(--dk2);border:1px solid var(--db2);border-radius:20px;width:calc(100% - 32px);max-width:400px;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,.6);transform:translateY(120%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);margin-left:48px;}
+#onboarding.active .ob-card{transform:translateY(0);}
+.ob-step{display:none;}
+.ob-step.active{display:block;}
+.ob-icon{font-size:40px;text-align:center;margin-bottom:12px;}
+.ob-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--dt);text-align:center;margin-bottom:6px;}
+.ob-sub{font-size:13px;color:var(--dm);text-align:center;line-height:1.5;margin-bottom:16px;}
+.ob-dots{display:flex;justify-content:center;gap:6px;margin-bottom:16px;}
+.ob-dot{width:6px;height:6px;border-radius:50%;background:var(--db2);}
+.ob-dot.active{background:var(--brand2);width:18px;border-radius:3px;}
+.ob-plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.ob-plan{background:var(--dk3);border:2px solid var(--db);border-radius:12px;padding:12px 8px;cursor:pointer;text-align:center;transition:all .15s;}
+.ob-plan:active,.ob-plan.sel{border-color:var(--brand2);background:rgba(37,99,235,0.1);}
+.ob-plan-icon{font-size:22px;margin-bottom:4px;}
+.ob-plan-name{font-family:var(--display);font-size:12px;font-weight:700;color:var(--dt);text-transform:uppercase;letter-spacing:.04em;}
+.ob-plan-price{font-family:var(--mono);font-size:11px;color:var(--dm);margin-top:2px;}
+.ob-plan-desc{font-family:var(--mono);font-size:9px;color:var(--dm);margin-top:3px;line-height:1.3;}
+.ob-btn{width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.04em;}
+.ob-btn:disabled{opacity:.4;}
+.ob-skip{width:100%;background:none;border:none;color:var(--dm);font-family:var(--mono);font-size:11px;padding:8px;cursor:pointer;margin-top:4px;}
+.ob-input{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:11px 13px;color:var(--dt);font-size:15px;font-family:var(--body);outline:none;margin-bottom:10px;}
+.ob-input:focus{border-color:var(--brand);}
+.ob-input::placeholder{color:var(--dm);}
+.ob-country-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;scrollbar-width:none;}
+.ob-country-scroll::-webkit-scrollbar{display:none;}
+.ob-country-chip{display:flex;align-items:center;gap:6px;background:var(--dk3);border:1.5px solid var(--db);border-radius:100px;padding:7px 12px;cursor:pointer;flex-shrink:0;font-size:13px;color:var(--dt);white-space:nowrap;transition:all .15s;}
+.ob-country-chip:active,.ob-country-chip.sel{border-color:var(--brand2);background:rgba(37,99,235,0.1);color:var(--brand2);}
+
 /* ── Pull-up travel drawer ────────────────────────────────── */
-.travel-drawer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
+.travel-drawer{position:fixed;bottom:0;left:48px;right:0;z-index:100;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
 .drawer-handle-wrap{padding:8px 0 4px;display:flex;justify-content:center;}
 .drawer-handle{width:40px;height:4px;background:var(--db2);border-radius:2px;}
 .drawer-expanded{display:none;overflow-y:auto;max-height:70vh;}
@@ -449,6 +501,91 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
         <button class="dnav-btn" onclick="drawerNav('countries',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>Countries</button>
         <button class="dnav-btn" onclick="drawerNav('account',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Account</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Left side navigation -->
+<div id="sidenav">
+  <div class="snav-logo">🌍</div>
+  <button class="snav-btn" onclick="openSidePanel('countries-panel')" title="My Countries">🗺️</button>
+  <button class="snav-btn" onclick="openSidePanel('feed-panel')" title="Live Feed">📡</button>
+  <button class="snav-btn" onclick="openSidePanel('checklists-panel')" title="Checklists">✅</button>
+  <button class="snav-btn" onclick="showCountryPicker()" title="Add Country">➕</button>
+  <div class="snav-sep"></div>
+  <button class="snav-btn" onclick="openSidePanel('account-panel')" title="Account">👤</button>
+  <div class="snav-spacer"></div>
+  <button class="snav-btn" data-danger onclick="openCheckin()" title="I'm Safe">🟢</button>
+  <button class="snav-btn" data-danger onclick="openReport()" title="Report Incident">🚨</button>
+</div>
+
+<!-- Side panel container -->
+<div id="side-panel">
+  <div class="sp-hdr">
+    <div class="sp-title" id="sp-title">Menu</div>
+    <button class="sp-close" onclick="closeSidePanel()">✕</button>
+  </div>
+  <div class="sp-body" id="sp-body"></div>
+</div>
+<div id="side-backdrop" onclick="closeSidePanel()"></div>
+
+<!-- Onboarding card -->
+<div id="onboarding">
+  <div class="ob-card">
+    <div class="ob-dots">
+      <div class="ob-dot active" id="ob-dot-0"></div>
+      <div class="ob-dot" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+    </div>
+
+    <!-- Step 1: Welcome + Country -->
+    <div class="ob-step active" id="ob-step-0">
+      <div class="ob-icon">🌍</div>
+      <div class="ob-title">Welcome to Atlas Ally</div>
+      <div class="ob-sub">Real-time safety alerts, travel advisories and geofencing for anywhere in the world. Pick your first country:</div>
+      <div class="ob-country-scroll" id="ob-countries"></div>
+      <button class="ob-btn" id="ob-next-0" onclick="obNext(1)" disabled>Choose a country →</button>
+      <button class="ob-skip" onclick="obSkip()">Skip setup</button>
+    </div>
+
+    <!-- Step 2: Plan -->
+    <div class="ob-step" id="ob-step-1">
+      <div class="ob-icon">⭐</div>
+      <div class="ob-title">Choose your plan</div>
+      <div class="ob-sub">Start free for 7 days. No credit card needed.</div>
+      <div class="ob-plans">
+        <div class="ob-plan sel" id="ob-plan-trial" onclick="selectPlan('trial',this)">
+          <div class="ob-plan-icon">🆓</div>
+          <div class="ob-plan-name">Trial</div>
+          <div class="ob-plan-price">Free</div>
+          <div class="ob-plan-desc">7 days full access</div>
+        </div>
+        <div class="ob-plan" id="ob-plan-traveler" onclick="selectPlan('traveler',this)">
+          <div class="ob-plan-icon">✈️</div>
+          <div class="ob-plan-name">Traveler</div>
+          <div class="ob-plan-price">$3/mo</div>
+          <div class="ob-plan-desc">+$1 per extra country</div>
+        </div>
+        <div class="ob-plan" id="ob-plan-family" onclick="selectPlan('family',this)">
+          <div class="ob-plan-icon">👨‍👩‍👧</div>
+          <div class="ob-plan-name">Family</div>
+          <div class="ob-plan-price">$8/mo</div>
+          <div class="ob-plan-desc">1 acct + 3 contacts</div>
+        </div>
+      </div>
+      <button class="ob-btn" onclick="obNext(2)">Continue →</button>
+      <button class="ob-skip" onclick="obBack(0)">← Back</button>
+    </div>
+
+    <!-- Step 3: WhatsApp -->
+    <div class="ob-step" id="ob-step-2">
+      <div class="ob-icon">📲</div>
+      <div class="ob-title">Activate alerts</div>
+      <div class="ob-sub">Enter your WhatsApp number to receive real-time safety alerts. You can skip this and add it later.</div>
+      <input class="ob-input" type="tel" id="ob-phone" placeholder="+1 XXX XXX XXXX">
+      <input class="ob-input" type="text" id="ob-name" placeholder="Your name (optional)">
+      <button class="ob-btn" onclick="obFinish()">Get Started 🚀</button>
+      <button class="ob-skip" onclick="obBack(1)">← Back</button>
     </div>
   </div>
 </div>
@@ -1601,6 +1738,165 @@ async function smartActivateJourney(countryCode) {
   }, null, {timeout:5000});
 }
 
+
+// ── Side Panel ─────────────────────────────────────────────────────────────────
+let sidePanelOpen = false;
+let currentSidePanel = null;
+
+const SIDE_PANEL_CONTENT = {
+  'feed-panel': {
+    title: '📡 Live Feed',
+    render: () => { loadFeed(); return document.getElementById('feed-body').innerHTML || '<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--dm);">Loading...</div>'; }
+  },
+  'checklists-panel': {
+    title: '✅ Checklists',
+    render: () => { loadChecklists(); renderOfflineList(); return document.getElementById('checklists-panel').querySelector('.pbody').innerHTML; }
+  },
+  'countries-panel': {
+    title: '🗺️ My Countries',
+    render: () => { renderCountriesPanel(); return document.getElementById('countries-body').innerHTML + '<div style="padding:14px;"><button onclick="showCountryPicker()" style="width:100%;background:var(--dk3);color:var(--dt);border:1px solid var(--db2);border-radius:9px;padding:12px;font-family:var(--display);font-size:14px;font-weight:600;cursor:pointer;">+ Add Country</button></div>'; }
+  },
+  'account-panel': {
+    title: '👤 Account',
+    render: () => document.getElementById('account-panel').querySelector('.pbody').innerHTML
+  },
+};
+
+function openSidePanel(panelId) {
+  currentSidePanel = panelId;
+  const panel = document.getElementById('side-panel');
+  const body = document.getElementById('sp-body');
+  const title = document.getElementById('sp-title');
+
+  // Set title
+  const config = SIDE_PANEL_CONTENT[panelId];
+  if (config) {
+    title.textContent = config.title;
+    // Clone content from existing panel
+    const sourcePanel = document.getElementById(panelId);
+    if (sourcePanel) {
+      const pbody = sourcePanel.querySelector('.pbody') || sourcePanel;
+      body.innerHTML = pbody.innerHTML;
+    }
+    // Trigger data loads
+    if (panelId === 'feed-panel') loadFeed();
+    if (panelId === 'checklists-panel') { loadChecklists(); renderOfflineList(); }
+    if (panelId === 'countries-panel') renderCountriesPanel();
+    if (panelId === 'account-panel') loadContacts();
+  }
+
+  panel.classList.add('open');
+  document.getElementById('side-backdrop').classList.add('on');
+  sidePanelOpen = true;
+
+  // Mark active sidenav button
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+}
+
+function closeSidePanel() {
+  document.getElementById('side-panel').classList.remove('open');
+  document.getElementById('side-backdrop').classList.remove('on');
+  sidePanelOpen = false;
+  document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+}
+
+// ── Onboarding ─────────────────────────────────────────────────────────────────
+let obSelectedCountry = null;
+let obSelectedPlan = 'trial';
+let obCurrentStep = 0;
+
+function initOnboarding() {
+  // Only show if first visit
+  if (localStorage.getItem('atlas_onboarded')) return;
+
+  // Populate country chips
+  const scroll = document.getElementById('ob-countries');
+  if (scroll && allCountries.length) {
+    scroll.innerHTML = allCountries.map(c =>
+      `<div class="ob-country-chip" onclick="obSelectCountry('${c.code}',this)">
+        <span>${c.flag}</span><span>${c.name}</span>
+      </div>`
+    ).join('');
+  }
+
+  // Show onboarding
+  document.getElementById('onboarding').classList.add('active');
+}
+
+function obSelectCountry(code, el) {
+  obSelectedCountry = code;
+  document.querySelectorAll('.ob-country-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('ob-next-0').disabled = false;
+
+  // Preview the country on the map
+  const c = allCountries.find(x => x.code === code);
+  if (c) {
+    myCountries = [code];
+    setActiveCountry(code);
+  }
+}
+
+function selectPlan(plan, el) {
+  obSelectedPlan = plan;
+  document.querySelectorAll('.ob-plan').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function obNext(step) {
+  document.getElementById('ob-step-' + obCurrentStep).classList.remove('active');
+  document.getElementById('ob-dot-' + obCurrentStep).classList.remove('active');
+  obCurrentStep = step;
+  document.getElementById('ob-step-' + step).classList.add('active');
+  document.getElementById('ob-dot-' + step).classList.add('active');
+}
+
+function obBack(step) { obNext(step); }
+
+async function obFinish() {
+  const phone = document.getElementById('ob-phone').value.trim();
+  const name = document.getElementById('ob-name').value.trim();
+
+  // Register if phone provided
+  if (phone) {
+    try {
+      if (obSelectedPlan === 'trial' || !phone) {
+        await fetch(API+'/api/register', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ whatsapp: phone, name: name||null, countries: obSelectedCountry ? [obSelectedCountry] : myCountries })
+        });
+        userWA = phone;
+        localStorage.setItem('atlas_wa', phone);
+      } else {
+        // Paid plan — go to checkout
+        const r = await fetch(API+'/api/checkout', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ whatsapp: phone, plan: obSelectedPlan, countries: obSelectedCountry ? [obSelectedCountry] : myCountries })
+        });
+        const d = await r.json();
+        if (d.url) { window.location.href = d.url; return; }
+      }
+    } catch(e) {
+      if (phone) { userWA = phone; localStorage.setItem('atlas_wa', phone); }
+    }
+  }
+
+  // Mark onboarded and close
+  localStorage.setItem('atlas_onboarded', '1');
+  document.getElementById('onboarding').classList.remove('active');
+
+  if (phone) {
+    toast('✅ Welcome to Atlas Ally! Send "join swimming-swam" to +1 415 523 8886 on WhatsApp to activate alerts', 'ok');
+  } else {
+    toast('✅ Welcome to Atlas Ally!', 'ok');
+  }
+}
+
+function obSkip() {
+  localStorage.setItem('atlas_onboarded', '1');
+  document.getElementById('onboarding').classList.remove('active');
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 // Restore saved WA
 if(userWA){
@@ -1623,6 +1919,8 @@ loadCountries().then(()=>{
   setActiveCountry('JO');
   renderCountriesPanel();
   updatePeekStrip('JO', null, null, null);
+  // Show onboarding for new users
+  setTimeout(initOnboarding, 800);
 });
 
 setInterval(loadFeed,60000);
