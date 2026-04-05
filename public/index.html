@@ -580,14 +580,18 @@ if (isRTL) {
   document.documentElement.setAttribute('lang', browserLang);
 }
 
-// Use Stadia Maps Alidade Smooth — shows English labels globally for English users
-// For non-English users, OSM local tile server shows native labels
-// Stadia free tier: 200k tiles/month — plenty for early stage
-const tileUrl = 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';
+// MapTiler Streets - shows English labels for all countries globally
+// Free tier: 100k tiles/month. Sign up at maptiler.com to get an API key
+// and add MAPTILER_KEY to Railway variables
+const maptilerKey = 'get_your_free_key_at_maptiler_com';
+
+// Use Carto Voyager as fallback - best free option with mostly English labels
+const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
 L.tileLayer(tileUrl, {
   maxZoom: 20,
-  attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+  subdomains: 'abcd',
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/">CARTO</a>',
 }).addTo(map);
 
 L.control.zoom({position:'bottomright'}).addTo(map);
