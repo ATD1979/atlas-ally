@@ -8,7 +8,7 @@ let stripe = null;
 
 function getStripe() {
   if (!stripe && process.env.STRIPE_SECRET_KEY) {
-    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); } catch(e) { console.warn('Stripe not available:', e.message); }
   }
   return stripe;
 }
