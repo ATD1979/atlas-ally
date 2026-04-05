@@ -32,7 +32,7 @@ const COUNTRIES = {
     newsFeed: [
       { name: 'Jordan Times', url: 'https://jordantimes.com/feed', type: 'rss' },
       { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters ME', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Amman', lat: 31.9539, lng: 35.9106 },
@@ -77,7 +77,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Kyiv Independent', url: 'https://kyivindependent.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Ukraine', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
       { name: 'BBC Ukraine', url: 'https://feeds.bbci.co.uk/news/world/europe/rss.xml', type: 'rss' },
     ],
     cities: [
@@ -191,7 +191,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Mexico News Daily', url: 'https://mexiconewsdaily.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Americas', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Mexico City', lat: 19.4326, lng: -99.1332 },
@@ -228,7 +228,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Dawn', url: 'https://www.dawn.com/feeds/home', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Asia', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Karachi', lat: 24.8607, lng: 67.0011 },
@@ -265,7 +265,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/topstories.xml', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Asia', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Bangkok', lat: 13.7563, lng: 100.5018 },
@@ -301,7 +301,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'France 24', url: 'https://www.france24.com/en/rss', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Europe', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Paris', lat: 48.8566, lng: 2.3522 },
@@ -375,7 +375,7 @@ const COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Africa', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Johannesburg', lat: -26.2041, lng: 28.0473 },
@@ -425,7 +425,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters ME', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Tel Aviv', lat: 32.0853, lng: 34.7818 },
@@ -462,7 +462,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters ME', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Baghdad', lat: 33.3128, lng: 44.3615 },
@@ -498,7 +498,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Colombia Reports', url: 'https://colombiareports.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Americas', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Bogotá', lat: 4.7110, lng: -74.0721 },
@@ -535,7 +535,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Punch Nigeria', url: 'https://punchng.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Africa', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Lagos', lat: 6.5244, lng: 3.3792 },
@@ -572,7 +572,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Asia', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'New Delhi', lat: 28.6139, lng: 77.2090 },
@@ -609,7 +609,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Brazil Reports', url: 'https://brazilreports.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Americas', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'São Paulo', lat: -23.5505, lng: -46.6333 },
@@ -645,7 +645,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Daily Nation Kenya', url: 'https://nation.africa/kenya/rss.xml', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Africa', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Nairobi', lat: -1.2921, lng: 36.8219 },
@@ -679,7 +679,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Philippine Daily Inquirer', url: 'https://inquirer.net/feed', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Asia', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Manila', lat: 14.5995, lng: 120.9842 },
@@ -714,7 +714,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Hurriyet Daily News', url: 'https://www.hurriyetdailynews.com/rss/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Europe', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Istanbul', lat: 41.0082, lng: 28.9784 },
@@ -750,7 +750,7 @@ const EXTRA_COUNTRIES = {
     ],
     newsFeed: [
       { name: 'Morocco World News', url: 'https://www.moroccoworldnews.com/feed/', type: 'rss' },
-      { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', type: 'rss' },
+      { name: 'Reuters Africa', url: 'https://feeds.reuters.com/reuters/worldNews', type: 'rss' },
     ],
     cities: [
       { name: 'Casablanca', lat: 33.5731, lng: -7.5898 },

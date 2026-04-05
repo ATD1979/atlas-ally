@@ -25,30 +25,6 @@
   --safe:#16a34a;--warn:#d97706;--danger:#dc2626;--info:#0891b2;
   --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--body:'DM Sans',sans-serif;
 }
-
-/* RTL support for Arabic, Hebrew, Farsi, Urdu users */
-[dir="rtl"] #hdr { flex-direction: row-reverse; }
-[dir="rtl"] .logo { flex-direction: row-reverse; }
-[dir="rtl"] .hdr-right { flex-direction: row-reverse; }
-[dir="rtl"] .map-badge { left: auto; right: 10px; }
-[dir="rtl"] .map-locate { right: auto; left: 10px; }
-[dir="rtl"] #heatmap-toggle { right: auto; left: 10px; }
-[dir="rtl"] .score-overlay { right: auto; left: 10px; }
-[dir="rtl"] .fab-group { right: auto; left: 10px; }
-[dir="rtl"] .panel-body { direction: rtl; }
-[dir="rtl"] .lsbody { direction: rtl; }
-[dir="rtl"] .phdr { flex-direction: row-reverse; }
-[dir="rtl"] .lshdr { flex-direction: row-reverse; }
-[dir="rtl"] .mc-item { flex-direction: row-reverse; }
-[dir="rtl"] .mc-go { margin-left: 0; margin-right: auto; }
-[dir="rtl"] .fi-item { flex-direction: row-reverse; }
-[dir="rtl"] .ec-item { flex-direction: row-reverse; }
-[dir="rtl"] .ec-del { margin-left: 0; margin-right: auto; }
-[dir="rtl"] .cpitem { flex-direction: row-reverse; }
-[dir="rtl"] .cpcheck { margin-left: 0; margin-right: auto; }
-[dir="rtl"] #bnav { flex-direction: row-reverse; }
-[dir="rtl"] .citygrid { direction: rtl; }
-[dir="rtl"] .igrid { direction: rtl; }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;font-family:var(--body);}
 #app{height:100vh;display:flex;flex-direction:column;background:var(--dk);}
@@ -568,37 +544,7 @@ const mapMarkers = [];
 
 // ── Map ────────────────────────────────────────────────────────────────────────
 const map = L.map('map',{center:[20,10],zoom:2,zoomControl:false,attributionControl:false});
-
-// Detect browser language
-const browserLang = (navigator.language || navigator.userLanguage || 'en').split('-')[0].toLowerCase();
-
-// RTL languages
-const RTL_LANGS = ['ar','he','fa','ur','ps','sd','yi','ug'];
-const isRTL = RTL_LANGS.includes(browserLang);
-if (isRTL) {
-  document.documentElement.setAttribute('dir', 'rtl');
-  document.documentElement.setAttribute('lang', browserLang);
-}
-
-// Map language to OSM tile subdomain
-// OSM tiles are pre-rendered in local language, but we can pick the best
-// available tile server for each language family
-function getTileUrl(lang) {
-  // Languages with good OSM coverage in their script
-  const langMap = {
-    ar: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', // French OSM - good for Arabic
-    fr: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-    de: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
-    ja: 'https://tile.openstreetmap.jp/styles/maptiler-toner-ja/{z}/{x}/{y}.png',
-  };
-  return langMap[lang] || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-}
-
-L.tileLayer(getTileUrl(browserLang), {
-  maxZoom: 19,
-  subdomains: browserLang === 'de' ? 'abc' : 'abc',
-}).addTo(map);
-
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 L.control.zoom({position:'bottomright'}).addTo(map);
 L.control.attribution({position:'bottomleft',prefix:false}).addAttribution('© <a href="https://openstreetmap.org">OSM</a>').addTo(map);
 
