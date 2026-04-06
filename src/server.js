@@ -28,14 +28,25 @@ app.use('/api/', limiter);
 function seedCrimeData() {
   const now = new Date();
   const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6);
+  const period_start = sixMonthsAgo.toISOString().split('T')[0];
+  const period_end = now.toISOString().split('T')[0];
   CRIME_DATA.forEach(row => {
+    // Insert overall stats
     db.upsertCrimeStat.run({
-      ...row,
-      category: 'overall',
-      period_start: sixMonthsAgo.toISOString().split('T')[0],
-      period_end: now.toISOString().split('T')[0],
-      source: 'Numbeo',
+      country_code: row.country_code, city: row.city, lat: row.lat, lng: row.lng,
+      crime_index: row.crime_index, safety_index: row.safety_index,
+      category: 'overall', period_start, period_end, source: 'Numbeo',
     });
+    // Insert per-type stats
+    if (row.types) {
+      Object.entries(row.types).forEach(([type, index]) => {
+        db.upsertCrimeStat.run({
+          country_code: row.country_code, city: row.city, lat: row.lat, lng: row.lng,
+          crime_index: index, safety_index: 100 - index,
+          category: type, period_start, period_end, source: 'Numbeo',
+        });
+      });
+    }
   });
   console.log(`✅ Crime data seeded: ${CRIME_DATA.length} cities`);
 }
@@ -737,6 +748,125 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req,
     }
   }
   res.json({ ok: true });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEEDBACK SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Create feedback table if not exists
+db.db.exec(`
+  CREATE TABLE IF NOT EXISTS feedback (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER,
+    whatsapp    TEXT,
+    token       TEXT,
+    rating      INTEGER,
+    likes       TEXT,
+    dislikes    TEXT,
+    suggestions TEXT,
+    bugs        TEXT,
+    would_pay   INTEGER DEFAULT 0,
+    price_point TEXT,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS invite_tokens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    token       TEXT NOT NULL UNIQUE,
+    created_by  TEXT DEFAULT 'admin',
+    used        INTEGER DEFAULT 0,
+    used_by     TEXT,
+    used_at     TEXT,
+    max_uses    INTEGER DEFAULT 1,
+    uses        INTEGER DEFAULT 0,
+    active      INTEGER DEFAULT 1,
+    created_at  TEXT DEFAULT (datetime('now'))
+  );
+`);
+
+// Submit feedback
+app.post('/api/feedback', softAuth, (req, res) => {
+  const { rating, likes, dislikes, suggestions, bugs, would_pay, price_point, token } = req.body;
+  try {
+    db.db.prepare(`
+      INSERT INTO feedback (user_id, whatsapp, token, rating, likes, dislikes, suggestions, bugs, would_pay, price_point)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      req.user?.id || null,
+      req.user?.whatsapp || null,
+      token || null,
+      rating || null,
+      likes || null,
+      dislikes || null,
+      suggestions || null,
+      bugs || null,
+      would_pay ? 1 : 0,
+      price_point || null
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Failed to save feedback' });
+  }
+});
+
+// Get all feedback (admin)
+app.get('/api/admin/feedback', requireAdmin, (req, res) => {
+  const rows = db.db.prepare(`SELECT * FROM feedback ORDER BY created_at DESC`).all();
+  res.json(rows);
+});
+
+// Generate invite token (admin)
+app.post('/api/admin/invite-tokens', requireAdmin, (req, res) => {
+  const { max_uses = 1 } = req.body;
+  const token = crypto.randomBytes(6).toString('hex').toUpperCase();
+  db.db.prepare(`INSERT INTO invite_tokens (token, created_by, max_uses) VALUES (?, 'admin', ?)`).run(token, max_uses);
+  res.json({ ok: true, token });
+});
+
+// Get all invite tokens (admin)
+app.get('/api/admin/invite-tokens', requireAdmin, (req, res) => {
+  const tokens = db.db.prepare(`SELECT * FROM invite_tokens ORDER BY created_at DESC`).all();
+  res.json(tokens);
+});
+
+// Delete invite token (admin)
+app.delete('/api/admin/invite-tokens/:token', requireAdmin, (req, res) => {
+  db.db.prepare(`UPDATE invite_tokens SET active=0 WHERE token=?`).run(req.params.token);
+  res.json({ ok: true });
+});
+
+// Validate invite token (public)
+app.get('/api/invite/:token', (req, res) => {
+  const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(req.params.token.toUpperCase());
+  if (!t) return res.status(404).json({ error: 'Invalid or expired invite' });
+  if (t.uses >= t.max_uses) return res.status(400).json({ error: 'This invite has been used' });
+  res.json({ ok: true, token: t.token });
+});
+
+// Use invite token during signup
+app.post('/api/invite/:token/use', softAuth, (req, res) => {
+  const token = req.params.token.toUpperCase();
+  const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(token);
+  if (!t || t.uses >= t.max_uses) return res.status(400).json({ error: 'Invalid invite' });
+  db.db.prepare(`UPDATE invite_tokens SET uses=uses+1, used_by=?, used_at=datetime('now') WHERE token=?`)
+    .run(req.user?.whatsapp || 'anonymous', token);
+  res.json({ ok: true });
+});
+
+// Crime stats with types
+app.get('/api/crime/:code/detailed', (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const all_stats = db.db.prepare(`SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`).all(code);
+  // Group by city
+  const cities = {};
+  all_stats.forEach(s => {
+    if (!cities[s.city]) cities[s.city] = { city: s.city, lat: s.lat, lng: s.lng, overall: null, types: {} };
+    if (s.category === 'overall') cities[s.city].overall = s;
+    else cities[s.city].types[s.category] = s.crime_index;
+  });
+  const community = db.getCommunityCrime.all(code);
+  res.json({ cities: Object.values(cities), community });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -431,19 +431,19 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .ob-country-chip:active,.ob-country-chip.sel{border-color:var(--brand2);background:rgba(37,99,235,0.1);color:var(--brand2);}
 
 /* ── Pull-up travel drawer ────────────────────────────────── */
-.travel-drawer{position:fixed;bottom:0;left:0;right:0;z-index:100;transition:left .3s ease;background:var(--dk2);border-radius:20px 20px 0 0;border-top:1px solid var(--db2);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(0,0,0,.4);}
+.travel-drawer{position:fixed;bottom:0;left:0;right:0;z-index:100;background:#0d1117;border-radius:20px 20px 0 0;border-top:2px solid rgba(37,99,235,0.5);box-shadow:0 -12px 40px rgba(0,0,0,.8);}
 .drawer-handle-wrap{padding:8px 0 4px;display:flex;justify-content:center;}
 .drawer-handle{width:40px;height:4px;background:var(--db2);border-radius:2px;}
 .drawer-expanded{display:none;overflow-y:auto;max-height:70vh;}
 .travel-drawer.open .drawer-expanded{display:block;}
 
 /* Peek strip */
-.drawer-peek{display:flex;align-items:center;gap:12px;padding:8px 16px 14px;cursor:pointer;}
+.drawer-peek{display:flex;align-items:center;gap:12px;padding:10px 16px 16px;cursor:pointer;background:#0d1117;}
 .peek-score-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
-.peek-score-num{font-family:var(--display);font-size:26px;font-weight:800;line-height:1;color:var(--safe);}
+.peek-score-num{font-family:var(--display);font-size:28px;font-weight:800;line-height:1;color:#4ade80;text-shadow:0 0 20px rgba(74,222,128,.3);}
 .peek-score-label{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;letter-spacing:.1em;}
 .peek-status{flex:1;min-width:0;}
-.peek-country{font-family:var(--display);font-size:14px;font-weight:700;color:var(--dt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.peek-country{font-family:var(--display);font-size:15px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .peek-sub{font-family:var(--mono);font-size:10px;color:var(--dm);margin-top:1px;}
 .peek-actions{display:flex;gap:8px;flex-shrink:0;}
 .peek-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--dk3);border:1px solid var(--db2);border-radius:10px;padding:7px 10px;cursor:pointer;font-size:18px;}
@@ -683,6 +683,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
       <div class="nav-item-text">
         <div class="nav-item-title">Upgrade to Premium</div>
         <div class="nav-item-desc">From $3/month · Family plan $8/month</div>
+      </div>
+      <div class="nav-item-arrow">›</div>
+    </div>
+    <div class="nav-item" onclick="openFeedback();closeNav()">
+      <div class="nav-item-icon">📋</div>
+      <div class="nav-item-text">
+        <div class="nav-item-title">Share Feedback</div>
+        <div class="nav-item-desc">Rate the app and suggest improvements</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
@@ -1337,7 +1345,12 @@ async function setActiveCountry(code) {
     // Update peek strip country
     updatePeekStrip(code, null, null, null);
     // Reload feed if open
-    if (document.getElementById('feed-panel')?.classList.contains('open')) loadFeed();
+    if (document.getElementById('feed-panel')?.classList.contains('open')) {
+      loadFeed();
+      // Re-render whichever tab is active
+      const activeTab = document.querySelector('.feed-tab.active')?.id?.replace('tab-','');
+      if (activeTab === 'crime') loadFeedCrime(code, allCountries.find(c=>c.code===code));
+    }
   } catch(e){}
 }
 
@@ -2159,8 +2172,8 @@ let otpWhatsapp = null;
 let otpStep = 'phone'; // phone | otp | signup
 
 function showAuthScreen() {
-  // Show login overlay if not authenticated
-  if (!authToken && !localStorage.getItem('atlas_onboarded')) {
+  // Always show login screen if no valid token
+  if (!authToken) {
     document.getElementById('auth-overlay').classList.add('active');
   }
 }
@@ -2498,7 +2511,7 @@ async function toggleCrimeLayer() {
   toast('Loading crime data…');
   try {
     const code = activeCountry || 'JO';
-    const r = await fetch(`${API}/api/crime/${code}`);
+    const r = await fetch(`${API}/api/crime/${code}/detailed`);
     const d = await r.json();
     if (crimeLayer) map.removeLayer(crimeLayer);
     const points = [];
@@ -2611,28 +2624,45 @@ async function loadFeedCrime(code, country) {
   const name = country?.name || code;
   el.innerHTML = `<div style="padding:10px 14px 8px;font-family:var(--mono);font-size:10px;color:var(--dm);">${flag} ${name} — Crime statistics & reports</div>`;
   try {
-    const r = await fetch(`${API}/api/crime/${code}`);
+    const r = await fetch(`${API}/api/crime/${code}/detailed`);
     const d = await r.json();
-    const global_stats = d.global_stats || [];
+    const cities = d.cities || [];
+    const global_stats = cities.map(c => c.overall).filter(Boolean);
     const community = d.community || [];
 
     // Global crime index section
-    if (global_stats.length) {
+    if (cities.length) {
+      const TYPE_LABELS = { theft:'🧳 Theft', assault:'👊 Assault', vandalism:'🪟 Vandalism', drug:'💊 Drugs', scam:'💳 Scam', corruption:'🏛️ Corruption' };
       el.innerHTML += `<div style="padding:10px 14px 4px;font-family:var(--display);font-size:11px;font-weight:700;color:var(--dt);text-transform:uppercase;letter-spacing:.08em;">Crime Index by City</div>`;
-      el.innerHTML += global_stats.map(s => {
+      el.innerHTML += cities.map(city => {
+        const s = city.overall;
+        if (!s) return '';
         const color = s.crime_index > 65 ? 'var(--danger)' : s.crime_index > 40 ? 'var(--warn)' : 'var(--safe)';
         const bar = Math.round(s.crime_index);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--db);">
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--dt);">${escH(s.city)}</div>
-            <div style="margin-top:4px;height:4px;background:var(--db);border-radius:2px;overflow:hidden;">
-              <div style="width:${bar}%;height:100%;background:${color};border-radius:2px;transition:width .6s;"></div>
+        const typeBars = city.types ? Object.entries(city.types).map(([type, val]) => {
+          const tc = val > 65 ? 'var(--danger)' : val > 40 ? 'var(--warn)' : 'var(--safe)';
+          return `<div style="display:flex;align-items:center;gap:8px;margin-top:5px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--dm);width:90px;flex-shrink:0;">${TYPE_LABELS[type]||type}</div>
+            <div style="flex:1;height:3px;background:var(--db);border-radius:2px;overflow:hidden;">
+              <div style="width:${Math.round(val)}%;height:100%;background:${tc};border-radius:2px;"></div>
+            </div>
+            <div style="font-family:var(--mono);font-size:9px;color:${tc};width:24px;text-align:right;">${Math.round(val)}</div>
+          </div>`;
+        }).join('') : '';
+        return `<div style="padding:12px 14px;border-bottom:1px solid var(--db);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="flex:1;">
+              <div style="font-size:14px;font-weight:700;color:var(--dt);">${escH(s.city)}</div>
+              <div style="margin-top:4px;height:5px;background:var(--db);border-radius:3px;overflow:hidden;">
+                <div style="width:${bar}%;height:100%;background:${color};border-radius:3px;"></div>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${color};">${bar}</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--dm);">crime index</div>
             </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${color};">${bar}</div>
-            <div style="font-family:var(--mono);font-size:9px;color:var(--dm);">/ 100</div>
-          </div>
+          ${typeBars}
         </div>`;
       }).join('');
     }
@@ -2682,6 +2712,66 @@ function openCrimeReport() {
 }
 
 
+
+// ── Feedback System ────────────────────────────────────────────────────────────
+let fbRating = 0;
+let fbWouldPay = null;
+let fbPricePoint = null;
+
+function openFeedback() {
+  document.getElementById('feedback-modal').style.display = 'block';
+}
+function closeFeedback() {
+  document.getElementById('feedback-modal').style.display = 'none';
+}
+function setRating(n) {
+  fbRating = n;
+  [1,2,3,4,5].forEach(i => {
+    const el = document.getElementById('star-' + i);
+    if (el) el.style.opacity = i <= n ? '1' : '0.3';
+  });
+}
+function setWouldPay(val) {
+  fbWouldPay = val;
+  ['yes','no','maybe'].forEach(k => {
+    const el = document.getElementById('pay-' + k);
+    if (el) { el.style.background = 'var(--dk3)'; el.style.color = 'var(--dm)'; el.style.borderColor = 'var(--db2)'; }
+  });
+  const active = document.getElementById('pay-' + (val === true ? 'yes' : val === false ? 'no' : 'maybe'));
+  if (active) { active.style.background = 'rgba(37,99,235,0.15)'; active.style.color = 'var(--brand2)'; active.style.borderColor = 'var(--brand2)'; }
+  const pp = document.getElementById('price-point-section');
+  if (pp) pp.style.display = val !== false ? 'block' : 'none';
+}
+function setPricePoint(price) {
+  fbPricePoint = price;
+  document.querySelectorAll('.price-opt').forEach(el => {
+    el.style.background = el.dataset.price === price ? 'rgba(37,99,235,0.15)' : 'var(--dk3)';
+    el.style.color = el.dataset.price === price ? 'var(--brand2)' : 'var(--dm)';
+    el.style.borderColor = el.dataset.price === price ? 'var(--brand2)' : 'var(--db2)';
+  });
+}
+async function submitFeedback() {
+  const likes = document.getElementById('fb-likes')?.value.trim();
+  const dislikes = document.getElementById('fb-dislikes')?.value.trim();
+  const suggestions = document.getElementById('fb-suggestions')?.value.trim();
+  const bugs = document.getElementById('fb-bugs')?.value.trim();
+  if (!fbRating) { toast('Please give a star rating', 'err'); return; }
+  try {
+    const r = await fetch(API + '/api/feedback', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        rating: fbRating, likes, dislikes, suggestions, bugs,
+        would_pay: fbWouldPay, price_point: fbPricePoint,
+      })
+    });
+    if (r.ok) {
+      closeFeedback();
+      toast('✅ Thank you for your feedback!', 'ok');
+    }
+  } catch(e) { toast('Failed to submit — try again', 'err'); }
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 // Set max DOB date to today (for 18+ check)
 const dobEl = document.getElementById('signup-dob');
@@ -2720,5 +2810,48 @@ loadCountries().then(()=>{
 
 setInterval(loadFeed,60000);
 </script>
+
+<!-- Feedback questionnaire modal -->
+<div id="feedback-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px;">
+  <div style="background:var(--dk2);border:1px solid var(--db2);border-radius:18px;max-width:400px;margin:0 auto;padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div style="font-family:var(--display);font-size:18px;font-weight:800;color:var(--dt);">📋 Share Your Feedback</div>
+      <button onclick="closeFeedback()" style="background:none;border:1px solid var(--db2);border-radius:6px;color:var(--dm);padding:4px 8px;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--dm);margin-bottom:16px;">Help us improve Atlas Ally. This takes about 2 minutes.</div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:8px;">Overall Rating</div>
+    <div id="rating-stars" style="display:flex;gap:8px;margin-bottom:16px;">
+      ${[1,2,3,4,5].map(i => `<button onclick="setRating(${i})" id="star-${i}" style="font-size:28px;background:none;border:none;cursor:pointer;opacity:.4;transition:all .15s;">⭐</button>`).join('')}
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">What do you like?</div>
+    <textarea id="fb-likes" placeholder="What features are most useful to you?" style="width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dt);font-size:13px;font-family:var(--body);outline:none;resize:none;height:70px;box-sizing:border-box;margin-bottom:12px;"></textarea>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">What needs improvement?</div>
+    <textarea id="fb-dislikes" placeholder="What frustrates you or feels missing?" style="width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dt);font-size:13px;font-family:var(--body);outline:none;resize:none;height:70px;box-sizing:border-box;margin-bottom:12px;"></textarea>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">Feature suggestions</div>
+    <textarea id="fb-suggestions" placeholder="What would make you use this every day?" style="width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dt);font-size:13px;font-family:var(--body);outline:none;resize:none;height:70px;box-sizing:border-box;margin-bottom:12px;"></textarea>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">Any bugs or issues?</div>
+    <textarea id="fb-bugs" placeholder="Describe any problems you experienced" style="width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dt);font-size:13px;font-family:var(--body);outline:none;resize:none;height:60px;box-sizing:border-box;margin-bottom:16px;"></textarea>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:8px;">Would you pay for Atlas Ally?</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button id="pay-yes" onclick="setWouldPay(true)" style="flex:1;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dm);cursor:pointer;font-family:var(--mono);font-size:11px;transition:all .15s;">Yes</button>
+      <button id="pay-no" onclick="setWouldPay(false)" style="flex:1;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dm);cursor:pointer;font-family:var(--mono);font-size:11px;transition:all .15s;">No</button>
+      <button id="pay-maybe" onclick="setWouldPay('maybe')" style="flex:1;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:10px;color:var(--dm);cursor:pointer;font-family:var(--mono);font-size:11px;transition:all .15s;">Maybe</button>
+    </div>
+
+    <div id="price-point-section" style="display:none;margin-bottom:14px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">What price feels fair per month?</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${['$1','$3','$5','$8','$10+'].map(p => `<button onclick="setPricePoint('${p}')" class="price-opt" data-price="${p}" style="background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:8px 14px;color:var(--dm);cursor:pointer;font-family:var(--mono);font-size:12px;">${p}</button>`).join('')}
+      </div>
+    </div>
+
+    <button onclick="submitFeedback()" style="width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;">Submit Feedback 🚀</button>
+  </div>
+</div>
 </body>
-</html>
