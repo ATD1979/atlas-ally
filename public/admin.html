@@ -72,18 +72,13 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div>🛡️</div>
       <div>Atlas Ally</div>
     </div>
-    <div class="login-sub">Admin Panel · OTP Sign-In</div>
+    <div class="login-sub">Admin Panel</div>
     <div class="field-group">
-      <div class="field-label">Admin WhatsApp</div>
-      <input class="field-input" type="tel" id="wa-input" placeholder="+1 555 000 0000" onkeydown="if(event.key==='Enter')sendOtp()">
+      <div class="field-label">Admin Password</div>
+      <input class="field-input" type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')login()">
     </div>
-    <div class="field-group" id="otp-group" style="display:none;">
-      <div class="field-label">Verification code</div>
-      <input class="field-input" type="text" id="otp-input" placeholder="6-digit code" maxlength="6" onkeydown="if(event.key==='Enter')verifyOtp()">
-    </div>
-    <button class="btn-primary" onclick="sendOtp()" id="login-btn">Send Code</button>
-    <button class="btn-primary" onclick="verifyOtp()" id="verify-btn" style="display:none;margin-top:8px;">Verify & Sign In</button>
-    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Admin access required for this number.</div>
+    <button class="btn-primary" onclick="login()" id="login-btn">Sign In</button>
+    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Wrong password</div>
   </div>
 </div>
 
@@ -198,7 +193,6 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div class="section-label">Manage events — remove test alerts</div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
         <button class="btn-danger" onclick="removeAllTestEvents()" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🗑️ Remove All Test Events</button>
-        <button class="btn-danger" onclick="removeDevTestEvents()" style="background:rgba(220,38,38,0.10);border:1px solid rgba(220,38,38,0.28);color:#fca5a5;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🧹 Remove Dev/Test Alerts</button>
         <button class="btn" onclick="loadAllEvents()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🔄 Refresh</button>
       </div>
       <div id="all-events-list"><div class="empty-state">Click Refresh to load events</div></div>
@@ -238,158 +232,80 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
 <div class="toast" id="toast"></div>
 
 <script>
-let TOKEN = localStorage.getItem('atlas_token') || localStorage.getItem('jsn_admin_token') || null;
+let TOKEN = localStorage.getItem('jsn_admin_token') || null;
 const API = '';
-
-function normalizeWhatsApp(input='') {
-  return String(input || '').trim().replace(/[^\d+]/g, '').replace(/^00/, '+').replace(/(?!^)\+/g, '');
-}
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + (type === 'error' ? 'error' : 'success') + ' show';
+  t.textContent = msg; t.className = 'toast ' + type + ' show';
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-function setLoginError(msg) {
-  const el = document.getElementById('login-error');
-  el.textContent = msg;
-  el.style.display = 'block';
+async function login() {
+  const pw = document.getElementById('pw-input').value;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const res = await fetch(API + '/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
+    const data = await res.json();
+    if (data.token) {
+      TOKEN = data.token;
+      localStorage.setItem('jsn_admin_token', TOKEN);
+      showAdminApp();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-error').textContent = 'Connection error';
+  }
+  btn.disabled = false; btn.textContent = 'Sign In';
 }
 
-function clearLoginError() {
-  document.getElementById('login-error').style.display = 'none';
+function logout() {
+  TOKEN = null; localStorage.removeItem('jsn_admin_token');
+  document.getElementById('admin-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
 function authHeaders() {
-  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN };
 }
 
-async function sendOtp() {
-  clearLoginError();
-  const whatsapp = normalizeWhatsApp(document.getElementById('wa-input').value);
-  if (!whatsapp) return setLoginError('Enter your admin WhatsApp number.');
-
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-  try {
-    const res = await fetch(API + '/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp, purpose: 'admin_login' })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to send code');
-    document.getElementById('wa-input').value = whatsapp;
-    document.getElementById('otp-group').style.display = 'block';
-    document.getElementById('verify-btn').style.display = 'block';
-    showToast('Code sent to WhatsApp');
-  } catch (e) {
-    setLoginError(e.message || 'Failed to send code');
-  }
-  btn.disabled = false;
-  btn.textContent = 'Send Code';
-}
-
-async function verifyOtp() {
-  clearLoginError();
-  const whatsapp = normalizeWhatsApp(document.getElementById('wa-input').value);
-  const code = document.getElementById('otp-input').value.trim();
-  if (!whatsapp || !code) return setLoginError('Enter your WhatsApp number and the 6-digit code.');
-
-  const btn = document.getElementById('verify-btn');
-  btn.disabled = true;
-  btn.textContent = 'Verifying…';
-  try {
-    const res = await fetch(API + '/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp, code })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Verification failed');
-    if (data.needs_signup) throw new Error('This number is not registered yet. First create the account in the customer app, then sign in here.');
-    if (!data.token) throw new Error('Login token missing');
-
-    TOKEN = data.token;
-    localStorage.setItem('atlas_token', TOKEN);
-    localStorage.setItem('jsn_admin_token', TOKEN);
-
-    const meRes = await fetch(API + '/api/auth/me', { headers: authHeaders() });
-    const me = await meRes.json();
-    if (!meRes.ok) throw new Error(me.error || 'Failed to load account');
-    if (me.user?.role !== 'admin') throw new Error('This account does not have admin access yet.');
-
-    showAdminApp(me.user);
-  } catch (e) {
-    setLoginError(e.message || 'Unable to sign in');
-  }
-  btn.disabled = false;
-  btn.textContent = 'Verify & Sign In';
-}
-
-async function bootFromSavedToken() {
-  if (!TOKEN) return;
-  try {
-    const res = await fetch(API + '/api/auth/me', { headers: authHeaders() });
-    const data = await res.json();
-    if (!res.ok || data.user?.role !== 'admin') throw new Error('not admin');
-    showAdminApp(data.user);
-  } catch {
-    logout(false);
-  }
-}
-
-function logout(showMessage = true) {
-  TOKEN = null;
-  localStorage.removeItem('atlas_token');
-  localStorage.removeItem('jsn_admin_token');
-  document.getElementById('admin-app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('otp-group').style.display = 'none';
-  document.getElementById('verify-btn').style.display = 'none';
-  document.getElementById('otp-input').value = '';
-  if (showMessage) showToast('Signed out');
-}
-
-function showAdminApp(user) {
+function showAdminApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-app').style.display = 'block';
-  document.getElementById('admin-sub').textContent = `Logged in as ${user.name || user.whatsapp} · ${user.whatsapp}`;
-  loadStats();
-  loadQueue();
-  loadSubscribers();
+  document.getElementById('admin-sub').textContent = 'Logged in · ' + new Date().toLocaleTimeString();
+  loadStats(); loadQueue(); loadSubscribers();
 }
 
 async function loadStats() {
   try {
     const res = await fetch(API + '/api/admin/stats', { headers: authHeaders() });
-    if (res.status === 401 || res.status === 403) return logout(false);
     const d = await res.json();
-    document.getElementById('a-today').textContent = d.events_72h || 0;
-    document.getElementById('a-subs').textContent = d.users || 0;
-    document.getElementById('a-pending').textContent = d.pending || 0;
-    document.getElementById('a-sent').textContent = d.alerts || 0;
+    document.getElementById('a-today').textContent = d.sirenStats.today || 0;
+    document.getElementById('a-subs').textContent = d.subscribers;
+    document.getElementById('a-pending').textContent = d.pending;
+    document.getElementById('a-sent').textContent = d.alertsSent;
   } catch(e) {}
 }
 
 async function loadQueue() {
   try {
     const res = await fetch(API + '/api/admin/pending', { headers: authHeaders() });
-    if (res.status === 401 || res.status === 403) { logout(false); return; }
+    if (res.status === 401) { logout(); return; }
     const events = await res.json();
     const list = document.getElementById('queue-list');
     if (!events.length) { list.innerHTML = '<div class="empty-state">✅ No pending submissions</div>'; return; }
     list.innerHTML = events.map(e => `
       <div class="pending-item" id="pi-${e.id}">
-        <div class="pending-type">${escH(e.type || 'report')}</div>
+        <div class="pending-type">${e.type.toUpperCase()}</div>
         <div class="pending-title">${escH(e.title)}</div>
         <div class="pending-meta">
-          <span>🌍 ${escH(e.country_code || '—')}</span>
           <span>📍 ${escH(e.location || 'No location')}</span>
-          <span>🕐 ${new Date((e.created_at || '').replace(' ', 'T') + 'Z').toLocaleString()}</span>
+          <span>👤 ${escH(e.submitted_by || 'anonymous')}</span>
+          <span>🕐 ${new Date(e.created_at + 'Z').toLocaleString()}</span>
+          ${e.source_url ? `<a href="${escH(e.source_url)}" target="_blank" style="color:var(--accent2);">View source ↗</a>` : ''}
         </div>
         ${e.description ? `<div class="pending-desc">${escH(e.description)}</div>` : ''}
         <div class="pending-actions">
@@ -405,70 +321,63 @@ async function approve(id) {
     const res = await fetch(API + '/api/admin/approve/' + id, { method:'POST', headers: authHeaders() });
     const d = await res.json();
     if (d.success) {
-      showToast('Approved and alerts sent');
-      loadQueue();
+      showToast('✅ Approved — alerts sending');
+      document.getElementById('pi-' + id).remove();
       loadStats();
-    } else {
-      showToast(d.error || 'Approve failed', 'error');
+      if (!document.getElementById('queue-list').children.length) {
+        document.getElementById('queue-list').innerHTML = '<div class="empty-state">✅ No pending submissions</div>';
+      }
     }
   } catch(e) { showToast('Error approving', 'error'); }
 }
 
 async function reject(id) {
   try {
-    const res = await fetch(API + '/api/admin/reject/' + id, { method:'POST', headers: authHeaders() });
-    if (res.ok) {
-      showToast('Rejected');
-      loadQueue();
-      loadStats();
-    }
-  } catch(e) { showToast('Error rejecting', 'error'); }
+    await fetch(API + '/api/admin/reject/' + id, { method:'POST', headers: authHeaders() });
+    document.getElementById('pi-' + id).remove();
+    showToast('Rejected');
+    loadStats();
+  } catch(e) {}
 }
 
 async function postEvent() {
   const title = document.getElementById('p-title').value.trim();
-  if (!title) return showToast('Title required', 'error');
+  if (!title) { showToast('Title required', 'error'); return; }
   const body = {
     country_code: document.getElementById('p-country').value,
     type: document.getElementById('p-type').value,
     severity: document.getElementById('p-severity').value,
-    title,
-    description: document.getElementById('p-desc').value.trim(),
+    title, description: document.getElementById('p-desc').value.trim(),
     location: document.getElementById('p-loc').value.trim(),
+    source: document.getElementById('p-source').value.trim(),
     source_url: document.getElementById('p-url').value.trim(),
-    is_test: false
   };
   const btn = document.getElementById('post-btn');
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const res = await fetch(API + '/api/admin/events', { method:'POST', headers: authHeaders(), body:JSON.stringify(body) });
+    const res = await fetch(API + '/api/admin/event', { method:'POST', headers: authHeaders(), body:JSON.stringify(body) });
     const d = await res.json();
-    if (res.ok && d.ok) {
-      showToast('Event posted and alerts sent');
+    if (d.success) {
+      showToast('📢 Posted — alerts sending to all subscribers');
       ['p-title','p-desc','p-loc','p-url'].forEach(id => document.getElementById(id).value = '');
       loadStats();
-      loadAllEvents();
     } else { showToast(d.error || 'Error', 'error'); }
   } catch(e) { showToast('Connection error', 'error'); }
   btn.disabled = false; btn.textContent = '📢 Post & Send Alerts Now';
 }
 
 async function logSiren() {
-  const body = {
-    location: document.getElementById('s-loc').value.trim() || 'Unspecified',
-    duration_s: parseInt(document.getElementById('s-dur').value) || null,
-    notes: document.getElementById('s-notes').value.trim()
-  };
+  const loc = document.getElementById('s-loc').value.trim() || 'Unspecified';
+  const body = { location: loc, duration_s: parseInt(document.getElementById('s-dur').value) || null, notes: document.getElementById('s-notes').value.trim() };
   const btn = document.getElementById('siren-btn');
   btn.disabled = true; btn.textContent = 'Logging…';
   try {
     const res = await fetch(API + '/api/admin/siren', { method:'POST', headers: authHeaders(), body:JSON.stringify(body) });
     const d = await res.json();
-    if (res.ok && d.success) {
-      showToast('Siren logged and alerts sent');
+    if (d.success) {
+      showToast('🚨 Siren logged — alerts sent');
       ['s-loc','s-dur','s-notes'].forEach(id => document.getElementById(id).value = '');
       loadStats();
-      loadAllEvents();
     } else { showToast(d.error || 'Error', 'error'); }
   } catch(e) { showToast('Error', 'error'); }
   btn.disabled = false; btn.textContent = '🚨 Log Siren & Alert All Subscribers';
@@ -476,46 +385,16 @@ async function logSiren() {
 
 async function loadSubscribers() {
   try {
-    const res = await fetch(API + '/api/admin/users', { headers: authHeaders() });
-    if (res.status === 401 || res.status === 403) return logout(false);
+    const res = await fetch(API + '/api/admin/subscribers', { headers: authHeaders() });
     const subs = await res.json();
     const list = document.getElementById('subs-list');
-    if (!subs.length) { list.innerHTML = '<div class="empty-state">No users yet</div>'; return; }
+    if (!subs.length) { list.innerHTML = '<div class="empty-state">No subscribers yet</div>'; return; }
     list.innerHTML = subs.map(s => {
-      const contact = [s.name || 'Unnamed', s.whatsapp || '', s.email || ''].filter(Boolean).join(' · ');
-      const countries = (s.countries || []).join(', ') || '—';
-      return `<div class="sub-item">
-        <div>
-          <div class="sub-contact">${escH(contact)}</div>
-          <div class="sub-prefs">Role: ${escH(s.role || 'user')} · Plan: ${escH(s.plan || 'trial')} · Countries: ${escH(countries)}</div>
-        </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <select id="role-${s.id}" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;font-family:var(--mono);font-size:11px;">
-            <option value="user" ${s.role === 'user' ? 'selected' : ''}>user</option>
-            <option value="distributor" ${s.role === 'distributor' ? 'selected' : ''}>distributor</option>
-            <option value="admin" ${s.role === 'admin' ? 'selected' : ''}>admin</option>
-          </select>
-          <button onclick="updateUserRole(${s.id})" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:11px;">Save</button>
-        </div>
-      </div>`;
+      const prefs = ['siren','drone','news','troop','clear'].filter(p => s['alert_'+p]).join(', ');
+      const contact = [s.phone, s.email, s.whatsapp ? 'WA:'+s.whatsapp : ''].filter(Boolean).join(' · ');
+      return `<div class="sub-item"><div><div class="sub-contact">${escH(contact)}</div><div class="sub-prefs">Alerts: ${prefs}</div></div><div class="sub-date">${new Date(s.created_at).toLocaleDateString()}</div></div>`;
     }).join('');
   } catch(e) {}
-}
-
-async function updateUserRole(id) {
-  const role = document.getElementById('role-' + id).value;
-  const res = await fetch(API + '/api/admin/users/' + id + '/role', {
-    method: 'PATCH',
-    headers: authHeaders(),
-    body: JSON.stringify({ role })
-  });
-  const d = await res.json().catch(() => ({}));
-  if (res.ok) {
-    showToast('Role updated');
-    loadSubscribers();
-  } else {
-    showToast(d.error || 'Failed to update role', 'error');
-  }
 }
 
 function switchPanel(name, el) {
@@ -526,17 +405,16 @@ function switchPanel(name, el) {
   if (name === 'events') loadAllEvents();
   if (name === 'tokens') loadTokens();
   if (name === 'feedback') loadFeedback();
-  if (name === 'subs') loadSubscribers();
-  if (name === 'queue') loadQueue();
 }
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// ── Events management ─────────────────────────────────────────────────────────
 async function loadAllEvents() {
   const el = document.getElementById('all-events-list');
   el.innerHTML = '<div class="empty-state">Loading…</div>';
   try {
-    const r = await fetch(API + '/api/admin/events', { headers: authHeaders() });
+    const r = await fetch(API + '/api/admin/events', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     const events = await r.json();
     if (!events.length) { el.innerHTML = '<div class="empty-state">No events found.</div>'; return; }
     el.innerHTML = events.map(e => `
@@ -544,7 +422,7 @@ async function loadAllEvents() {
         <div style="flex:1;">
           <div style="font-size:12px;color:var(--text);font-weight:600;">${escH(e.title)}</div>
           <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">${e.country_code} · ${e.type} · ${e.severity} · ${e.is_test ? '⚠️ TEST' : 'LIVE'} · ${e.status}</div>
-          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date((e.created_at || '').replace(' ', 'T') + 'Z').toLocaleString()}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(e.created_at).toLocaleString()}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
           ${e.status !== 'removed' ? `<button onclick="removeEvent(${e.id}, this)" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Remove</button>` : '<span style="color:var(--muted);font-size:11px;">Removed</span>'}
@@ -566,26 +444,13 @@ async function markTest(id, btn) {
   if (r.ok) { btn.textContent = 'Marked'; btn.style.opacity = '.5'; }
 }
 
-
-async function removeDevTestEvents() {
-  if (!confirm('Remove old development/test alerts that contain words like Test, Drill, or Dummy?')) return;
-  const r = await fetch(API + '/api/admin/events/dev-test', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
-  const d = await r.json().catch(() => ({}));
-  if (r.ok) {
-    showToast((d.removed || 0) + ' dev/test alerts removed', 'success');
-    loadAllEvents();
-    loadQueue();
-  } else {
-    showToast(d.error || 'Failed to remove dev/test alerts', 'error');
-  }
-}
-
 async function removeAllTestEvents() {
   if (!confirm('Remove ALL test events? This cannot be undone.')) return;
   const r = await fetch(API + '/api/admin/events/test', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
   if (r.ok) { alert('All test events removed.'); loadAllEvents(); }
 }
 
+// ── Invite tokens ──────────────────────────────────────────────────────────────
 async function loadTokens() {
   const el = document.getElementById('token-list');
   el.innerHTML = '<div class="empty-state">Loading…</div>';
@@ -596,14 +461,15 @@ async function loadTokens() {
     el.innerHTML = tokens.map(t => `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
         <div style="flex:1;">
-          <div style="font-family:monospace;font-size:16px;font-weight:700;color:#93c5fd;letter-spacing:.15em;">${t.token || t.code}</div>
+          <div style="font-family:monospace;font-size:16px;font-weight:700;color:#93c5fd;letter-spacing:.15em;">${t.token}</div>
           <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">
-            Uses: ${t.uses}/${t.max_uses} · ${t.active ? '✅ Active' : '❌ Inactive'} · Created ${new Date((t.created_at || '').replace(' ', 'T') + 'Z').toLocaleDateString()}
+            Uses: ${t.uses}/${t.max_uses} · ${t.active ? '✅ Active' : '❌ Inactive'} · Created ${new Date(t.created_at).toLocaleDateString()}
+            ${t.used_by ? ' · Used by: ' + escH(t.used_by) : ''}
           </div>
         </div>
         <div style="display:flex;gap:6px;">
-          <button onclick="copyToken('${t.token || t.code}')" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Copy</button>
-          ${t.active ? `<button onclick="deactivateToken('${t.token || t.code}', this)" style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Disable</button>` : ''}
+          <button onclick="copyToken('${t.token}')" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Copy</button>
+          ${t.active ? `<button onclick="deactivateToken('${t.token}', this)" style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Disable</button>` : ''}
         </div>
       </div>`).join('');
   } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load tokens.</div>'; }
@@ -616,13 +482,10 @@ async function generateToken() {
     body: JSON.stringify({ max_uses: maxUses })
   });
   const d = await r.json();
-  if (d.token || d.code) {
-    const token = d.token || d.code;
-    await navigator.clipboard.writeText(token).catch(() => {});
-    alert('Token created: ' + token);
+  if (d.token) {
+    await navigator.clipboard.writeText(d.token).catch(() => {});
+    alert('Token created: ' + d.token + '\n\nCopied to clipboard!\n\nShare this with your beta tester. They enter it during signup.');
     loadTokens();
-  } else {
-    showToast(d.error || 'Could not create token', 'error');
   }
 }
 
@@ -636,6 +499,7 @@ async function deactivateToken(token, btn) {
   loadTokens();
 }
 
+// ── Feedback ──────────────────────────────────────────────────────────────────
 async function loadFeedback() {
   const el = document.getElementById('feedback-list');
   el.innerHTML = '<div class="empty-state">Loading…</div>';
@@ -643,30 +507,46 @@ async function loadFeedback() {
     const r = await fetch(API + '/api/admin/feedback', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     const rows = await r.json();
     if (!rows.length) { el.innerHTML = '<div class="empty-state">No feedback yet.</div>'; return; }
-    const rated = rows.filter(r => r.rating);
-    const avgRating = rated.length ? (rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : '—';
+
+    // Summary stats
+    const avgRating = (rows.filter(r => r.rating).reduce((s, r) => s + r.rating, 0) / rows.filter(r => r.rating).length).toFixed(1);
     const wouldPay = rows.filter(r => r.would_pay).length;
     el.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:#fbbf24;">${avgRating}</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#fbbf24;">${avgRating}⭐</div>
           <div style="font-family:monospace;font-size:10px;color:var(--muted);">Avg rating</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:#93c5fd;">${rows.length}</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#4ade80;">${rows.length}</div>
           <div style="font-family:monospace;font-size:10px;color:var(--muted);">Responses</div>
         </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-          <div style="font-size:24px;font-weight:800;color:#6ee7b7;">${wouldPay}</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#60a5fa;">${wouldPay}</div>
           <div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay</div>
         </div>
-      </div>
-      ${rows.map(r => `<div class="form-card"><div style="font-size:14px;font-weight:700;">${escH(r.name || r.whatsapp || 'Anonymous')}</div><div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin:4px 0 8px;">${escH(r.whatsapp || '')} · Rating: ${r.rating || '—'}</div><div style="font-size:12px;color:var(--text);line-height:1.6;">${escH(r.feedback || r.comments || '')}</div></div>`).join('')}
-    `;
+      </div>` +
+    rows.map(f => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(f.created_at).toLocaleString()} · ${escH(f.whatsapp||'Anonymous')}</div>
+          <div style="font-size:16px;">${'⭐'.repeat(f.rating||0)}${'☆'.repeat(5-(f.rating||0))}</div>
+        </div>
+        ${f.likes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#4ade80;text-transform:uppercase;">Likes: </span><span style="font-size:12px;">${escH(f.likes)}</span></div>` : ''}
+        ${f.dislikes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#f87171;text-transform:uppercase;">Dislikes: </span><span style="font-size:12px;">${escH(f.dislikes)}</span></div>` : ''}
+        ${f.suggestions ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#60a5fa;text-transform:uppercase;">Suggestions: </span><span style="font-size:12px;">${escH(f.suggestions)}</span></div>` : ''}
+        ${f.bugs ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#fcd34d;text-transform:uppercase;">Bugs: </span><span style="font-size:12px;">${escH(f.bugs)}</span></div>` : ''}
+        ${f.would_pay !== null ? `<div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay: ${f.would_pay ? '✅ Yes' : '❌ No'} ${f.price_point ? '· Price: '+escH(f.price_point) : ''}</div>` : ''}
+      </div>`).join('');
   } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load feedback.</div>'; }
 }
 
-bootFromSavedToken();
+// Auto-login if token exists
+if (TOKEN) {
+  fetch(API + '/api/admin/stats', { headers: { 'Authorization':'Bearer '+TOKEN } })
+    .then(r => r.ok ? showAdminApp() : logout())
+    .catch(() => {});
+}
 </script>
 </body>
 </html>

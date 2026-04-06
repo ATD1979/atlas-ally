@@ -383,8 +383,6 @@ const helpers = {
     distributors: db.prepare(`SELECT COUNT(*) as c FROM users WHERE role='distributor'`).get().c,
     events:       db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='approved'`).get().c,
     events_72h:   db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='approved' AND created_at > datetime('now', '-72 hours')`).get().c,
-    pending:      db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='pending'`).get().c,
-    alerts:       db.prepare(`SELECT COUNT(*) as c FROM notify_log`).get().c,
     countries:    db.prepare(`SELECT COUNT(DISTINCT country_code) as c FROM user_countries`).get().c,
     errors_24h:   db.prepare(`SELECT COUNT(*) as c FROM error_log WHERE created_at > datetime('now', '-24 hours')`).get().c,
   }),
