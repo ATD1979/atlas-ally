@@ -13,15 +13,80 @@ const { checkAllWeather: checkWeatherAlerts } = require('./weather');
 const { CHECKLISTS } = require('./checklists');
 const { CRIME_DATA } = require('./crime-data');
 const { generateOTP, createToken, requireAuth, requireAdmin, requireDistributor, softAuth } = require('./auth');
+const slowDown = require('express-slow-down');
+
+// ── API Protection ────────────────────────────────────────────────────────────
+// Slow down repeated requests from same IP (scraper deterrent)
+const apiSlowDown = slowDown({
+  windowMs: 60 * 1000,         // 1 minute window
+  delayAfter: 30,              // allow 30 requests/min at full speed
+  delayMs: (hits) => (hits - 30) * 200, // add 200ms delay per extra request
+  maxDelayMs: 5000,            // max 5 second delay
+});
+
+// Fingerprint middleware - tracks request patterns
+function apiFingerprint(req, res, next) {
+  const ua = req.headers['user-agent'] || '';
+  const referer = req.headers['referer'] || '';
+  
+  // Block obvious scrapers and bots
+  const blockedAgents = ['python-requests', 'curl/', 'wget/', 'scrapy', 'httpclient', 'okhttp', 'axios/'];
+  const isBot = blockedAgents.some(b => ua.toLowerCase().includes(b));
+  
+  // Allow if request comes from our own app (has referer or is authenticated)
+  const hasValidReferer = referer.includes('atlas-ally.com') || referer.includes('localhost');
+  const hasAuth = !!req.headers.authorization;
+  
+  if (isBot && !hasAuth && !hasValidReferer) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  
+  // Log suspicious patterns
+  if (!hasAuth && !hasValidReferer && req.path.startsWith('/api/')) {
+    try {
+      db.logError.run({
+        type: 'suspicious_request',
+        message: `Unauthenticated API access: ${req.method} ${req.path}`,
+        stack: `UA: ${ua.slice(0,100)} | IP: ${req.ip}`,
+        user_id: null,
+        endpoint: req.path,
+      });
+    } catch {}
+  }
+  next();
+}
 
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+
+// Apply slow-down and fingerprinting to all API routes
+app.use('/api/', apiSlowDown);
+app.use('/api/', apiFingerprint);
+// ── Security Headers ──────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // Prevent MIME sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Stop referrer leaking
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Basic XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Prevent API responses being embedded in iframes
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+const reportLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: { error: 'Too many incident reports. Please wait and try again.' } });
 app.use('/api/', limiter);
 
 // ── Seed crime data on startup ─────────────────────────────────────────────────
@@ -52,10 +117,39 @@ function seedCrimeData() {
 }
 seedCrimeData();
 
+function normalizeWhatsApp(input = '') {
+  return String(input || '')
+    .trim()
+    .replace(/[^\d+]/g, '')
+    .replace(/^00/, '+')
+    .replace(/(?!^)\+/g, '');
+}
+
+function getAdminWhatsApp() {
+  return normalizeWhatsApp(process.env.ADMIN_WHATSAPP || '');
+}
+
+function syncAdminRoleByWhatsapp(rawWhatsapp) {
+  const adminWA = getAdminWhatsApp();
+  const clean = normalizeWhatsApp(rawWhatsapp);
+  if (!adminWA || !clean || adminWA !== clean) return null;
+
+  db.db.prepare(`UPDATE users
+    SET role='admin', plan='premium', verified=1, trial_end=datetime('now', '+3650 days')
+    WHERE whatsapp=?`).run(clean);
+
+  return db.getUser(clean);
+}
+
 // Pre-seed admin user with known credentials
 function seedAdminUser() {
   try {
-    const adminWA = process.env.ADMIN_WHATSAPP || '+19999999999';
+    const adminWA = getAdminWhatsApp();
+    if (!adminWA) {
+      console.warn('Admin seed warning: ADMIN_WHATSAPP is not set');
+      return;
+    }
+
     const existing = db.getUser(adminWA);
     if (!existing) {
       db.createUser({
@@ -69,8 +163,8 @@ function seedAdminUser() {
         distributor_id: null,
       });
     }
-    // Always ensure admin role and premium plan
-    db.db.prepare(`UPDATE users SET role='admin', plan='premium', verified=1, trial_end=datetime('now', '+3650 days') WHERE whatsapp=?`).run(adminWA);
+
+    syncAdminRoleByWhatsapp(adminWA);
     console.log('✅ Admin user ready:', adminWA);
   } catch(e) {
     console.warn('Admin seed warning:', e.message);
@@ -99,7 +193,7 @@ app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
   const { whatsapp, purpose = 'login' } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'WhatsApp number required' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = normalizeWhatsApp(whatsapp);
   const code = generateOTP();
 
   try {
@@ -121,7 +215,7 @@ app.post('/api/auth/verify-otp', authLimiter, (req, res) => {
   const { whatsapp, code } = req.body;
   if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = normalizeWhatsApp(whatsapp);
   const otp = db.getOTP.get(clean);
 
   if (!otp || otp.code !== code.toString()) {
@@ -131,6 +225,8 @@ app.post('/api/auth/verify-otp', authLimiter, (req, res) => {
 
   let user = db.getUser(clean);
   if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
+
+  syncAdminRoleByWhatsapp(clean);
 
   // User exists — log them in regardless of how they registered
   db.updateUserVerified(clean);
@@ -152,7 +248,7 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
     return res.status(400).json({ error: 'You must be 18 or older to use Atlas Ally' });
   }
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = normalizeWhatsApp(whatsapp);
 
   // Check if user already exists — if so just log them in
   const existing = db.getUser(clean);
@@ -170,6 +266,7 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
       state_origin: state_origin || null, country_origin: country_origin || null,
       whatsapp: clean
     });
+    syncAdminRoleByWhatsapp(clean);
     const updatedUser = db.getUser(clean);
     const token = createToken(updatedUser);
     return res.json({ ok: true, token, user: sanitizeUser(updatedUser), was_existing: true });
@@ -194,6 +291,8 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
       db.db.prepare(`UPDATE users SET trial_end = datetime('now', '+${trialDays} days') WHERE whatsapp = ?`).run(clean);
     }
 
+    syncAdminRoleByWhatsapp(clean);
+    syncAdminRoleByWhatsapp(clean);
     const user = db.getUser(clean);
     const token = createToken(user);
     res.json({ ok: true, token, user: sanitizeUser(user) });
@@ -207,9 +306,12 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
 app.get('/api/auth/me', requireAuth, (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  const countries = db.getUserCountries.all(user.id).map(c => c.country_code);
-  const contacts = db.getEmergencyContacts.all(user.id);
-  res.json({ user: sanitizeUser(user), countries, contacts, trial_days_left: db.getTrialDaysLeft(user) });
+  syncAdminRoleByWhatsapp(user.whatsapp);
+  const freshUser = db.getUserById(req.user.id);
+  const countries = db.getUserCountries.all(freshUser.id).map(c => c.country_code);
+  const contacts = db.getEmergencyContacts.all(freshUser.id);
+  const token = createToken(freshUser);
+  res.json({ user: sanitizeUser(freshUser), token, countries, contacts, trial_days_left: db.getTrialDaysLeft(freshUser) });
 });
 
 // Update profile
@@ -231,7 +333,7 @@ function sanitizeUser(u) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Countries list
-app.get('/api/countries', (req, res) => {
+app.get('/api/countries', softAuth, (req, res) => {
   const { ADVISORY_LEVELS } = require('./countries');
   const overrides = {};
   try {
@@ -254,7 +356,7 @@ app.get('/api/countries', (req, res) => {
 });
 
 // Country detail
-app.get('/api/country/:code', (req, res) => {
+app.get('/api/country/:code', softAuth, (req, res) => {
   const code = req.params.code.toUpperCase();
   const c = COUNTRIES[code];
   if (!c) return res.status(404).json({ error: 'Country not found' });
@@ -269,7 +371,7 @@ app.get('/api/country/:code', (req, res) => {
 });
 
 // Country weather
-app.get('/api/country/:code/weather', async (req, res) => {
+app.get('/api/country/:code/weather', softAuth, async (req, res) => {
   const code = req.params.code.toUpperCase();
   const c = COUNTRIES[code];
   if (!c?.center) return res.status(404).json({ error: 'No location data' });
@@ -287,7 +389,7 @@ app.get('/api/country/:code/weather', async (req, res) => {
 });
 
 // Events feed (72h)
-app.get('/api/events', (req, res) => {
+app.get('/api/events', softAuth, (req, res) => {
   const { country_code } = req.query;
   let events;
   if (country_code) {
@@ -298,8 +400,8 @@ app.get('/api/events', (req, res) => {
   res.json(events);
 });
 
-// Post incident (any user, long-press on map)
-app.post('/api/events', softAuth, (req, res) => {
+// Post incident (authenticated users only; goes to moderation queue first)
+app.post('/api/events', reportLimiter, requireAuth, (req, res) => {
   const { country_code, type, title, description, location, lat, lng, severity, source_url } = req.body;
   if (!country_code || !type || !title) return res.status(400).json({ error: 'country_code, type, title required' });
 
@@ -307,13 +409,14 @@ app.post('/api/events', softAuth, (req, res) => {
     country_code: country_code.toUpperCase(), type, title, description: description||null,
     location: location||null, lat: lat||null, lng: lng||null,
     severity: severity||'warn', source: 'user', source_url: source_url||null,
-    submitted_by: req.user?.whatsapp || 'anonymous',
+    submitted_by: req.user?.whatsapp || 'unknown',
     submitted_user_id: req.user?.id || null,
     is_test: 0,
   });
+
+  db.db.prepare(`UPDATE events SET status='pending', notified=0 WHERE id=?`).run(result.lastInsertRowid);
   const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(result.lastInsertRowid);
-  dispatchAlerts(event).catch(() => {});
-  res.json({ ok: true, event });
+  res.json({ ok: true, pending: true, message: 'Thanks. Your report was submitted for admin review.', event });
 });
 
 // Remove event (admin only)
@@ -376,7 +479,7 @@ app.delete('/api/user/countries/:code', requireAuth, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Get crime stats for a country
-app.get('/api/crime/:code', (req, res) => {
+app.get('/api/crime/:code', softAuth, (req, res) => {
   const code = req.params.code.toUpperCase();
   const global_stats = db.getCrimeStatsByCountry.all(code);
   const community = db.getCommunityCrime.all(code);
@@ -384,7 +487,7 @@ app.get('/api/crime/:code', (req, res) => {
 });
 
 // Get crime stats near a location (for geofence)
-app.get('/api/crime/near', (req, res) => {
+app.get('/api/crime/near', softAuth, (req, res) => {
   const { lat, lng, radius = 100 } = req.query;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
 
@@ -426,7 +529,7 @@ app.post('/api/crime/community', softAuth, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Route autocomplete — Nominatim
-app.get('/api/route/autocomplete', async (req, res) => {
+app.get('/api/route/autocomplete', softAuth, async (req, res) => {
   const { q, lang = 'en', lat, lng } = req.query;
   if (!q || q.length < 2) return res.json([]);
   try {
@@ -445,7 +548,7 @@ app.get('/api/route/autocomplete', async (req, res) => {
 });
 
 // Safe route
-app.post('/api/route', async (req, res) => {
+app.post('/api/route', softAuth, async (req, res) => {
   const { from_lat, from_lng, to_lat, to_lng } = req.body;
   if (!from_lat || !from_lng || !to_lat || !to_lng) return res.status(400).json({ error: 'Coordinates required' });
   try {
@@ -471,7 +574,7 @@ app.post('/api/route', async (req, res) => {
 });
 
 // News by country or location
-app.get('/api/news', (req, res) => {
+app.get('/api/news', softAuth, (req, res) => {
   const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const news = db.getNewsByCountry.all(country_code.toUpperCase());
@@ -492,6 +595,9 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.patch('/api/admin/users/:id/role', requireAdmin, (req, res) => {
   const { role } = req.body;
   if (!['admin','distributor','user'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (String(req.user.id) === String(req.params.id) && role !== 'admin') {
+    return res.status(400).json({ error: 'You cannot remove your own admin access' });
+  }
   db.updateRole(role, req.params.id);
   res.json({ ok: true });
 });
@@ -550,6 +656,28 @@ app.delete('/api/admin/events/test', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// Admin: remove dev/test alerts that were not flagged correctly
+app.delete('/api/admin/events/dev-test', requireAdmin, (req, res) => {
+  const result = db.db.prepare(`
+    UPDATE events
+    SET status='removed', is_test=1
+    WHERE status != 'removed'
+      AND (
+        is_test = 1
+        OR lower(COALESCE(title, '')) LIKE '%test%'
+        OR lower(COALESCE(description, '')) LIKE '%test%'
+        OR lower(COALESCE(location, '')) LIKE '%test%'
+        OR lower(COALESCE(title, '')) LIKE '%drill%'
+        OR lower(COALESCE(description, '')) LIKE '%drill%'
+        OR lower(COALESCE(location, '')) LIKE '%drill%'
+        OR lower(COALESCE(title, '')) LIKE '%dummy%'
+        OR lower(COALESCE(description, '')) LIKE '%dummy%'
+        OR lower(COALESCE(location, '')) LIKE '%dummy%'
+      )
+  `).run();
+  res.json({ ok: true, removed: result.changes || 0 });
+});
+
 // Admin: get all events including test
 app.get('/api/admin/events', requireAdmin, (req, res) => {
   const events = db.getAllEventsAdmin.all();
@@ -599,7 +727,7 @@ app.delete('/api/distributor/codes/:code', requireDistributor, (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Safety score
-app.post('/api/safety-score', async (req, res) => {
+app.post('/api/safety-score', softAuth, async (req, res) => {
   const { lat, lng, country_code } = req.body;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
   try {
@@ -612,7 +740,7 @@ app.post('/api/safety-score', async (req, res) => {
 });
 
 // Detect country from coordinates
-app.post('/api/detect-country', async (req, res) => {
+app.post('/api/detect-country', softAuth, async (req, res) => {
   const { lat, lng } = req.body;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
   try {
@@ -633,7 +761,7 @@ app.post('/api/detect-country', async (req, res) => {
 app.post('/api/register', softAuth, (req, res) => {
   const { whatsapp, name, countries } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
+  const clean = normalizeWhatsApp(whatsapp);
   try {
     db.upsertUser({ whatsapp: clean, name: name||null, email: null });
     const user = db.getUser(clean);
@@ -656,7 +784,7 @@ app.get('/api/user/contacts', requireAuth, (req, res) => {
 app.post('/api/user/contacts', requireAuth, (req, res) => {
   const { name, whatsapp, relation } = req.body;
   if (!name || !whatsapp) return res.status(400).json({ error: 'name and whatsapp required' });
-  db.addEmergencyContact.run({ user_id: req.user.id, name, whatsapp, relation: relation||null });
+  db.addEmergencyContact.run({ user_id: req.user.id, name, whatsapp: normalizeWhatsApp(whatsapp), relation: relation||null });
   res.json({ ok: true });
 });
 app.delete('/api/user/contacts/:id', requireAuth, (req, res) => {
@@ -668,7 +796,7 @@ app.delete('/api/user/contacts/:id', requireAuth, (req, res) => {
 app.post('/api/checkin', softAuth, async (req, res) => {
   const { whatsapp, lat, lng, country_code, message, safety_score } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser(whatsapp);
+  const user = db.getUser(normalizeWhatsApp(whatsapp));
   if (user) {
     db.logCheckin.run({ user_id: user.id, lat: lat||null, lng: lng||null, country_code: country_code||null, safety_score: safety_score||null, message: message||null, type: 'manual' });
     const contacts = db.getEmergencyContacts.all(user.id);
@@ -684,7 +812,7 @@ app.post('/api/checkin', softAuth, async (req, res) => {
 app.post('/api/zone-alert', softAuth, async (req, res) => {
   const { whatsapp, zone_name, country_code, lat, lng, alert_type } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser(whatsapp);
+  const user = db.getUser(normalizeWhatsApp(whatsapp));
   if (user) {
     db.logZoneAlert.run({ user_id: user.id, zone_name: zone_name||null, country_code: country_code||null, lat: lat||null, lng: lng||null, event_type: 'geofence', alert_type: alert_type||'entry' });
     const contacts = db.getEmergencyContacts.all(user.id);
@@ -699,8 +827,8 @@ app.post('/api/zone-alert', softAuth, async (req, res) => {
 });
 
 // Checklists
-app.get('/api/checklists', (req, res) => res.json(CHECKLISTS));
-app.get('/api/offline/:code', (req, res) => {
+app.get('/api/checklists', softAuth, (req, res) => res.json(CHECKLISTS));
+app.get('/api/offline/:code', softAuth, (req, res) => {
   const code = req.params.code.toUpperCase();
   const c = COUNTRIES[code];
   if (!c) return res.status(404).json({ error: 'Country not found' });
@@ -722,24 +850,59 @@ app.get('/unsubscribe', (req, res) => {
   res.send('<html><body style="font-family:sans-serif;max-width:400px;margin:40px auto;text-align:center"><h2>Unsubscribed</h2><p>You have been removed from Atlas Ally alerts.</p></body></html>');
 });
 
-// Admin panel auth (legacy)
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  if (password !== process.env.ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
-  res.json({ ok: true, token: 'admin-' + Buffer.from(password).toString('base64') });
-});
-app.post('/api/admin/verify', (req, res) => {
-  const { token } = req.body;
-  const expected = 'admin-' + Buffer.from(process.env.ADMIN_PASSWORD || '').toString('base64');
-  res.json({ ok: token === expected });
-});
-app.get('/api/admin/queue', (req, res) => {
+// Admin panel endpoints and compatibility aliases
+app.get('/api/admin/pending', requireAdmin, (req, res) => {
   const events = db.db.prepare(`SELECT * FROM events WHERE status='pending' ORDER BY created_at DESC`).all();
   res.json(events);
 });
-app.get('/api/admin/subscribers', (req, res) => {
+
+app.post('/api/admin/approve/:id', requireAdmin, (req, res) => {
+  db.db.prepare(`UPDATE events SET status='approved', approved_at=datetime('now') WHERE id=?`).run(req.params.id);
+  const event = db.db.prepare(`SELECT * FROM events WHERE id=?`).get(req.params.id);
+  if (event && !event.is_test) dispatchAlerts(event).catch(() => {});
+  res.json({ success: true, event });
+});
+
+app.post('/api/admin/reject/:id', requireAdmin, (req, res) => {
+  db.db.prepare(`UPDATE events SET status='removed' WHERE id=?`).run(req.params.id);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/queue', requireAdmin, (req, res) => {
+  const events = db.db.prepare(`SELECT * FROM events WHERE status='pending' ORDER BY created_at DESC`).all();
+  res.json(events);
+});
+
+app.get('/api/admin/subscribers', requireAdmin, (req, res) => {
   const users = db.getAllUsers.all().map(u => ({ ...sanitizeUser(u), countries: db.getUserCountries.all(u.id).map(c => c.country_code) }));
   res.json(users);
+});
+
+app.post('/api/admin/event', requireAdmin, (req, res) => {
+  req.url = '/api/admin/events';
+  return app._router.handle(req, res);
+});
+
+app.post('/api/admin/siren', requireAdmin, (req, res) => {
+  const { location, duration_s, notes } = req.body;
+  const result = db.addEvent.run({
+    country_code: 'JO',
+    type: 'siren',
+    title: `Air siren${location ? ' — ' + location : ''}`,
+    description: notes || null,
+    location: location || null,
+    lat: null,
+    lng: null,
+    severity: 'danger',
+    source: 'admin',
+    source_url: null,
+    submitted_by: 'admin',
+    submitted_user_id: req.user.id,
+    is_test: 0,
+  });
+  const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(result.lastInsertRowid);
+  dispatchAlerts(event).catch(() => {});
+  res.json({ success: true, event, duration_s: duration_s || null });
 });
 
 // Stripe checkout
@@ -749,7 +912,7 @@ app.post('/api/checkout', softAuth, async (req, res) => {
   if (!stripe) {
     // No Stripe configured — start trial instead
     if (whatsapp) {
-      const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
+      const clean = normalizeWhatsApp(whatsapp);
       db.upsertUser({ whatsapp: clean, name: null, email: null });
       if (countries?.length) {
         const user = db.getUser(clean);
@@ -899,7 +1062,7 @@ app.post('/api/invite/:token/use', softAuth, (req, res) => {
 });
 
 // Crime stats with types
-app.get('/api/crime/:code/detailed', (req, res) => {
+app.get('/api/crime/:code/detailed', softAuth, (req, res) => {
   const code = req.params.code.toUpperCase();
   const all_stats = db.db.prepare(`SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`).all(code);
   // Group by city

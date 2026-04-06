@@ -198,6 +198,7 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div class="section-label">Manage events — remove test alerts</div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
         <button class="btn-danger" onclick="removeAllTestEvents()" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🗑️ Remove All Test Events</button>
+        <button class="btn-danger" onclick="removeDevTestEvents()" style="background:rgba(220,38,38,0.10);border:1px solid rgba(220,38,38,0.28);color:#fca5a5;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🧹 Remove Dev/Test Alerts</button>
         <button class="btn" onclick="loadAllEvents()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🔄 Refresh</button>
       </div>
       <div id="all-events-list"><div class="empty-state">Click Refresh to load events</div></div>
@@ -563,6 +564,20 @@ async function markTest(id, btn) {
   btn.textContent = '…'; btn.disabled = true;
   const r = await fetch(API + '/api/events/' + id + '/test', { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + TOKEN } });
   if (r.ok) { btn.textContent = 'Marked'; btn.style.opacity = '.5'; }
+}
+
+
+async function removeDevTestEvents() {
+  if (!confirm('Remove old development/test alerts that contain words like Test, Drill, or Dummy?')) return;
+  const r = await fetch(API + '/api/admin/events/dev-test', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  const d = await r.json().catch(() => ({}));
+  if (r.ok) {
+    showToast((d.removed || 0) + ' dev/test alerts removed', 'success');
+    loadAllEvents();
+    loadQueue();
+  } else {
+    showToast(d.error || 'Failed to remove dev/test alerts', 'error');
+  }
 }
 
 async function removeAllTestEvents() {

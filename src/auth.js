@@ -31,7 +31,21 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Login required' });
   const payload = verifyToken(token);
   if (!payload) return res.status(401).json({ error: 'Session expired' });
-  req.user = payload;
+
+  const dbUser = payload?.id ? db.getUserById(payload.id) : null;
+  if (!dbUser || dbUser.active === 0) return res.status(401).json({ error: 'Account not available' });
+
+  req.user = {
+    ...payload,
+    id: dbUser.id,
+    whatsapp: dbUser.whatsapp,
+    role: dbUser.role,
+    plan: dbUser.plan,
+    verified: dbUser.verified,
+    name: dbUser.name,
+    email: dbUser.email,
+    active: dbUser.active,
+  };
   next();
 }
 
