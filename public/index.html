@@ -113,7 +113,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .fab-btn:active{transform:scale(.95);}
 
 /* Bottom nav */
-#bnav{background:rgba(13,17,23,0.97);border-top:1px solid var(--db);display:flex;flex-shrink:0;z-index:50;}
+#bnav{display:none;}
 .nbtn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 11px;background:none;border:none;cursor:pointer;color:var(--dm);gap:2px;position:relative;transition:color .15s;}
 .nbtn.active{color:var(--brand2);}
 .nbtn.active::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:var(--brand2);border-radius:0 0 2px 2px;}
@@ -722,6 +722,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
     <div id="auth-step-phone">
       <div class="auth-section-label">Your WhatsApp number</div>
       <input class="auth-input" id="auth-phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel">
+      <div id="auth-returning" style="display:none;font-family:var(--mono);font-size:10px;color:var(--brand2);margin:-4px 0 8px;cursor:pointer;" onclick="useReturningNumber()">↩ Use last number</div>
       <button class="auth-btn" id="auth-otp-btn" onclick="sendOTP()">Send verification code →</button>
       <div class="auth-divider">or</div>
       <button class="auth-btn secondary" onclick="authSkip()">Continue as guest</button>
@@ -1310,10 +1311,28 @@ function togglePick(code) {
   renderPicker(document.getElementById('cpsearch').value);
 }
 
-function confirmCountries() {
+async function confirmCountries() {
   const codes = [...new Set([...myCountries,...selectedInPicker])];
   if(!codes.length){toast('Select at least one country','err');return;}
+
+  // Save new countries to server if logged in
+  if (authToken) {
+    const newCodes = codes.filter(c => !myCountries.includes(c));
+    for (const code of newCodes) {
+      try {
+        const r = await fetch(API+'/api/user/countries', {
+          method: 'POST', headers: getAuthHeaders(),
+          body: JSON.stringify({ country_code: code })
+        });
+        const d = await r.json();
+        if (d.upgrade_required) { toast('Upgrade to add more than 3 countries', 'warn'); break; }
+      } catch {}
+    }
+  }
+
   myCountries = codes;
+  // Persist locally too
+  localStorage.setItem('atlas_countries', JSON.stringify(codes));
   setActiveCountry(myCountries[0]);
   hidePicker();
   renderCountriesPanel();
@@ -1439,7 +1458,7 @@ async function openCountryDetail(code) {
           <div style="display:flex;gap:12px;align-items:center;margin-bottom:${w.alerts?.length?'12':'0'}px;">
             <div style="font-size:36px;">${desc.split(' ')[0]}</div>
             <div>
-              <div style="font-size:20px;font-weight:700;color:var(--ltt);">${w.current.temp}°C</div>
+              <div style="font-size:20px;font-weight:700;color:var(--ltt);">${w.current.temp != null ? Math.round(w.current.temp) : "--"}°C</div>
               <div style="font-size:13px;color:var(--lm);">${desc.replace(/^[^ ]+ /,'')} · Wind ${w.current.wind} km/h</div>
             </div>
           </div>
@@ -1694,7 +1713,7 @@ async function downloadOffline(code,btn){
   try{
     const r=await fetch(`${API}/api/offline/${code}`);
     const d=await r.json();
-    offlineCache[code]=d;
+    offlineCache[code]={...d, cachedAt: new Date().toISOString()};
     localStorage.setItem('atlas_offline',JSON.stringify(offlineCache));
     btn.textContent='✅ Saved';
     btn.classList.add('done');
@@ -2171,17 +2190,32 @@ function obSkip() {
 let otpWhatsapp = null;
 let otpStep = 'phone'; // phone | otp | signup
 
+
+
 function showAuthScreen() {
-  // Always show login screen if no valid token
   if (!authToken) {
     document.getElementById('auth-overlay').classList.add('active');
+    // Pre-fill last used number for returning users
+    const lastPhone = localStorage.getItem('atlas_last_phone');
+    if (lastPhone) {
+      const returning = document.getElementById('auth-returning');
+      const phoneEl = document.getElementById('auth-phone');
+      if (returning) {
+        returning.style.display = 'block';
+        returning.textContent = '↩ Use ' + lastPhone + ' again';
+      }
+    }
   }
 }
-
+function useReturningNumber() {
+  const lastPhone = localStorage.getItem('atlas_last_phone');
+  if (lastPhone) document.getElementById('auth-phone').value = lastPhone;
+}
 async function sendOTP() {
   const phone = document.getElementById('auth-phone').value.trim();
   if (!phone || phone.length < 7) { toast('Enter a valid WhatsApp number', 'err'); return; }
   otpWhatsapp = phone;
+  localStorage.setItem('atlas_last_phone', phone);
   const btn = document.getElementById('auth-otp-btn');
   btn.textContent = 'Sending…'; btn.disabled = true;
   try {
@@ -2728,7 +2762,10 @@ function setRating(n) {
   fbRating = n;
   [1,2,3,4,5].forEach(i => {
     const el = document.getElementById('star-' + i);
-    if (el) el.style.opacity = i <= n ? '1' : '0.3';
+    if (el) {
+      el.style.filter = i <= n ? 'grayscale(0)' : 'grayscale(1)';
+      el.style.transform = i <= n ? 'scale(1.1)' : 'scale(1)';
+    }
   });
 }
 function setWouldPay(val) {
@@ -2766,6 +2803,7 @@ async function submitFeedback() {
       })
     });
     if (r.ok) {
+      localStorage.setItem('atlas_last_feedback', Date.now().toString());
       closeFeedback();
       toast('✅ Thank you for your feedback!', 'ok');
     }
@@ -2794,21 +2832,40 @@ if(params.get('action')==='checkin'){ window.addEventListener('load',()=>setTime
 if(params.get('action')==='report'){  window.addEventListener('load',()=>setTimeout(openReport,800)); }
 
 loadCountries().then(()=>{
-  myCountries=['JO'];
-  setActiveCountry('JO');
+  // Restore countries from localStorage (no flash on reload)
+  const savedCountries = JSON.parse(localStorage.getItem('atlas_countries') || '["JO"]');
+  myCountries = savedCountries.length ? savedCountries : ['JO'];
+  setActiveCountry(myCountries[0]);
   renderCountriesPanel();
-  updatePeekStrip('JO', null, null, null);
+  updatePeekStrip(myCountries[0], null, null, null);
 
-  // Always show auth screen unless user has a valid token
   if (authToken) {
-    loadUserCountries();
+    loadUserCountries(); // Sync from server
   } else {
-    // No token = not logged in = always show auth screen
     setTimeout(showAuthScreen, 600);
   }
 });
 
 setInterval(loadFeed,60000);
+
+// Track app uses and prompt feedback after 5
+function trackAppUse() {
+  if (!authToken) return; // Only track logged-in users
+  const uses = parseInt(localStorage.getItem('atlas_uses') || '0') + 1;
+  localStorage.setItem('atlas_uses', uses);
+  if (uses === 5 || uses === 10 || uses % 20 === 0) {
+    const lastFeedback = localStorage.getItem('atlas_last_feedback');
+    const daysSince = lastFeedback
+      ? (Date.now() - parseInt(lastFeedback)) / (1000 * 60 * 60 * 24)
+      : 999;
+    if (daysSince > 7) {
+      setTimeout(() => {
+        toast('📋 Quick feedback? Tap the menu → Share Feedback. Takes 2 min!', 'ok');
+      }, 3000);
+    }
+  }
+}
+setTimeout(trackAppUse, 2000);
 </script>
 
 <!-- Feedback questionnaire modal -->
@@ -2821,8 +2878,12 @@ setInterval(loadFeed,60000);
     <div style="font-size:13px;color:var(--dm);margin-bottom:16px;">Help us improve Atlas Ally. This takes about 2 minutes.</div>
 
     <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:8px;">Overall Rating</div>
-    <div id="rating-stars" style="display:flex;gap:8px;margin-bottom:16px;">
-      ${[1,2,3,4,5].map(i => `<button onclick="setRating(${i})" id="star-${i}" style="font-size:28px;background:none;border:none;cursor:pointer;opacity:.4;transition:all .15s;">⭐</button>`).join('')}
+    <div id="rating-stars" style="display:flex;gap:6px;margin-bottom:16px;">
+      <button onclick="setRating(1)" id="star-1" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(2)" id="star-2" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(3)" id="star-3" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(4)" id="star-4" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(5)" id="star-5" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
     </div>
 
     <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">What do you like?</div>

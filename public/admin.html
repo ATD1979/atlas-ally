@@ -102,11 +102,14 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
+    <div class="tabs" style="display:flex;flex-wrap:wrap;gap:4px;">
       <button class="tab-btn active" onclick="switchPanel('queue',this)">📋 Queue</button>
       <button class="tab-btn" onclick="switchPanel('post',this)">📢 Post Event</button>
-      <button class="tab-btn" onclick="switchPanel('siren',this)">🚨 Log Siren</button>
-      <button class="tab-btn" onclick="switchPanel('subs',this)">👥 Subscribers</button>
+      <button class="tab-btn" onclick="switchPanel('siren',this)">🚨 Siren</button>
+      <button class="tab-btn" onclick="switchPanel('subs',this)">👥 Users</button>
+      <button class="tab-btn" onclick="switchPanel('events',this)">🗑️ Events</button>
+      <button class="tab-btn" onclick="switchPanel('tokens',this)">🎟️ Invites</button>
+      <button class="tab-btn" onclick="switchPanel('feedback',this)">📋 Feedback</button>
     </div>
 
     <!-- Moderation Queue -->
@@ -183,6 +186,38 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
         <div class="field-group"><div class="field-label">Notes (optional)</div><input class="field-input" id="s-notes" placeholder="Any additional context"></div>
         <button class="btn-danger-full" onclick="logSiren()" id="siren-btn">🚨 Log Siren & Alert All Subscribers</button>
       </div>
+    </div>
+
+    <!-- Events management -->
+    <div id="panel-events" class="panel">
+      <div class="section-label">Manage events — remove test alerts</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn-danger" onclick="removeAllTestEvents()" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🗑️ Remove All Test Events</button>
+        <button class="btn" onclick="loadAllEvents()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🔄 Refresh</button>
+      </div>
+      <div id="all-events-list"><div class="empty-state">Click Refresh to load events</div></div>
+    </div>
+
+    <!-- Invite Tokens -->
+    <div id="panel-tokens" class="panel">
+      <div class="section-label">Invite tokens — share with beta testers</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
+        <select id="token-uses" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;">
+          <option value="1">1 use</option>
+          <option value="5">5 uses</option>
+          <option value="10">10 uses</option>
+          <option value="25">25 uses</option>
+          <option value="50">50 uses</option>
+        </select>
+        <button onclick="generateToken()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">+ Generate Token</button>
+      </div>
+      <div id="token-list"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- Feedback -->
+    <div id="panel-feedback" class="panel">
+      <div class="section-label">User feedback submissions</div>
+      <div id="feedback-list"><div class="empty-state">Loading…</div></div>
     </div>
 
     <!-- Subscribers -->
@@ -367,9 +402,144 @@ function switchPanel(name, el) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
   el.classList.add('active');
+  if (name === 'events') loadAllEvents();
+  if (name === 'tokens') loadTokens();
+  if (name === 'feedback') loadFeedback();
 }
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Events management ─────────────────────────────────────────────────────────
+async function loadAllEvents() {
+  const el = document.getElementById('all-events-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/admin/events', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const events = await r.json();
+    if (!events.length) { el.innerHTML = '<div class="empty-state">No events found.</div>'; return; }
+    el.innerHTML = events.map(e => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--text);font-weight:600;">${escH(e.title)}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">${e.country_code} · ${e.type} · ${e.severity} · ${e.is_test ? '⚠️ TEST' : 'LIVE'} · ${e.status}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(e.created_at).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${e.status !== 'removed' ? `<button onclick="removeEvent(${e.id}, this)" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Remove</button>` : '<span style="color:var(--muted);font-size:11px;">Removed</span>'}
+          ${!e.is_test ? `<button onclick="markTest(${e.id}, this)" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fcd34d;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Mark Test</button>` : ''}
+        </div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load events.</div>'; }
+}
+
+async function removeEvent(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  const r = await fetch(API + '/api/events/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { btn.textContent = 'Removed'; btn.style.opacity = '.5'; }
+}
+
+async function markTest(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  const r = await fetch(API + '/api/events/' + id + '/test', { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { btn.textContent = 'Marked'; btn.style.opacity = '.5'; }
+}
+
+async function removeAllTestEvents() {
+  if (!confirm('Remove ALL test events? This cannot be undone.')) return;
+  const r = await fetch(API + '/api/admin/events/test', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { alert('All test events removed.'); loadAllEvents(); }
+}
+
+// ── Invite tokens ──────────────────────────────────────────────────────────────
+async function loadTokens() {
+  const el = document.getElementById('token-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/admin/invite-tokens', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const tokens = await r.json();
+    if (!tokens.length) { el.innerHTML = '<div class="empty-state">No tokens yet. Generate one above.</div>'; return; }
+    el.innerHTML = tokens.map(t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-family:monospace;font-size:16px;font-weight:700;color:#93c5fd;letter-spacing:.15em;">${t.token}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">
+            Uses: ${t.uses}/${t.max_uses} · ${t.active ? '✅ Active' : '❌ Inactive'} · Created ${new Date(t.created_at).toLocaleDateString()}
+            ${t.used_by ? ' · Used by: ' + escH(t.used_by) : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="copyToken('${t.token}')" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Copy</button>
+          ${t.active ? `<button onclick="deactivateToken('${t.token}', this)" style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Disable</button>` : ''}
+        </div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load tokens.</div>'; }
+}
+
+async function generateToken() {
+  const maxUses = parseInt(document.getElementById('token-uses').value);
+  const r = await fetch(API + '/api/admin/invite-tokens', {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ max_uses: maxUses })
+  });
+  const d = await r.json();
+  if (d.token) {
+    await navigator.clipboard.writeText(d.token).catch(() => {});
+    alert('Token created: ' + d.token + '\n\nCopied to clipboard!\n\nShare this with your beta tester. They enter it during signup.');
+    loadTokens();
+  }
+}
+
+function copyToken(token) {
+  navigator.clipboard.writeText(token).then(() => alert('Copied: ' + token)).catch(() => prompt('Copy this token:', token));
+}
+
+async function deactivateToken(token, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  await fetch(API + '/api/admin/invite-tokens/' + token, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  loadTokens();
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+async function loadFeedback() {
+  const el = document.getElementById('feedback-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/admin/feedback', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">No feedback yet.</div>'; return; }
+
+    // Summary stats
+    const avgRating = (rows.filter(r => r.rating).reduce((s, r) => s + r.rating, 0) / rows.filter(r => r.rating).length).toFixed(1);
+    const wouldPay = rows.filter(r => r.would_pay).length;
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#fbbf24;">${avgRating}⭐</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Avg rating</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#4ade80;">${rows.length}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Responses</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#60a5fa;">${wouldPay}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay</div>
+        </div>
+      </div>` +
+    rows.map(f => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(f.created_at).toLocaleString()} · ${escH(f.whatsapp||'Anonymous')}</div>
+          <div style="font-size:16px;">${'⭐'.repeat(f.rating||0)}${'☆'.repeat(5-(f.rating||0))}</div>
+        </div>
+        ${f.likes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#4ade80;text-transform:uppercase;">Likes: </span><span style="font-size:12px;">${escH(f.likes)}</span></div>` : ''}
+        ${f.dislikes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#f87171;text-transform:uppercase;">Dislikes: </span><span style="font-size:12px;">${escH(f.dislikes)}</span></div>` : ''}
+        ${f.suggestions ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#60a5fa;text-transform:uppercase;">Suggestions: </span><span style="font-size:12px;">${escH(f.suggestions)}</span></div>` : ''}
+        ${f.bugs ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#fcd34d;text-transform:uppercase;">Bugs: </span><span style="font-size:12px;">${escH(f.bugs)}</span></div>` : ''}
+        ${f.would_pay !== null ? `<div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay: ${f.would_pay ? '✅ Yes' : '❌ No'} ${f.price_point ? '· Price: '+escH(f.price_point) : ''}</div>` : ''}
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load feedback.</div>'; }
+}
 
 // Auto-login if token exists
 if (TOKEN) {

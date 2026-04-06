@@ -52,6 +52,32 @@ function seedCrimeData() {
 }
 seedCrimeData();
 
+// Pre-seed admin user with known credentials
+function seedAdminUser() {
+  try {
+    const adminWA = process.env.ADMIN_WHATSAPP || '+19999999999';
+    const existing = db.getUser(adminWA);
+    if (!existing) {
+      db.createUser({
+        whatsapp: adminWA,
+        name: 'Admin',
+        email: process.env.ADMIN_EMAIL || null,
+        dob: '1980-01-01',
+        state_origin: 'Texas',
+        country_origin: 'United States',
+        trial_code: null,
+        distributor_id: null,
+      });
+    }
+    // Always ensure admin role and premium plan
+    db.db.prepare(`UPDATE users SET role='admin', plan='premium', verified=1, trial_end=datetime('now', '+3650 days') WHERE whatsapp=?`).run(adminWA);
+    console.log('✅ Admin user ready:', adminWA);
+  } catch(e) {
+    console.warn('Admin seed warning:', e.message);
+  }
+}
+seedAdminUser();
+
 // ── Error logging helper ───────────────────────────────────────────────────────
 function logErr(type, err, req) {
   try {
