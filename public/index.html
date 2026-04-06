@@ -303,6 +303,39 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
+/* ── Auth overlay ─────────────────────────────────────────── */
+#auth-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .3s;}
+#auth-overlay.active{opacity:1;pointer-events:all;}
+.auth-card{background:var(--dk2);border:1px solid var(--db2);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.auth-logo{text-align:center;font-size:42px;margin-bottom:8px;}
+.auth-title{font-family:var(--display);font-size:22px;font-weight:800;color:var(--dt);text-align:center;margin-bottom:4px;}
+.auth-sub{font-size:13px;color:var(--dm);text-align:center;line-height:1.5;margin-bottom:20px;}
+.auth-input{width:100%;background:var(--dk3);border:1px solid var(--db2);border-radius:9px;padding:12px 14px;color:var(--dt);font-size:15px;font-family:var(--body);outline:none;margin-bottom:10px;box-sizing:border-box;}
+.auth-input:focus{border-color:var(--brand);}
+.auth-input::placeholder{color:var(--dm);}
+.auth-btn{width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:opacity .2s;}
+.auth-btn:disabled{opacity:.5;}
+.auth-btn.secondary{background:var(--dk3);color:var(--dt);border:1px solid var(--db2);}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--dm);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--db);}
+.auth-trial-badge{background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);border-radius:8px;padding:8px 12px;font-size:12px;color:#4ade80;text-align:center;margin-bottom:14px;}
+.auth-section-label{font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;margin-top:4px;}
+
+/* ── Quick incident picker (long-press) ──────────────────── */
+#quick-incident{display:none;position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:500;background:var(--dk2);border:1px solid var(--db2);border-radius:16px;padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);width:calc(100% - 32px);max-width:380px;flex-direction:column;gap:10px;}
+.qi-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--dt);}
+.qi-coords{font-family:var(--mono);font-size:10px;color:var(--dm);}
+.qi-types{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.qi-type{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--dk3);border:1px solid var(--db);border-radius:10px;padding:10px 6px;cursor:pointer;transition:all .15s;}
+.qi-type:active{background:var(--dk2);transform:scale(.95);}
+.qi-type-icon{font-size:20px;}
+.qi-type-label{font-family:var(--mono);font-size:9px;color:var(--dm);text-transform:uppercase;text-align:center;}
+.qi-close{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--dm);cursor:pointer;font-size:18px;}
+
+/* ── Map filter buttons ───────────────────────────────────── */
+#filter-72h{position:absolute;top:96px;right:10px;z-index:20;background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.5);border-radius:7px;padding:5px 8px;font-family:var(--mono);font-size:9px;color:var(--brand2);cursor:pointer;transition:all .2s;white-space:nowrap;}
+#crime-toggle{position:absolute;top:130px;right:10px;z-index:20;width:34px;height:34px;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;}
+
 /* ── Expandable left navigation ───────────────────────────── */
 #nav-panel{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:300;background:var(--dk2);border-right:1px solid var(--db2);transform:translateX(-280px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:4px 0 32px rgba(0,0,0,.5);}
 #nav-panel.open{transform:translateX(0);}
@@ -490,6 +523,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
     <div class="map-locate" onclick="locateUser()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
     </div>
+    <div id="filter-72h" onclick="toggle72h()">72h ⏱</div>
+    <div id="crime-toggle" onclick="toggleCrimeLayer()" title="Crime statistics layer">🔴</div>
     <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Toggle crime/risk heatmap" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(13,17,23,0.92);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">🔥</div>
     <div class="score-overlay" id="score-overlay">
       <div class="so-label">Safety Score</div>
@@ -651,6 +686,87 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 <!-- Nav backdrop -->
 <div id="nav-backdrop" onclick="closeNav()" style="position:fixed;inset:0;z-index:299;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .3s;"></div>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">🌍</div>
+    <div class="auth-title">Atlas Ally</div>
+    <div class="auth-sub">Global travel safety intelligence. Sign in with your WhatsApp number.</div>
+    <div class="auth-trial-badge">🆓 7-day free trial · No credit card needed</div>
+
+    <!-- Step 1: Phone -->
+    <div id="auth-step-phone">
+      <div class="auth-section-label">Your WhatsApp number</div>
+      <input class="auth-input" id="auth-phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel">
+      <button class="auth-btn" id="auth-otp-btn" onclick="sendOTP()">Send verification code →</button>
+      <div class="auth-divider">or</div>
+      <button class="auth-btn secondary" onclick="authSkip()">Continue as guest</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="auth-step-otp" style="display:none;">
+      <div class="auth-section-label">Enter the 6-digit code sent to</div>
+      <div id="auth-otp-display" style="font-family:var(--mono);font-size:13px;color:var(--brand2);margin-bottom:12px;"></div>
+      <input class="auth-input" id="auth-code" type="number" placeholder="000000" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.3em;">
+      <button class="auth-btn" id="auth-verify-btn" onclick="verifyOTP()">Verify →</button>
+      <button class="auth-btn secondary" onclick="document.getElementById('auth-step-otp').style.display='none';document.getElementById('auth-step-phone').style.display='block';">← Back</button>
+    </div>
+
+    <!-- Step 3: Signup -->
+    <div id="auth-step-signup" style="display:none;max-height:60vh;overflow-y:auto;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dm);margin-bottom:12px;">Creating account for <span id="signup-phone-display" style="color:var(--brand2);"></span></div>
+
+      <div class="auth-section-label">Your name *</div>
+      <input class="auth-input" id="signup-name" type="text" placeholder="Full name">
+
+      <div class="auth-section-label">Date of birth * (must be 18+)</div>
+      <input class="auth-input" id="signup-dob" type="date" max="">
+
+      <div class="auth-section-label">Email address</div>
+      <input class="auth-input" id="signup-email" type="email" placeholder="Optional">
+
+      <div class="auth-section-label">State / Province</div>
+      <input class="auth-input" id="signup-state" type="text" placeholder="e.g. Texas">
+
+      <div class="auth-section-label">Country of origin</div>
+      <input class="auth-input" id="signup-country" type="text" placeholder="e.g. United States">
+
+      <div class="auth-section-label">Emergency contact name</div>
+      <input class="auth-input" id="signup-ec1-name" type="text" placeholder="e.g. Jane Smith">
+
+      <div class="auth-section-label">Emergency contact WhatsApp</div>
+      <input class="auth-input" id="signup-ec1-phone" type="tel" placeholder="+1 555 000 0000">
+
+      <div class="auth-section-label">Invite code (optional)</div>
+      <input class="auth-input" id="signup-trial-code" type="text" placeholder="Enter invite code if you have one">
+
+      <button class="auth-btn" id="signup-btn" onclick="submitSignup()">Create Account 🚀</button>
+      <button class="auth-btn secondary" onclick="authSkip()">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick incident picker (long press) -->
+<div id="quick-incident">
+  <button class="qi-close" onclick="closeQuickIncident()">✕</button>
+  <div class="qi-title">Report incident</div>
+  <div class="qi-coords" id="qi-coords"></div>
+  <div class="qi-types">
+    <div class="qi-type" onclick="selectQuickIncident('siren')"><div class="qi-type-icon">🔴</div><div class="qi-type-label">Siren</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('gunfire')"><div class="qi-type-icon">🔫</div><div class="qi-type-label">Gunfire</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('missile')"><div class="qi-type-icon">🚀</div><div class="qi-type-label">Missile</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('drone')"><div class="qi-type-icon">🛸</div><div class="qi-type-label">Drone</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('strike')"><div class="qi-type-icon">💥</div><div class="qi-type-label">Strike</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('troop')"><div class="qi-type-icon">🪖</div><div class="qi-type-label">Troops</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('checkpoint')"><div class="qi-type-icon">🚧</div><div class="qi-type-label">Checkpoint</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('chemical')"><div class="qi-type-icon">☣️</div><div class="qi-type-label">Chemical</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('health')"><div class="qi-type-icon">🏥</div><div class="qi-type-label">Health</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('weather')"><div class="qi-type-icon">🌪️</div><div class="qi-type-label">Weather</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('news')"><div class="qi-type-icon">📰</div><div class="qi-type-label">News</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('clear')"><div class="qi-type-icon">✅</div><div class="qi-type-label">All Clear</div></div>
+  </div>
+</div>
 
 <!-- Onboarding card -->
 <div id="onboarding">
@@ -917,6 +1033,26 @@ let selectedInPicker = new Set();
 let currentLat = null, currentLng = null;
 let safetyScore = null;
 let userWA = localStorage.getItem('atlas_wa') || null;
+let authToken = localStorage.getItem('atlas_token') || null;
+let currentUser = null;
+try { currentUser = JSON.parse(localStorage.getItem('atlas_user') || 'null'); } catch {}
+
+function getAuthHeaders() {
+  return authToken ? { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken } : { 'Content-Type': 'application/json' };
+}
+function saveAuth(token, user) {
+  authToken = token; currentUser = user;
+  localStorage.setItem('atlas_token', token);
+  localStorage.setItem('atlas_user', JSON.stringify(user));
+  if (user.whatsapp) { userWA = user.whatsapp; localStorage.setItem('atlas_wa', user.whatsapp); }
+}
+function clearAuth() {
+  authToken = null; currentUser = null; userWA = null;
+  localStorage.removeItem('atlas_token');
+  localStorage.removeItem('atlas_user');
+  localStorage.removeItem('atlas_wa');
+  localStorage.removeItem('atlas_onboarded');
+}
 let geofenceInterval = null;
 let lastCountryCode = null;
 let checklistProgress = JSON.parse(localStorage.getItem('atlas_cl_progress') || '{}');
@@ -2000,7 +2136,431 @@ function obSkip() {
   document.getElementById('onboarding').classList.remove('active');
 }
 
+
+// ── Login / Signup System ──────────────────────────────────────────────────────
+let otpWhatsapp = null;
+let otpStep = 'phone'; // phone | otp | signup
+
+function showAuthScreen() {
+  // Show login overlay if not authenticated
+  if (!authToken && !localStorage.getItem('atlas_onboarded')) {
+    document.getElementById('auth-overlay').classList.add('active');
+  }
+}
+
+async function sendOTP() {
+  const phone = document.getElementById('auth-phone').value.trim();
+  if (!phone || phone.length < 7) { toast('Enter a valid WhatsApp number', 'err'); return; }
+  otpWhatsapp = phone;
+  const btn = document.getElementById('auth-otp-btn');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  try {
+    const r = await fetch(API+'/api/auth/send-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ whatsapp: phone, purpose: 'login' })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed to send OTP', 'err'); btn.textContent = 'Send Code'; btn.disabled = false; return; }
+    otpStep = 'otp';
+    document.getElementById('auth-step-phone').style.display = 'none';
+    document.getElementById('auth-step-otp').style.display = 'block';
+    document.getElementById('auth-otp-display').textContent = phone;
+    toast('✅ Code sent to your WhatsApp!', 'ok');
+  } catch(e) { toast('Network error — try again', 'err'); btn.textContent = 'Send Code'; btn.disabled = false; }
+}
+
+async function verifyOTP() {
+  const code = document.getElementById('auth-code').value.trim();
+  if (!code || code.length !== 6) { toast('Enter the 6-digit code', 'err'); return; }
+  const btn = document.getElementById('auth-verify-btn');
+  btn.textContent = 'Verifying…'; btn.disabled = true;
+  try {
+    const r = await fetch(API+'/api/auth/verify-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ whatsapp: otpWhatsapp, code })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Invalid code', 'err'); btn.textContent = 'Verify'; btn.disabled = false; return; }
+    if (d.needs_signup) {
+      // New user — show signup form
+      otpStep = 'signup';
+      document.getElementById('auth-step-otp').style.display = 'none';
+      document.getElementById('auth-step-signup').style.display = 'block';
+      document.getElementById('signup-phone-display').textContent = otpWhatsapp;
+    } else {
+      // Existing user — log in
+      saveAuth(d.token, d.user);
+      closeAuthScreen();
+      toast('✅ Welcome back, ' + (d.user.name || 'Traveler') + '!', 'ok');
+      loadUserCountries();
+    }
+    btn.textContent = 'Verify'; btn.disabled = false;
+  } catch(e) { toast('Network error', 'err'); btn.textContent = 'Verify'; btn.disabled = false; }
+}
+
+async function submitSignup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const dob = document.getElementById('signup-dob').value;
+  const state = document.getElementById('signup-state').value.trim();
+  const country = document.getElementById('signup-country').value.trim();
+  const ec1name = document.getElementById('signup-ec1-name').value.trim();
+  const ec1phone = document.getElementById('signup-ec1-phone').value.trim();
+  const trialCode = document.getElementById('signup-trial-code').value.trim();
+
+  if (!name) { toast('Name is required', 'err'); return; }
+  if (!dob) { toast('Date of birth is required', 'err'); return; }
+
+  // Client-side age check
+  const birth = new Date(dob);
+  const age = Math.floor((new Date() - birth) / (365.25 * 24 * 60 * 60 * 1000));
+  if (age < 18) { toast('You must be 18 or older to use Atlas Ally', 'err'); return; }
+
+  const btn = document.getElementById('signup-btn');
+  btn.textContent = 'Creating account…'; btn.disabled = true;
+
+  try {
+    const r = await fetch(API+'/api/auth/signup', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ whatsapp: otpWhatsapp, name, email: email||null, dob, state_origin: state||null, country_origin: country||null, trial_code: trialCode||null })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Signup failed', 'err'); btn.textContent = 'Create Account'; btn.disabled = false; return; }
+
+    saveAuth(d.token, d.user);
+
+    // Add emergency contact if provided
+    if (ec1name && ec1phone) {
+      await fetch(API+'/api/user/contacts', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ name: ec1name, whatsapp: ec1phone, relation: 'Emergency Contact' })
+      }).catch(() => {});
+    }
+
+    closeAuthScreen();
+    toast('✅ Welcome to Atlas Ally, ' + name + '! You have 7 days free.', 'ok');
+    localStorage.setItem('atlas_onboarded', '1');
+    loadUserCountries();
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  } catch(e) { toast('Network error', 'err'); btn.textContent = 'Create Account'; btn.disabled = false; }
+}
+
+function closeAuthScreen() {
+  document.getElementById('auth-overlay').classList.remove('active');
+}
+
+function authSkip() {
+  localStorage.setItem('atlas_onboarded', '1');
+  closeAuthScreen();
+}
+
+async function loadUserCountries() {
+  if (!authToken) return;
+  try {
+    const r = await fetch(API+'/api/user/countries', { headers: getAuthHeaders() });
+    const codes = await r.json();
+    if (codes.length) {
+      myCountries = codes;
+      setActiveCountry(codes[0]);
+      renderCountriesPanel();
+    }
+  } catch {}
+}
+
+// ── Long-press on map → incident report ───────────────────────────────────────
+let longPressTimer = null;
+let longPressLat = null;
+let longPressLng = null;
+
+map.on('contextmenu', (e) => {
+  openLongPressReport(e.latlng.lat, e.latlng.lng);
+});
+
+// Touch long press
+map.getContainer().addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  longPressTimer = setTimeout(() => {
+    const touch = e.touches[0];
+    const latlng = map.containerPointToLatLng([touch.clientX, touch.clientY]);
+    openLongPressReport(latlng.lat, latlng.lng);
+  }, 600);
+}, { passive: true });
+
+map.getContainer().addEventListener('touchend', () => {
+  clearTimeout(longPressTimer);
+}, { passive: true });
+
+map.getContainer().addEventListener('touchmove', () => {
+  clearTimeout(longPressTimer);
+}, { passive: true });
+
+function openLongPressReport(lat, lng) {
+  longPressLat = lat;
+  longPressLng = lng;
+  // Show quick incident picker
+  document.getElementById('quick-incident').style.display = 'flex';
+  document.getElementById('qi-coords').textContent = lat.toFixed(4) + ', ' + lng.toFixed(4);
+}
+
+function selectQuickIncident(type) {
+  const c = ICFG[type] || ICFG.siren;
+  document.getElementById('quick-incident').style.display = 'none';
+  // Pre-fill the report form
+  openReport();
+  setTimeout(() => {
+    const typeSelect = document.getElementById('r-type');
+    if (typeSelect) typeSelect.value = type;
+    const latEl = document.getElementById('r-lat');
+    const lngEl = document.getElementById('r-lng');
+    if (latEl) latEl.value = longPressLat?.toFixed(6) || '';
+    if (lngEl) lngEl.value = longPressLng?.toFixed(6) || '';
+    toast(c.icon + ' ' + type + ' selected — add details below');
+  }, 100);
+}
+
+function closeQuickIncident() {
+  document.getElementById('quick-incident').style.display = 'none';
+}
+
+// ── 72-hour incident filter ────────────────────────────────────────────────────
+let show72h = true;
+let radiusCircle = null;
+const RADIUS_KM = 100;
+
+function toggle72h() {
+  show72h = !show72h;
+  const btn = document.getElementById('filter-72h');
+  if (btn) {
+    btn.style.background = show72h ? 'rgba(37,99,235,0.2)' : 'rgba(13,17,23,0.92)';
+    btn.style.borderColor = show72h ? 'rgba(37,99,235,0.5)' : 'var(--db2)';
+  }
+  if (activeCountry) setActiveCountry(activeCountry);
+  toast(show72h ? '72h filter ON' : 'Showing all incidents');
+}
+
+// Override renderMapMarkers to respect 72h filter and show radius
+const _origRenderMarkers = renderMapMarkers;
+function renderMapMarkers(events) {
+  mapMarkers.forEach(m => map.removeLayer(m));
+  mapMarkers.length = 0;
+
+  // Remove old radius circle
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+
+  // Filter to 72h if enabled
+  let filtered = events;
+  if (show72h) {
+    const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    filtered = events.filter(e => new Date(e.created_at) >= cutoff);
+  }
+
+  // Draw 100km radius circle around current location if GPS active
+  if (currentLat && currentLng) {
+    radiusCircle = L.circle([currentLat, currentLng], {
+      radius: RADIUS_KM * 1000,
+      color: 'rgba(37,99,235,0.4)',
+      fillColor: 'rgba(37,99,235,0.04)',
+      fillOpacity: 1,
+      weight: 1.5,
+      dashArray: '6 4',
+    }).addTo(map);
+  }
+
+  filtered.forEach(e => {
+    if (!e.lat || !e.lng) return;
+    const c = ICFG[e.type] || ICFG.siren;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="38" height="48" viewBox="0 0 38 48"><ellipse cx="19" cy="44" rx="5" ry="2" fill="rgba(0,0,0,.3)"/><path d="M19 2C12 2 5 8 5 16c0 10 14 26 14 26s14-16 14-26C33 8 26 2 19 2Z" fill="${c.color}" fill-opacity=".18" stroke="${c.color}" stroke-width="1.8"/><circle cx="19" cy="16" r="10" fill="white" fill-opacity=".95"/><text x="19" y="20" text-anchor="middle" font-size="11">${c.icon}</text></svg>`;
+    const icon = L.divIcon({ html: svg, className: '', iconSize: [38, 48], iconAnchor: [19, 44], popupAnchor: [0, -44] });
+    const m = L.marker([e.lat, e.lng], { icon });
+    m.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:155px;"><div style="background:${c.color}22;border-bottom:1px solid ${c.color}44;padding:8px 11px;display:flex;align-items:center;gap:7px;"><span style="font-size:15px;">${c.icon}</span><span style="font-size:13px;font-weight:700;color:#e6edf3;">${(e.type||'').toUpperCase()}</span></div><div style="padding:8px 11px;background:#161b22;"><div style="font-size:11px;color:#8b949e;font-family:monospace;">📍 ${escH(e.location||'Unknown')}</div><div style="font-size:11px;color:#8b949e;font-family:monospace;margin-top:2px;">🕐 ${timeAgo(e.created_at)}</div>${e.description?`<div style="font-size:12px;margin-top:5px;color:#e6edf3;">${escH(e.description)}</div>`:''}</div></div>`);
+    m.addTo(map); mapMarkers.push(m);
+  });
+}
+
+// ── Route autocomplete ─────────────────────────────────────────────────────────
+let autocompleteTimer = null;
+
+function setupRouteAutocomplete() {
+  const toInput = document.getElementById('route-to');
+  const fromInput = document.getElementById('route-from');
+  if (!toInput) return;
+
+  [toInput, fromInput].forEach(input => {
+    input.addEventListener('input', () => {
+      clearTimeout(autocompleteTimer);
+      const val = input.value.trim();
+      if (val.length < 2) { hideAutocomplete(); return; }
+      autocompleteTimer = setTimeout(() => fetchAutocomplete(val, input), 350);
+    });
+    input.addEventListener('blur', () => setTimeout(hideAutocomplete, 200));
+  });
+}
+
+async function fetchAutocomplete(q, inputEl) {
+  try {
+    const lang = navigator.language?.split('-')[0] || 'en';
+    let url = `${API}/api/route/autocomplete?q=${encodeURIComponent(q)}&lang=${lang}`;
+    if (currentLat && currentLng) url += `&lat=${currentLat}&lng=${currentLng}`;
+    const r = await fetch(url);
+    const results = await r.json();
+    showAutocomplete(results, inputEl);
+  } catch {}
+}
+
+function showAutocomplete(results, inputEl) {
+  let box = document.getElementById('autocomplete-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'autocomplete-box';
+    box.style.cssText = 'position:absolute;background:var(--dk2);border:1px solid var(--db2);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:9999;max-height:220px;overflow-y:auto;width:100%;left:0;margin-top:4px;';
+    inputEl.parentElement.style.position = 'relative';
+    inputEl.parentElement.appendChild(box);
+  }
+  if (!results.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = results.map((r, i) =>
+    `<div onclick="selectAutocomplete(${i})" data-lat="${r.lat}" data-lng="${r.lng}" data-name="${escH(r.name)}"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--db);font-size:13px;color:var(--dt);transition:background .1s;"
+      onmouseover="this.style.background='var(--dk3)'" onmouseout="this.style.background=''">
+      📍 ${escH(r.name.split(',').slice(0,3).join(', '))}
+    </div>`
+  ).join('');
+  box._inputEl = inputEl;
+}
+
+function selectAutocomplete(i) {
+  const box = document.getElementById('autocomplete-box');
+  if (!box) return;
+  const item = box.children[i];
+  if (!item) return;
+  const name = item.dataset.name;
+  const lat = parseFloat(item.dataset.lat);
+  const lng = parseFloat(item.dataset.lng);
+  box._inputEl.value = name;
+  box._inputEl.dataset.lat = lat;
+  box._inputEl.dataset.lng = lng;
+  hideAutocomplete();
+  map.flyTo([lat, lng], 13, { duration: 1 });
+}
+
+function hideAutocomplete() {
+  const box = document.getElementById('autocomplete-box');
+  if (box) box.style.display = 'none';
+}
+
+// Override openRouteSheet to pre-fill GPS and setup autocomplete
+const _origOpenRoute = openRouteSheet;
+function openRouteSheet() {
+  document.getElementById('route-sheet').classList.add('open');
+  document.getElementById('bd').classList.add('on');
+  if (currentLat && currentLng) {
+    const fromEl = document.getElementById('route-from');
+    if (fromEl && !fromEl.value) {
+      fromEl.value = `My Location (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`;
+      fromEl.dataset.lat = currentLat;
+      fromEl.dataset.lng = currentLng;
+    }
+  }
+  setTimeout(setupRouteAutocomplete, 100);
+}
+
+// ── Crime layer ────────────────────────────────────────────────────────────────
+let crimeLayer = null;
+let crimeVisible = false;
+
+async function toggleCrimeLayer() {
+  crimeVisible = !crimeVisible;
+  const btn = document.getElementById('crime-toggle');
+  if (!crimeVisible) {
+    if (crimeLayer) { map.removeLayer(crimeLayer); crimeLayer = null; }
+    if (btn) { btn.style.background = 'rgba(13,17,23,0.92)'; btn.style.borderColor = 'var(--db2)'; }
+    toast('Crime layer off');
+    return;
+  }
+  if (btn) { btn.style.background = 'rgba(220,38,38,0.2)'; btn.style.borderColor = 'rgba(220,38,38,0.5)'; }
+  toast('Loading crime data…');
+  try {
+    const code = activeCountry || 'JO';
+    const r = await fetch(`${API}/api/crime/${code}`);
+    const d = await r.json();
+    if (crimeLayer) map.removeLayer(crimeLayer);
+    const points = [];
+    // Global stats
+    (d.global_stats || []).forEach(s => {
+      if (s.lat && s.lng) points.push([s.lat, s.lng, s.crime_index / 100]);
+    });
+    // Community reports
+    (d.community || []).forEach(c => {
+      if (c.lat && c.lng) points.push([c.lat, c.lng, c.severity === 'danger' ? 0.9 : 0.5]);
+    });
+    if (typeof L.heatLayer === 'function' && points.length) {
+      crimeLayer = L.heatLayer(points, {
+        radius: 30, blur: 20, maxZoom: 14, max: 1.0,
+        gradient: { 0.0: '#16a34a', 0.4: '#d97706', 0.7: '#f97316', 1.0: '#dc2626' },
+      });
+      crimeLayer.addTo(map);
+      toast('🔴 Crime layer active — ' + points.length + ' data points');
+    } else {
+      toast('No crime data for this country', 'warn');
+      crimeVisible = false;
+    }
+  } catch(e) {
+    toast('Crime data unavailable', 'err');
+    crimeVisible = false;
+  }
+}
+
+// ── News geo-filter ────────────────────────────────────────────────────────────
+async function loadFeed(){
+  const body = document.getElementById('feed-body');
+  try {
+    let url = `${API}/api/news?country_code=${activeCountry||'JO'}`;
+    if (currentLat && currentLng) url += `&lat=${currentLat}&lng=${currentLng}`;
+    const r = await fetch(url);
+    const news = await r.json();
+
+    // Also load events
+    const er = await fetch(`${API}/api/events?country_code=${activeCountry||'JO'}`);
+    const events = await er.json();
+
+    const all = [
+      ...events.map(e => ({ ...e, _type: 'event' })),
+      ...news.map(n => ({ ...n, _type: 'news' }))
+    ].sort((a, b) => new Date(b.created_at || b.published_at) - new Date(a.created_at || a.published_at));
+
+    if (!all.length) {
+      body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No recent activity.</div>';
+      return;
+    }
+
+    body.innerHTML = all.slice(0, 30).map(item => {
+      if (item._type === 'event') {
+        const c = ICFG[item.type] || ICFG.siren;
+        return `<div class="fi-item" onclick="${item.lat&&item.lng?`flyTo(${item.lat},${item.lng})`:''}">
+          <div class="fi-ico" style="border-color:${c.color};background:${c.color}18;">${c.icon}</div>
+          <div style="flex:1;"><div class="fi-country">${item.country_code}</div>
+          <div class="fi-title">${escH(item.title)}</div>
+          <div class="fi-meta"><span>📍 ${escH(item.location||'Unknown')}</span><span>🕐 ${timeAgo(item.created_at)}</span></div></div></div>`;
+      } else {
+        return `<a href="${item.url}" target="_blank" style="text-decoration:none;">
+          <div class="fi-item">
+          <div class="fi-ico" style="border-color:var(--brand);background:rgba(37,99,235,0.1);">📰</div>
+          <div style="flex:1;"><div class="fi-country" style="color:var(--brand);">${item.source_name||'News'}</div>
+          <div class="fi-title">${escH(item.title)}</div>
+          <div class="fi-meta"><span>🕐 ${timeAgo(item.published_at)}</span></div></div></div></a>`;
+      }
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">Feed unavailable offline.</div>';
+  }
+}
+
+
 // ── Init ───────────────────────────────────────────────────────────────────────
+// Set max DOB date to today (for 18+ check)
+const dobEl = document.getElementById('signup-dob');
+if (dobEl) dobEl.max = new Date().toISOString().split('T')[0];
+
 // Restore saved WA
 if(userWA){
   document.getElementById('acc-phone').value=userWA;
@@ -2022,8 +2582,16 @@ loadCountries().then(()=>{
   setActiveCountry('JO');
   renderCountriesPanel();
   updatePeekStrip('JO', null, null, null);
-  // Show onboarding for new users
-  setTimeout(initOnboarding, 800);
+
+  // Load user countries if logged in
+  if (authToken) {
+    loadUserCountries();
+  } else if (!localStorage.getItem('atlas_onboarded')) {
+    // Show auth screen for new users
+    setTimeout(showAuthScreen, 800);
+  } else {
+    setTimeout(initOnboarding, 800);
+  }
 });
 
 setInterval(loadFeed,60000);
