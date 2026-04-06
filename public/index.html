@@ -712,7 +712,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 <!-- Auth overlay -->
 <div id="auth-overlay">
-  <div class="auth-card">
+  <div class="auth-card" style="max-height:90vh;overflow-y:auto;">
     <div class="auth-logo">🌍</div>
     <div class="auth-title">Atlas Ally</div>
     <div class="auth-sub">Global travel safety intelligence. Sign in with your WhatsApp number.</div>
@@ -738,7 +738,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
     </div>
 
     <!-- Step 3: Signup -->
-    <div id="auth-step-signup" style="display:none;max-height:60vh;overflow-y:auto;">
+    <div id="auth-step-signup" style="display:none;">
       <div style="font-family:var(--mono);font-size:10px;color:var(--dm);margin-bottom:12px;">Creating account for <span id="signup-phone-display" style="color:var(--brand2);"></span></div>
 
       <div class="auth-section-label">Your name *</div>
@@ -764,6 +764,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
       <div class="auth-section-label">Invite code (optional)</div>
       <input class="auth-input" id="signup-trial-code" type="text" placeholder="Enter invite code if you have one">
+
+      <!-- Legal agreement -->
+      <div style="background:var(--dk3);border:1px solid var(--db2);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="signup-legal" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--brand);">
+          <span style="font-size:13px;color:var(--dm);line-height:1.5;">
+            I am 18 or older and I agree to the
+            <a href="/terms" target="_blank" style="color:var(--brand2);text-decoration:none;">Terms of Service</a>
+            and
+            <a href="/privacy" target="_blank" style="color:var(--brand2);text-decoration:none;">Privacy Policy</a>
+            of Atlas Ally LLC.
+          </span>
+        </label>
+      </div>
 
       <button class="auth-btn" id="signup-btn" onclick="submitSignup()">Create Account 🚀</button>
       <button class="auth-btn secondary" onclick="authSkip()">Skip for now</button>
@@ -965,6 +979,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
         <div class="fl">Relation</div>
         <input class="fi" id="ec-rel" placeholder="e.g. Spouse, Parent, Work">
         <button onclick="addContact()" style="width:100%;background:var(--dk3);border:1px solid var(--db2);color:var(--dt);border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:600;cursor:pointer;">+ Add Emergency Contact</button>
+      </div>
+
+      <!-- Legal links -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--db);">
+        <div class="sec-title">Legal</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+          <a href="/privacy" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">📄 Privacy Policy ↗</a>
+          <a href="/terms" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">📄 Terms of Service ↗</a>
+        </div>
+      </div>
+
+      <!-- Delete account -->
+      <div id="delete-account-section" style="display:none;margin-top:8px;padding-top:16px;border-top:1px solid var(--db);">
+        <div class="sec-title" style="color:var(--danger);">Danger Zone</div>
+        <p style="font-size:12px;color:var(--dm);line-height:1.5;margin-bottom:10px;">Permanently delete your account and all associated data. This cannot be undone. Your subscription will be cancelled immediately with no refund.</p>
+        <button onclick="confirmDeleteAccount()" style="width:100%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--danger);border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:600;cursor:pointer;">🗑️ Delete My Account</button>
       </div>
     </div>
   </div>
@@ -1796,7 +1826,7 @@ function nav(name,el){
   if(name==='feed'){loadFeed();}
   if(name==='checklists'){loadChecklists();renderOfflineList();}
   if(name==='countries'){renderCountriesPanel();}
-  if(name==='account'){loadContacts();}
+  if(name==='account'){loadContacts();renderDeleteAccount();}
   openPanel(name+'-panel');
 }
 
@@ -2263,6 +2293,13 @@ async function verifyOTP() {
 }
 
 async function submitSignup() {
+  // Check legal agreement
+  const legalCheck = document.getElementById('signup-legal');
+  if (legalCheck && !legalCheck.checked) {
+    legalCheck.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Please scroll down and accept the Terms of Service and Privacy Policy', 'err');
+    return;
+  }
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const dob = document.getElementById('signup-dob').value;
@@ -2289,7 +2326,14 @@ async function submitSignup() {
       body: JSON.stringify({ whatsapp: otpWhatsapp, name, email: email||null, dob, state_origin: state||null, country_origin: country||null, trial_code: trialCode||null })
     });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Signup failed', 'err'); btn.textContent = 'Create Account'; btn.disabled = false; return; }
+    if (!r.ok) {
+      const errMsg = d.error || d.message || ('Server error ' + r.status);
+      toast('❌ ' + errMsg, 'err');
+      console.error('Signup API error:', r.status, d);
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+      return;
+    }
 
     saveAuth(d.token, d.user);
 
@@ -2306,7 +2350,12 @@ async function submitSignup() {
     localStorage.setItem('atlas_onboarded', '1');
     loadUserCountries();
     btn.textContent = 'Create Account'; btn.disabled = false;
-  } catch(e) { toast('Network error', 'err'); btn.textContent = 'Create Account'; btn.disabled = false; }
+  } catch(e) {
+    console.error('Signup error:', e);
+    toast('Network error: ' + e.message, 'err');
+    btn.textContent = 'Create Account';
+    btn.disabled = false;
+  }
 }
 
 function closeAuthScreen() {
@@ -2808,6 +2857,48 @@ async function submitFeedback() {
       toast('✅ Thank you for your feedback!', 'ok');
     }
   } catch(e) { toast('Failed to submit — try again', 'err'); }
+}
+
+
+// ── Delete Account ─────────────────────────────────────────────────────────────
+function renderDeleteAccount() {
+  // Only show delete option if user is logged in
+  const section = document.getElementById('delete-account-section');
+  if (section && authToken) section.style.display = 'block';
+}
+
+async function confirmDeleteAccount() {
+  const confirmed = confirm(
+    'DELETE ACCOUNT\n\n' +
+    'This will permanently delete:\n' +
+    '• Your account and profile\n' +
+    '• All emergency contacts\n' +
+    '• Your subscription\n' +
+    '• All your submitted reports\n\n' +
+    'This CANNOT be undone. Are you absolutely sure?'
+  );
+  if (!confirmed) return;
+
+  // Second confirmation
+  const doubleConfirm = confirm('Final confirmation: permanently delete Atlas Ally account for ' + (userWA || 'this number') + '?');
+  if (!doubleConfirm) return;
+
+  try {
+    const r = await fetch(API + '/api/user/delete', {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (r.ok) {
+      clearAuth();
+      localStorage.clear();
+      toast('Account deleted. Goodbye.', 'ok');
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      toast('Failed to delete account. Email support@atlas-ally.com', 'err');
+    }
+  } catch(e) {
+    toast('Network error. Try again.', 'err');
+  }
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────────

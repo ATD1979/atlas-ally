@@ -132,6 +132,7 @@ app.post('/api/auth/verify-otp', authLimiter, (req, res) => {
   let user = db.getUser(clean);
   if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
 
+  // User exists — log them in regardless of how they registered
   db.updateUserVerified(clean);
   db.updateLastLogin(user.id);
   user = db.getUser(clean);
@@ -153,9 +154,26 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
 
   const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
 
-  // Check if user already exists
+  // Check if user already exists — if so just log them in
   const existing = db.getUser(clean);
-  if (existing) return res.status(409).json({ error: 'An account with this number already exists. Please log in.' });
+  if (existing) {
+    // Update any missing fields they're now providing
+    db.db.prepare(`UPDATE users SET
+      name = COALESCE(NULLIF(@name,''), name),
+      email = COALESCE(NULLIF(@email,''), email),
+      dob = COALESCE(NULLIF(@dob,''), dob),
+      state_origin = COALESCE(NULLIF(@state_origin,''), state_origin),
+      country_origin = COALESCE(NULLIF(@country_origin,''), country_origin),
+      verified = 1, last_login = datetime('now')
+    WHERE whatsapp = @whatsapp`).run({
+      name: name || null, email: email || null, dob: dob || null,
+      state_origin: state_origin || null, country_origin: country_origin || null,
+      whatsapp: clean
+    });
+    const updatedUser = db.getUser(clean);
+    const token = createToken(updatedUser);
+    return res.json({ ok: true, token, user: sanitizeUser(updatedUser), was_existing: true });
+  }
 
   // Validate trial code if provided
   let distributor_id = null;
@@ -893,6 +911,49 @@ app.get('/api/crime/:code/detailed', (req, res) => {
   });
   const community = db.getCommunityCrime.all(code);
   res.json({ cities: Object.values(cities), community });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEGAL PAGES & ACCOUNT DELETION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Serve privacy policy and terms pages
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
+app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
+
+// Delete account — GDPR / user request
+app.delete('/api/user/delete', requireAuth, (req, res) => {
+  const userId = req.user.id;
+  try {
+    // Delete in order to respect foreign keys
+    db.db.prepare(`DELETE FROM emergency_contacts WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM user_countries WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM checkin_log WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM zone_alerts WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM notify_log WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM offline_cache WHERE user_id = ?`).run(userId);
+    db.db.prepare(`DELETE FROM feedback WHERE user_id = ?`).run(userId);
+    db.db.prepare(`UPDATE events SET submitted_user_id = NULL WHERE submitted_user_id = ?`).run(userId);
+    // Anonymize rather than hard delete to preserve event/report data
+    db.db.prepare(`UPDATE users SET
+      whatsapp = 'deleted-' || id,
+      name = 'Deleted User',
+      email = NULL,
+      dob = NULL,
+      state_origin = NULL,
+      country_origin = NULL,
+      active = 0,
+      verified = 0,
+      stripe_id = NULL
+    WHERE id = ?`).run(userId);
+
+    console.log(`User ${userId} account deleted (anonymized)`);
+    res.json({ ok: true, message: 'Account deleted successfully' });
+  } catch(e) {
+    logErr('account_delete', e, req);
+    res.status(500).json({ error: 'Failed to delete account. Please contact support@atlas-ally.com' });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
