@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "build": "node scripts/obfuscate.js",
-    "postinstall": "node scripts/obfuscate.js"
+    "build": "node scripts/obfuscate.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
