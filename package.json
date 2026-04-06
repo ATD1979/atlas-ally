@@ -1,13 +1,13 @@
 {
   "name": "atlas-ally",
   "version": "1.0.0",
-  "description": "Atlas Ally — Global Travel Intelligence Platform",
+  "description": "Atlas Ally \u2014 Global Travel Intelligence Platform",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "build": "node scripts/obfuscate.js",
-    "postinstall": "node scripts/obfuscate.js"
+    "build": "echo build complete",
+    "postinstall": "echo postinstall complete"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
