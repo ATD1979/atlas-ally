@@ -8,6 +8,51 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(path.join(DATA_DIR, 'atlas.db'));
 db.pragma('journal_mode = WAL');
 
+// ─── Migrations (safe ALTER TABLE for existing databases) ─────────────────────
+function safeAddColumn(table, column, definition) {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`✅ Migration: added ${table}.${column}`);
+  } catch(e) {
+    if (!e.message.includes('duplicate column')) {
+      // Column already exists — that's fine, ignore
+    }
+  }
+}
+
+// Run migrations before schema creation
+try {
+  // Check if users table exists before running migrations
+  const tableExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='users'`).get();
+  if (tableExists) {
+    safeAddColumn('users', 'dob', 'TEXT');
+    safeAddColumn('users', 'state_origin', 'TEXT');
+    safeAddColumn('users', 'country_origin', 'TEXT');
+    safeAddColumn('users', 'role', "TEXT DEFAULT 'user'");
+    safeAddColumn('users', 'country_slots', 'INTEGER DEFAULT 3');
+    safeAddColumn('users', 'country_changes', 'INTEGER DEFAULT 0');
+    safeAddColumn('users', 'free_change_used', 'INTEGER DEFAULT 0');
+    safeAddColumn('users', 'distributor_id', 'INTEGER');
+    safeAddColumn('users', 'trial_code', 'TEXT');
+    safeAddColumn('users', 'verified', 'INTEGER DEFAULT 0');
+    safeAddColumn('users', 'last_login', 'TEXT');
+  }
+  // Events table migrations
+  const eventsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='events'`).get();
+  if (eventsExists) {
+    safeAddColumn('events', 'submitted_user_id', 'INTEGER');
+    safeAddColumn('events', 'is_test', 'INTEGER DEFAULT 0');
+  }
+  // News cache migrations
+  const newsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='news_cache'`).get();
+  if (newsExists) {
+    safeAddColumn('news_cache', 'lat', 'REAL');
+    safeAddColumn('news_cache', 'lng', 'REAL');
+  }
+} catch(e) {
+  console.warn('Migration warning (non-fatal):', e.message);
+}
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
