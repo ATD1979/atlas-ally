@@ -3,13 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <script>
-// Force unregister old service workers and clear caches
+// Permanently disable service worker - unregister all and never re-register
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => {
     regs.forEach(r => r.unregister());
+    console.log('Service workers unregistered:', regs.length);
   });
-  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+  caches.keys().then(keys => {
+    keys.forEach(k => caches.delete(k));
+    console.log('Caches cleared:', keys.length);
+  });
 }
+// Block future service worker registration
+Object.defineProperty(navigator, 'serviceWorker', {
+  get: () => ({ register: () => Promise.resolve(), getRegistrations: () => Promise.resolve([]) })
+});
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -303,6 +311,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--db2);border-radius:2px;}
+/* ── Feed tabs ────────────────────────────────────────────── */
+.feed-tabs{display:flex;border-bottom:1px solid var(--db);background:var(--dk2);flex-shrink:0;}
+.feed-tab{flex:1;padding:11px 8px;background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dm);transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.feed-tab.active{color:var(--brand2);border-bottom-color:var(--brand2);}
+.feed-tab-pane{display:none;flex:1;overflow-y:auto;}
+.feed-tab-pane.active{display:block;}
+
 /* ── Auth overlay ─────────────────────────────────────────── */
 #auth-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .3s;}
 #auth-overlay.active{opacity:1;pointer-events:all;}
@@ -867,7 +882,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 <!-- Feed Panel -->
 <div id="feed-panel" class="panel">
   <div class="phdr"><div class="ptitle">Live Feed</div><button class="pclose" onclick="closePanel('feed-panel')">✕</button></div>
-  <div class="pbody" id="feed-body"><div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">Loading…</div></div>
+  <div class="feed-tabs">
+    <button class="feed-tab active" id="tab-news" onclick="switchFeedTab('news')">📰 News</button>
+    <button class="feed-tab" id="tab-events" onclick="switchFeedTab('events')">⚠️ Incidents</button>
+    <button class="feed-tab" id="tab-crime" onclick="switchFeedTab('crime')">🔴 Crime</button>
+  </div>
+  <div class="pbody" style="flex:1;overflow-y:auto;padding:0;">
+    <div class="feed-tab-pane active" id="pane-news"><div id="feed-news-body" style="padding-bottom:20px;"></div></div>
+    <div class="feed-tab-pane" id="pane-events"><div id="feed-events-body" style="padding-bottom:20px;"></div></div>
+    <div class="feed-tab-pane" id="pane-crime"><div id="feed-crime-body" style="padding-bottom:20px;"></div></div>
+  </div>
 </div>
 
 <!-- Checklists Panel -->
@@ -1312,6 +1336,8 @@ async function setActiveCountry(code) {
     smartActivateJourney(code);
     // Update peek strip country
     updatePeekStrip(code, null, null, null);
+    // Reload feed if open
+    if (document.getElementById('feed-panel')?.classList.contains('open')) loadFeed();
   } catch(e){}
 }
 
@@ -1582,16 +1608,7 @@ function buildGMapsRoute(e){
 }
 
 // ── Feed ───────────────────────────────────────────────────────────────────────
-async function loadFeed(){
-  const body=document.getElementById('feed-body');
-  try{
-    const r=await fetch(`${API}/api/country/${activeCountry||'JO'}`);
-    const d=await r.json();
-    const events=d.events||[];
-    if(!events.length){body.innerHTML='<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No events yet.</div>';return;}
-    body.innerHTML=events.map(e=>{const c=ICFG[e.type]||ICFG.siren;return`<div class="fi-item" onclick="${e.lat&&e.lng?`flyTo(${e.lat},${e.lng})`:''}"><div class="fi-ico" style="border-color:${c.color};background:${c.color}18;">${c.icon}</div><div style="flex:1;"><div class="fi-country">${e.country_code}</div><div class="fi-title">${escH(e.title)}</div><div class="fi-meta"><span>📍 ${escH(e.location||'Unknown')}</span><span>🕐 ${timeAgo(e.created_at)}</span></div></div></div>`;}).join('');
-  }catch(e){}
-}
+
 
 function flyTo(lat,lng){closeAll();map.flyTo([lat,lng],13,{duration:1.2});}
 
@@ -2512,47 +2529,156 @@ async function toggleCrimeLayer() {
 
 // ── News geo-filter ────────────────────────────────────────────────────────────
 async function loadFeed(){
-  const body = document.getElementById('feed-body');
+  const code = activeCountry || 'JO';
+  const country = allCountries.find(c => c.code === code);
+
+  // Load all three feeds in parallel
+  await Promise.all([
+    loadFeedNews(code, country),
+    loadFeedEvents(code, country),
+    loadFeedCrime(code, country),
+  ]);
+}
+
+function switchFeedTab(tab) {
+  document.querySelectorAll('.feed-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.feed-tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('pane-' + tab).classList.add('active');
+}
+
+async function loadFeedNews(code, country) {
+  const el = document.getElementById('feed-news-body');
+  if (!el) return;
+  const flag = country?.flag || '🌍';
+  const name = country?.name || code;
+  el.innerHTML = `<div style="padding:10px 14px 8px;font-family:var(--mono);font-size:10px;color:var(--dm);">${flag} ${name} — Local & regional news</div>`;
   try {
-    let url = `${API}/api/news?country_code=${activeCountry||'JO'}`;
-    if (currentLat && currentLng) url += `&lat=${currentLat}&lng=${currentLng}`;
-    const r = await fetch(url);
+    const r = await fetch(`${API}/api/news?country_code=${code}`);
     const news = await r.json();
-
-    // Also load events
-    const er = await fetch(`${API}/api/events?country_code=${activeCountry||'JO'}`);
-    const events = await er.json();
-
-    const all = [
-      ...events.map(e => ({ ...e, _type: 'event' })),
-      ...news.map(n => ({ ...n, _type: 'news' }))
-    ].sort((a, b) => new Date(b.created_at || b.published_at) - new Date(a.created_at || a.published_at));
-
-    if (!all.length) {
-      body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No recent activity.</div>';
+    if (!news.length) {
+      el.innerHTML += '<div style="padding:30px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No news cached yet — check back in a few minutes.</div>';
       return;
     }
+    el.innerHTML += news.slice(0, 25).map(n =>
+      `<a href="${n.url}" target="_blank" style="text-decoration:none;">
+        <div class="fi-item">
+          <div class="fi-ico" style="border-color:var(--brand);background:rgba(37,99,235,0.1);font-size:18px;">📰</div>
+          <div style="flex:1;">
+            <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand);margin-bottom:2px;">${escH(n.source_name||'Local News')}</div>
+            <div class="fi-title">${escH(n.title)}</div>
+            <div class="fi-meta"><span>🕐 ${timeAgo(n.published_at)}</span></div>
+          </div>
+        </div></a>`
+    ).join('');
+  } catch(e) {
+    el.innerHTML += '<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--dm);">Unavailable offline.</div>';
+  }
+}
 
-    body.innerHTML = all.slice(0, 30).map(item => {
-      if (item._type === 'event') {
-        const c = ICFG[item.type] || ICFG.siren;
-        return `<div class="fi-item" onclick="${item.lat&&item.lng?`flyTo(${item.lat},${item.lng})`:''}">
-          <div class="fi-ico" style="border-color:${c.color};background:${c.color}18;">${c.icon}</div>
-          <div style="flex:1;"><div class="fi-country">${item.country_code}</div>
-          <div class="fi-title">${escH(item.title)}</div>
-          <div class="fi-meta"><span>📍 ${escH(item.location||'Unknown')}</span><span>🕐 ${timeAgo(item.created_at)}</span></div></div></div>`;
-      } else {
-        return `<a href="${item.url}" target="_blank" style="text-decoration:none;">
-          <div class="fi-item">
-          <div class="fi-ico" style="border-color:var(--brand);background:rgba(37,99,235,0.1);">📰</div>
-          <div style="flex:1;"><div class="fi-country" style="color:var(--brand);">${item.source_name||'News'}</div>
-          <div class="fi-title">${escH(item.title)}</div>
-          <div class="fi-meta"><span>🕐 ${timeAgo(item.published_at)}</span></div></div></div></a>`;
-      }
+async function loadFeedEvents(code, country) {
+  const el = document.getElementById('feed-events-body');
+  if (!el) return;
+  const flag = country?.flag || '🌍';
+  const name = country?.name || code;
+  el.innerHTML = `<div style="padding:10px 14px 8px;font-family:var(--mono);font-size:10px;color:var(--dm);">${flag} ${name} — Last 72 hours</div>`;
+  try {
+    const r = await fetch(`${API}/api/events?country_code=${code}`);
+    const events = await r.json();
+    if (!events.length) {
+      el.innerHTML += '<div style="padding:30px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">No incidents reported in the last 72 hours.</div>';
+      return;
+    }
+    el.innerHTML += events.slice(0, 30).map(e => {
+      const c = ICFG[e.type] || ICFG.siren;
+      return `<div class="fi-item" onclick="${e.lat&&e.lng?`flyTo(${e.lat},${e.lng})`:''}">
+        <div class="fi-ico" style="border-color:${c.color};background:${c.color}18;">${c.icon}</div>
+        <div style="flex:1;">
+          <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${c.color};margin-bottom:2px;">${e.type}</div>
+          <div class="fi-title">${escH(e.title)}</div>
+          <div class="fi-meta"><span>📍 ${escH(e.location||'Unknown')}</span><span>🕐 ${timeAgo(e.created_at)}</span></div>
+        </div></div>`;
     }).join('');
   } catch(e) {
-    body.innerHTML = '<div style="padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dm);">Feed unavailable offline.</div>';
+    el.innerHTML += '<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--dm);">Unavailable offline.</div>';
   }
+}
+
+async function loadFeedCrime(code, country) {
+  const el = document.getElementById('feed-crime-body');
+  if (!el) return;
+  const flag = country?.flag || '🌍';
+  const name = country?.name || code;
+  el.innerHTML = `<div style="padding:10px 14px 8px;font-family:var(--mono);font-size:10px;color:var(--dm);">${flag} ${name} — Crime statistics & reports</div>`;
+  try {
+    const r = await fetch(`${API}/api/crime/${code}`);
+    const d = await r.json();
+    const global_stats = d.global_stats || [];
+    const community = d.community || [];
+
+    // Global crime index section
+    if (global_stats.length) {
+      el.innerHTML += `<div style="padding:10px 14px 4px;font-family:var(--display);font-size:11px;font-weight:700;color:var(--dt);text-transform:uppercase;letter-spacing:.08em;">Crime Index by City</div>`;
+      el.innerHTML += global_stats.map(s => {
+        const color = s.crime_index > 65 ? 'var(--danger)' : s.crime_index > 40 ? 'var(--warn)' : 'var(--safe)';
+        const bar = Math.round(s.crime_index);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--db);">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--dt);">${escH(s.city)}</div>
+            <div style="margin-top:4px;height:4px;background:var(--db);border-radius:2px;overflow:hidden;">
+              <div style="width:${bar}%;height:100%;background:${color};border-radius:2px;transition:width .6s;"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${color};">${bar}</div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--dm);">/ 100</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Community reports section
+    const label = community.length
+      ? `<div style="padding:12px 14px 4px;font-family:var(--display);font-size:11px;font-weight:700;color:var(--dt);text-transform:uppercase;letter-spacing:.08em;">Community Reports (Last 6 months)</div>`
+      : '';
+    el.innerHTML += label;
+
+    if (community.length) {
+      const CRIME_ICONS = { theft:'🧳', assault:'⚠️', vandalism:'🪟', scam:'💳', other:'🔴' };
+      el.innerHTML += community.slice(0, 20).map(c => {
+        const icon = CRIME_ICONS[c.type] || '🔴';
+        const color = c.severity === 'danger' ? 'var(--danger)' : c.severity === 'warn' ? 'var(--warn)' : 'var(--info)';
+        return `<div class="fi-item" onclick="${c.lat&&c.lng?`flyTo(${c.lat},${c.lng})`:''}">
+          <div class="fi-ico" style="border-color:${color};background:${color}18;font-size:18px;">${icon}</div>
+          <div style="flex:1;">
+            <div style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:${color};margin-bottom:2px;">${c.type}</div>
+            <div class="fi-title">${escH(c.description || c.type)}</div>
+            <div class="fi-meta"><span>🕐 ${timeAgo(c.created_at)}</span></div>
+          </div></div>`;
+      }).join('');
+
+      // Report crime button
+      el.innerHTML += `<div style="padding:14px;">
+        <button onclick="openCrimeReport()" style="width:100%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--danger);border-radius:9px;padding:11px;font-family:var(--display);font-size:13px;font-weight:700;cursor:pointer;">🔴 Report a Crime</button>
+      </div>`;
+    } else {
+      el.innerHTML += `<div style="padding:14px;text-align:center;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--dm);margin-bottom:12px;">No community crime reports yet. Be the first to report.</div>
+        <button onclick="openCrimeReport()" style="width:100%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--danger);border-radius:9px;padding:11px;font-family:var(--display);font-size:13px;font-weight:700;cursor:pointer;">🔴 Report a Crime</button>
+      </div>`;
+    }
+  } catch(e) {
+    el.innerHTML += '<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--dm);">Crime data unavailable.</div>';
+  }
+}
+
+function openCrimeReport() {
+  // Reuse the incident report sheet, pre-select crime types
+  openReport();
+  setTimeout(() => {
+    const typeSelect = document.getElementById('r-type');
+    if (typeSelect) typeSelect.value = 'gunfire';
+  }, 100);
 }
 
 
@@ -2583,14 +2709,12 @@ loadCountries().then(()=>{
   renderCountriesPanel();
   updatePeekStrip('JO', null, null, null);
 
-  // Load user countries if logged in
+  // Always show auth screen unless user has a valid token
   if (authToken) {
     loadUserCountries();
-  } else if (!localStorage.getItem('atlas_onboarded')) {
-    // Show auth screen for new users
-    setTimeout(showAuthScreen, 800);
   } else {
-    setTimeout(initOnboarding, 800);
+    // No token = not logged in = always show auth screen
+    setTimeout(showAuthScreen, 600);
   }
 });
 
