@@ -92,12 +92,12 @@ app.post('/api/auth/verify-otp', authLimiter, (req, res) => {
   }
   db.markOTPUsed.run(otp.id);
 
-  let user = db.getUser.get(clean);
+  let user = db.getUser(clean);
   if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
 
-  db.updateUserVerified.run(clean);
-  db.updateLastLogin.run(user.id);
-  user = db.getUser.get(clean);
+  db.updateUserVerified(clean);
+  db.updateLastLogin(user.id);
+  user = db.getUser(clean);
 
   const token = createToken(user);
   res.json({ ok: true, token, user: sanitizeUser(user) });
@@ -117,7 +117,7 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
   const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
 
   // Check if user already exists
-  const existing = db.getUser.get(clean);
+  const existing = db.getUser(clean);
   if (existing) return res.status(409).json({ error: 'An account with this number already exists. Please log in.' });
 
   // Validate trial code if provided
@@ -139,7 +139,7 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
       db.db.prepare(`UPDATE users SET trial_end = datetime('now', '+${trialDays} days') WHERE whatsapp = ?`).run(clean);
     }
 
-    const user = db.getUser.get(clean);
+    const user = db.getUser(clean);
     const token = createToken(user);
     res.json({ ok: true, token, user: sanitizeUser(user) });
   } catch (e) {
@@ -150,7 +150,7 @@ app.post('/api/auth/signup', authLimiter, (req, res) => {
 
 // Get current user profile
 app.get('/api/auth/me', requireAuth, (req, res) => {
-  const user = db.getUserById.get(req.user.id);
+  const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
   const countries = db.getUserCountries.all(user.id).map(c => c.country_code);
   const contacts = db.getEmergencyContacts.all(user.id);
@@ -288,7 +288,7 @@ app.post('/api/user/countries', requireAuth, (req, res) => {
   const { country_code } = req.body;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
 
-  const user = db.getUserById.get(req.user.id);
+  const user = db.getUserById(req.user.id);
   const count = db.countUserCountries.get(req.user.id).count;
   const maxFree = parseInt(db.getSetting('max_free_countries') || '3');
 
@@ -437,13 +437,13 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 app.patch('/api/admin/users/:id/role', requireAdmin, (req, res) => {
   const { role } = req.body;
   if (!['admin','distributor','user'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  db.updateRole.run(role, req.params.id);
+  db.updateRole(role, req.params.id);
   res.json({ ok: true });
 });
 
 // Admin: deactivate user
 app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
-  db.deactivateUser.run(req.params.id);
+  db.deactivateUser(req.params.id);
   res.json({ ok: true });
 });
 
@@ -509,7 +509,7 @@ app.post('/api/admin/refresh-news', requireAdmin, async (req, res) => {
 
 // Distributor: create trial code
 app.post('/api/distributor/codes', requireDistributor, (req, res) => {
-  const user = db.getUserById.get(req.user.id);
+  const user = db.getUserById(req.user.id);
   const quota = parseInt(db.getSetting('distributor_default_quota') || '25');
   const existingCodes = db.getTrialCodesByUser.all(req.user.id);
   const totalUses = existingCodes.reduce((sum, c) => sum + c.max_uses, 0);
@@ -580,8 +580,8 @@ app.post('/api/register', softAuth, (req, res) => {
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
   const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
   try {
-    db.upsertUser.run({ whatsapp: clean, name: name||null, email: null });
-    const user = db.getUser.get(clean);
+    db.upsertUser({ whatsapp: clean, name: name||null, email: null });
+    const user = db.getUser(clean);
     if (countries?.length) {
       countries.forEach(code => {
         try { db.addCountry.run({ user_id: user.id, country_code: code.toUpperCase() }); } catch {}
@@ -613,7 +613,7 @@ app.delete('/api/user/contacts/:id', requireAuth, (req, res) => {
 app.post('/api/checkin', softAuth, async (req, res) => {
   const { whatsapp, lat, lng, country_code, message, safety_score } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser.get(whatsapp);
+  const user = db.getUser(whatsapp);
   if (user) {
     db.logCheckin.run({ user_id: user.id, lat: lat||null, lng: lng||null, country_code: country_code||null, safety_score: safety_score||null, message: message||null, type: 'manual' });
     const contacts = db.getEmergencyContacts.all(user.id);
@@ -629,7 +629,7 @@ app.post('/api/checkin', softAuth, async (req, res) => {
 app.post('/api/zone-alert', softAuth, async (req, res) => {
   const { whatsapp, zone_name, country_code, lat, lng, alert_type } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser.get(whatsapp);
+  const user = db.getUser(whatsapp);
   if (user) {
     db.logZoneAlert.run({ user_id: user.id, zone_name: zone_name||null, country_code: country_code||null, lat: lat||null, lng: lng||null, event_type: 'geofence', alert_type: alert_type||'entry' });
     const contacts = db.getEmergencyContacts.all(user.id);
@@ -661,8 +661,8 @@ app.get('/api/offline/:code', (req, res) => {
 app.get('/unsubscribe', (req, res) => {
   const { wa } = req.query;
   if (wa) {
-    const user = db.getUser.get(wa);
-    if (user) db.deactivateUser.run(user.id);
+    const user = db.getUser(wa);
+    if (user) db.deactivateUser(user.id);
   }
   res.send('<html><body style="font-family:sans-serif;max-width:400px;margin:40px auto;text-align:center"><h2>Unsubscribed</h2><p>You have been removed from Atlas Ally alerts.</p></body></html>');
 });
@@ -695,9 +695,9 @@ app.post('/api/checkout', softAuth, async (req, res) => {
     // No Stripe configured — start trial instead
     if (whatsapp) {
       const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
-      db.upsertUser.run({ whatsapp: clean, name: null, email: null });
+      db.upsertUser({ whatsapp: clean, name: null, email: null });
       if (countries?.length) {
-        const user = db.getUser.get(clean);
+        const user = db.getUser(clean);
         countries.forEach(c => { try { db.addCountry.run({ user_id: user.id, country_code: c }); } catch {} });
       }
     }
@@ -732,8 +732,8 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req,
   if (event.type === 'checkout.session.completed') {
     const wa = event.data.object.metadata?.whatsapp;
     if (wa) {
-      const user = db.getUser.get(wa);
-      if (user) db.updatePlan.run({ plan: 'premium', stripe_id: event.data.object.customer, id: user.id });
+      const user = db.getUser(wa);
+      if (user) db.updatePlan({ plan: 'premium', stripe_id: event.data.object.customer, id: user.id });
     }
   }
   res.json({ ok: true });

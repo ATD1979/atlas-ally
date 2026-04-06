@@ -53,7 +53,7 @@ try {
   console.warn('Migration warning (non-fatal):', e.message);
 }
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
+// ─── Schema (CREATE TABLE IF NOT EXISTS — safe to run on existing db) ─────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -287,18 +287,18 @@ const helpers = {
   markOTPUsed: db.prepare(`UPDATE otp_codes SET used = 1 WHERE id = ?`),
   cleanOTPs: db.prepare(`DELETE FROM otp_codes WHERE expires_at < datetime('now', '-1 hour')`),
 
-  // Users
-  createUser: db.prepare(`INSERT INTO users (whatsapp, name, email, dob, state_origin, country_origin, verified, trial_code, distributor_id) VALUES (@whatsapp, @name, @email, @dob, @state_origin, @country_origin, 1, @trial_code, @distributor_id)`),
-  upsertUser: db.prepare(`INSERT INTO users (whatsapp, name, email) VALUES (@whatsapp, @name, @email) ON CONFLICT(whatsapp) DO UPDATE SET name=COALESCE(excluded.name, name), email=COALESCE(excluded.email, email), active=1`),
-  getUser: db.prepare(`SELECT * FROM users WHERE whatsapp = ?`),
-  getUserById: db.prepare(`SELECT * FROM users WHERE id = ?`),
-  getAllUsers: db.prepare(`SELECT * FROM users WHERE active = 1 ORDER BY created_at DESC`),
-  getUsersByRole: db.prepare(`SELECT * FROM users WHERE role = ? AND active = 1`),
-  updateUserVerified: db.prepare(`UPDATE users SET verified = 1, last_login = datetime('now') WHERE whatsapp = ?`),
-  updateLastLogin: db.prepare(`UPDATE users SET last_login = datetime('now') WHERE id = ?`),
-  updatePlan: db.prepare(`UPDATE users SET plan = @plan, stripe_id = @stripe_id WHERE id = @id`),
-  updateRole: db.prepare(`UPDATE users SET role = ? WHERE id = ?`),
-  deactivateUser: db.prepare(`UPDATE users SET active = 0 WHERE id = ?`),
+  // Users — lazy prepare so migrations run first
+  createUser: (data) => db.prepare(`INSERT INTO users (whatsapp, name, email, dob, state_origin, country_origin, verified, trial_code, distributor_id) VALUES (@whatsapp, @name, @email, @dob, @state_origin, @country_origin, 1, @trial_code, @distributor_id)`).run(data),
+  upsertUser: (data) => db.prepare(`INSERT INTO users (whatsapp, name, email) VALUES (@whatsapp, @name, @email) ON CONFLICT(whatsapp) DO UPDATE SET name=COALESCE(excluded.name, name), email=COALESCE(excluded.email, email), active=1`).run(data),
+  getUser: (whatsapp) => db.prepare(`SELECT * FROM users WHERE whatsapp = ?`).get(whatsapp),
+  getUserById: (id) => db.prepare(`SELECT * FROM users WHERE id = ?`).get(id),
+  getAllUsers: { all: () => db.prepare(`SELECT * FROM users WHERE active = 1 ORDER BY created_at DESC`).all() },
+  getUsersByRole: (role) => db.prepare(`SELECT * FROM users WHERE role = ? AND active = 1`).all(role),
+  updateUserVerified: (whatsapp) => db.prepare(`UPDATE users SET verified = 1, last_login = datetime('now') WHERE whatsapp = ?`).run(whatsapp),
+  updateLastLogin: (id) => db.prepare(`UPDATE users SET last_login = datetime('now') WHERE id = ?`).run(id),
+  updatePlan: (data) => db.prepare(`UPDATE users SET plan = @plan, stripe_id = @stripe_id WHERE id = @id`).run(data),
+  updateRole: (role, id) => db.prepare(`UPDATE users SET role = ? WHERE id = ?`).run(role, id),
+  deactivateUser: (id) => db.prepare(`UPDATE users SET active = 0 WHERE id = ?`).run(id),
 
   isTrialActive: (user) => {
     if (user.plan === 'premium' || user.plan === 'distributor') return true;
