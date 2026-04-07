@@ -56,14 +56,14 @@ function apiFingerprint(req, res, next) {
   next();
 }
 
-// Apply slow-down and fingerprinting to all API routes
-app.use('/api/', apiSlowDown);
-app.use('/api/', apiFingerprint);
-
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+
+// Apply slow-down and fingerprinting to all API routes
+app.use('/api/', apiSlowDown);
+app.use('/api/', apiFingerprint);
 // ── Security Headers ──────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   // Prevent clickjacking
