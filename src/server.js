@@ -1,779 +1,143 @@
+// Atlas Ally — Server entry point
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const path = require('path');
-const crypto = require('crypto');
+const cors    = require('cors');
+const path    = require('path');
 
 const db = require('./db');
-const { COUNTRIES, ADVISORY_LEVELS } = require('./countries');
-const { dispatchAlerts, sendCheckinAlert } = require('./alerts');
-const { refreshAllNews, refreshNewsForCountry } = require('./news');
-const { checkAllWeather: checkWeatherAlerts } = require('./weather');
-const { CHECKLISTS } = require('./checklists');
-const { CRIME_DATA } = require('./crime-data');
-const { generateOTP, createToken, requireAuth, requireAdmin, requireDistributor, softAuth } = require('./auth');
-const slowDown = require('express-slow-down');
+const { COUNTRIES }    = require('./countries');
+const { CHECKLISTS }   = require('./checklists');
+const { refreshAllNews }   = require('./news');
+const { checkAllWeather }  = require('./weather');
+const { requireAuth, requireAdmin, requireDistributor, softAuth } = require('./auth');
+const { seedCrimeData, seedAdminUser, ensureRuntimeTables } = require('./services/seed');
+const {
+  apiLimiter, authLimiter, apiSlowDown, apiFingerprint,
+  securityHeaders, attachErrorLogger,
+} = require('./middleware');
 
-// ── API Protection ────────────────────────────────────────────────────────────
-// Slow down repeated requests from same IP (scraper deterrent)
-const apiSlowDown = slowDown({
-  windowMs: 60 * 1000,         // 1 minute window
-  delayAfter: 30,              // allow 30 requests/min at full speed
-  delayMs: (hits) => (hits - 30) * 200, // add 200ms delay per extra request
-  maxDelayMs: 5000,            // max 5 second delay
-});
+// Route modules
+const authRoutes     = require('./routes/auth');
+const mapRoutes      = require('./routes/map');
+const userRoutes     = require('./routes/user');
+const dataRoutes     = require('./routes/data');
+const adminRoutes    = require('./routes/admin');
+const paymentRoutes  = require('./routes/payments');
 
-// Fingerprint middleware - tracks request patterns
-function apiFingerprint(req, res, next) {
-  const ua = req.headers['user-agent'] || '';
-  const referer = req.headers['referer'] || '';
-  
-  // Block obvious scrapers and bots
-  const blockedAgents = ['python-requests', 'curl/', 'wget/', 'scrapy', 'httpclient', 'okhttp', 'axios/'];
-  const isBot = blockedAgents.some(b => ua.toLowerCase().includes(b));
-  
-  // Allow if request comes from our own app (has referer or is authenticated)
-  const hasValidReferer = referer.includes('atlas-ally.com') || referer.includes('localhost');
-  const hasAuth = !!req.headers.authorization;
-  
-  if (isBot && !hasAuth && !hasValidReferer) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  // Log suspicious patterns
-  if (!hasAuth && !hasValidReferer && req.path.startsWith('/api/')) {
-    try {
-      db.logError.run({
-        type: 'suspicious_request',
-        message: `Unauthenticated API access: ${req.method} ${req.path}`,
-        stack: `UA: ${ua.slice(0,100)} | IP: ${req.ip}`,
-        user_id: null,
-        endpoint: req.path,
-      });
-    } catch {}
-  }
-  next();
-}
+// ── Startup ───────────────────────────────────────────────────────────────────
+ensureRuntimeTables();
+seedCrimeData();
+seedAdminUser();
 
+// ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
-
-// Apply slow-down and fingerprinting to all API routes
-app.use('/api/', apiSlowDown);
-app.use('/api/', apiFingerprint);
-// ── Security Headers ──────────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  // Prevent clickjacking
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  // Prevent MIME sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  // Stop referrer leaking
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  // Basic XSS protection
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  // Prevent API responses being embedded in iframes
-  if (req.path.startsWith('/api/')) {
-    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  }
-  next();
-});
-
+app.use(securityHeaders);
+app.use(attachErrorLogger);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-app.use('/api/', limiter);
+// ── API middleware ────────────────────────────────────────────────────────────
+app.use('/api/', apiSlowDown);
+app.use('/api/', apiFingerprint);
+app.use('/api/', apiLimiter);
 
-// ── Seed crime data on startup ─────────────────────────────────────────────────
-function seedCrimeData() {
-  const now = new Date();
-  const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6);
-  const period_start = sixMonthsAgo.toISOString().split('T')[0];
-  const period_end = now.toISOString().split('T')[0];
-  CRIME_DATA.forEach(row => {
-    // Insert overall stats
-    db.upsertCrimeStat.run({
-      country_code: row.country_code, city: row.city, lat: row.lat, lng: row.lng,
-      crime_index: row.crime_index, safety_index: row.safety_index,
-      category: 'overall', period_start, period_end, source: 'Numbeo',
-    });
-    // Insert per-type stats
-    if (row.types) {
-      Object.entries(row.types).forEach(([type, index]) => {
-        db.upsertCrimeStat.run({
-          country_code: row.country_code, city: row.city, lat: row.lat, lng: row.lng,
-          crime_index: index, safety_index: 100 - index,
-          category: type, period_start, period_end, source: 'Numbeo',
-        });
-      });
-    }
-  });
-  console.log(`✅ Crime data seeded: ${CRIME_DATA.length} cities`);
-}
-seedCrimeData();
+// ── Routes ────────────────────────────────────────────────────────────────────
 
-// Pre-seed admin user with known credentials
-function seedAdminUser() {
-  try {
-    const adminWA = process.env.ADMIN_WHATSAPP || '+19999999999';
-    const existing = db.getUser(adminWA);
-    if (!existing) {
-      db.createUser({
-        whatsapp: adminWA,
-        name: 'Admin',
-        email: process.env.ADMIN_EMAIL || null,
-        dob: '1980-01-01',
-        state_origin: 'Texas',
-        country_origin: 'United States',
-        trial_code: null,
-        distributor_id: null,
-      });
-    }
-    // Always ensure admin role and premium plan
-    db.db.prepare(`UPDATE users SET role='admin', plan='premium', verified=1, trial_end=datetime('now', '+3650 days') WHERE whatsapp=?`).run(adminWA);
-    console.log('✅ Admin user ready:', adminWA);
-  } catch(e) {
-    console.warn('Admin seed warning:', e.message);
-  }
-}
-seedAdminUser();
+// Auth — /send-otp and /verify-otp are rate-limited; /me and /profile require auth
+app.use('/api/auth', authLimiter, authRoutes.router);
 
-// ── Error logging helper ───────────────────────────────────────────────────────
-function logErr(type, err, req) {
-  try {
-    db.logError.run({
-      type, message: err.message || String(err),
-      stack: err.stack || null,
-      user_id: req?.user?.id || null,
-      endpoint: req?.path || null,
-    });
-  } catch {}
-}
+// Map / countries / events / safety / detect-country
+app.use('/api', softAuth, mapRoutes);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP A — AUTH & USER SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
+// User: country subscriptions, contacts, account deletion
+app.use('/api/user', requireAuth, userRoutes);
 
-// Send OTP via WhatsApp
-app.post('/api/auth/send-otp', authLimiter, async (req, res) => {
-  const { whatsapp, purpose = 'login' } = req.body;
-  if (!whatsapp) return res.status(400).json({ error: 'WhatsApp number required' });
+// Check-in and zone-alert (softAuth — no login required)
+app.post('/api/checkin',    softAuth, require('./routes/user').handleCheckin);
+app.post('/api/zone-alert', softAuth, require('./routes/user').handleZoneAlert);
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
-  const code = generateOTP();
+// Crime stats, route planning, news
+app.use('/api', softAuth, dataRoutes);
 
-  try {
-    db.createOTP.run({ whatsapp: clean, code, purpose });
-    db.cleanOTPs.run();
+// Stripe checkout & webhook
+app.use('/api', softAuth, paymentRoutes);
 
-    await sendCheckinAlert(clean,
-      `🌍 *Atlas Ally*\n\nYour verification code is:\n\n*${code}*\n\n_Expires in 10 minutes. Do not share this code._`
-    );
-    res.json({ ok: true, message: 'OTP sent to your WhatsApp' });
-  } catch (e) {
-    logErr('otp_send', e, req);
-    res.status(500).json({ error: 'Failed to send OTP. Check your WhatsApp number.' });
-  }
-});
+// Admin (auth enforced by requireAdmin / requireDistributor guards)
+app.use('/api/admin',       requireAdmin,       adminRoutes);
+app.use('/api/distributor', requireDistributor, adminRoutes);
 
-// Verify OTP — returns JWT
-app.post('/api/auth/verify-otp', authLimiter, (req, res) => {
-  const { whatsapp, code } = req.body;
-  if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
-
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
-  const otp = db.getOTP.get(clean);
-
-  if (!otp || otp.code !== code.toString()) {
-    return res.status(401).json({ error: 'Invalid or expired code' });
-  }
-  db.markOTPUsed.run(otp.id);
-
-  let user = db.getUser(clean);
-  if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
-
-  // User exists — log them in regardless of how they registered
-  db.updateUserVerified(clean);
-  db.updateLastLogin(user.id);
-  user = db.getUser(clean);
-
-  const token = createToken(user);
-  res.json({ ok: true, token, user: sanitizeUser(user) });
-});
-
-// Full signup
-app.post('/api/auth/signup', authLimiter, (req, res) => {
-  const { whatsapp, name, email, dob, state_origin, country_origin, trial_code } = req.body;
-
-  if (!whatsapp || !name || !dob) {
-    return res.status(400).json({ error: 'Name, WhatsApp, and date of birth are required' });
-  }
-  if (!db.isAdult(dob)) {
-    return res.status(400).json({ error: 'You must be 18 or older to use Atlas Ally' });
-  }
-
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
-
-  // Check if user already exists — if so just log them in
-  const existing = db.getUser(clean);
-  if (existing) {
-    // Update any missing fields they're now providing
-    db.db.prepare(`UPDATE users SET
-      name = COALESCE(NULLIF(@name,''), name),
-      email = COALESCE(NULLIF(@email,''), email),
-      dob = COALESCE(NULLIF(@dob,''), dob),
-      state_origin = COALESCE(NULLIF(@state_origin,''), state_origin),
-      country_origin = COALESCE(NULLIF(@country_origin,''), country_origin),
-      verified = 1, last_login = datetime('now')
-    WHERE whatsapp = @whatsapp`).run({
-      name: name || null, email: email || null, dob: dob || null,
-      state_origin: state_origin || null, country_origin: country_origin || null,
-      whatsapp: clean
-    });
-    const updatedUser = db.getUser(clean);
-    const token = createToken(updatedUser);
-    return res.json({ ok: true, token, user: sanitizeUser(updatedUser), was_existing: true });
-  }
-
-  // Validate trial code if provided
-  let distributor_id = null;
-  let trialDays = 7;
-  if (trial_code) {
-    const tc = db.getTrialCode.get(trial_code);
-    if (!tc) return res.status(400).json({ error: 'Invalid or expired invite code' });
-    if (tc.uses >= tc.max_uses) return res.status(400).json({ error: 'This invite code has reached its limit' });
-    distributor_id = tc.created_by;
-    trialDays = tc.trial_days || 7;
-    db.useTrialCode.run(trial_code);
-  }
-
-  try {
-    db.createUser.run({ whatsapp: clean, name, email: email||null, dob, state_origin: state_origin||null, country_origin: country_origin||null, trial_code: trial_code||null, distributor_id });
-
-    if (trialDays !== 7) {
-      db.db.prepare(`UPDATE users SET trial_end = datetime('now', '+${trialDays} days') WHERE whatsapp = ?`).run(clean);
-    }
-
-    const user = db.getUser(clean);
-    const token = createToken(user);
-    res.json({ ok: true, token, user: sanitizeUser(user) });
-  } catch (e) {
-    logErr('signup', e, req);
-    res.status(500).json({ error: 'Signup failed. Please try again.' });
-  }
-});
-
-// Get current user profile
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  const user = db.getUserById(req.user.id);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-  const countries = db.getUserCountries.all(user.id).map(c => c.country_code);
-  const contacts = db.getEmergencyContacts.all(user.id);
-  res.json({ user: sanitizeUser(user), countries, contacts, trial_days_left: db.getTrialDaysLeft(user) });
-});
-
-// Update profile
-app.put('/api/auth/profile', requireAuth, (req, res) => {
-  const { name, email, state_origin, country_origin } = req.body;
-  db.db.prepare(`UPDATE users SET name=COALESCE(?,name), email=COALESCE(?,email), state_origin=COALESCE(?,state_origin), country_origin=COALESCE(?,country_origin) WHERE id=?`)
-    .run(name||null, email||null, state_origin||null, country_origin||null, req.user.id);
-  res.json({ ok: true });
-});
-
-function sanitizeUser(u) {
-  const { ...safe } = u;
-  delete safe.stripe_id;
-  return safe;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP B — MAP & INCIDENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Countries list
-app.get('/api/countries', softAuth, (req, res) => {
-  const { ADVISORY_LEVELS } = require('./countries');
-  const overrides = {};
-  try {
-    db.db.prepare(`SELECT * FROM advisory_overrides`).all().forEach(o => { overrides[o.country_code] = o; });
-  } catch {}
-  const list = Object.entries(COUNTRIES).map(([code, c]) => {
-    const adv = overrides[code] || {};
-    const level = adv.level || c.advisoryLevel || 1;
-    const cfg = ADVISORY_LEVELS[level] || ADVISORY_LEVELS[1];
-    return {
-      code, name: c.name, flag: c.flag, capital: c.capital,
-      currency: c.currency, language: c.language, timezone: c.timezone,
-      center: c.center, zoom: c.zoom,
-      advisoryLevel: level, advisoryText: adv.text || c.advisoryText,
-      advisoryLabel: cfg.label, advisoryEmoji: cfg.emoji, advisoryColor: cfg.color,
-      advisoryConfig: cfg,
-    };
-  });
-  res.json(list);
-});
-
-// Country detail
-app.get('/api/country/:code', softAuth, (req, res) => {
-  const code = req.params.code.toUpperCase();
-  const c = COUNTRIES[code];
-  if (!c) return res.status(404).json({ error: 'Country not found' });
-  const { ADVISORY_LEVELS } = require('./countries');
-  const override = db.getAdvisoryOverride.get(code) || {};
-  const level = override.level || c.advisoryLevel || 1;
-  const cfg = ADVISORY_LEVELS[level] || ADVISORY_LEVELS[1];
-  const events = db.getEventsByCountry.all(code);
-  const news = db.getNewsByCountry.all(code);
-  const crime = db.getCrimeStatsByCountry.all(code);
-  res.json({ ...c, code, advisoryLevel: level, advisoryText: override.text || c.advisoryText, advisoryConfig: cfg, events, news, crime });
-});
-
-// Country weather
-app.get('/api/country/:code/weather', softAuth, async (req, res) => {
-  const code = req.params.code.toUpperCase();
-  const c = COUNTRIES[code];
-  if (!c?.center) return res.status(404).json({ error: 'No location data' });
-  try {
-    const fetch = require('node-fetch');
-    const [lat, lng] = c.center;
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=temperature_2m,weathercode,windspeed_10m&forecast_days=1`;
-    const r = await fetch(url, { timeout: 8000 });
-    const d = await r.json();
-    const cw = d.current_weather || {};
-    res.json({ current: { temp: Math.round(cw.temperature), wind: Math.round(cw.windspeed||0), code: cw.weathercode }, alerts: [] });
-  } catch (e) {
-    res.status(500).json({ error: 'Weather unavailable' });
-  }
-});
-
-// Events feed (72h)
-app.get('/api/events', softAuth, (req, res) => {
-  const { country_code } = req.query;
-  let events;
-  if (country_code) {
-    events = db.db.prepare(`SELECT * FROM events WHERE country_code=? AND status='approved' AND is_test=0 AND created_at > datetime('now', '-72 hours') ORDER BY created_at DESC`).all(country_code.toUpperCase());
-  } else {
-    events = db.getEvents72h.all();
-  }
-  res.json(events);
-});
-
-// Post incident (any user, long-press on map)
-app.post('/api/events', softAuth, (req, res) => {
-  const { country_code, type, title, description, location, lat, lng, severity, source_url } = req.body;
-  if (!country_code || !type || !title) return res.status(400).json({ error: 'country_code, type, title required' });
-
-  const result = db.addEvent.run({
-    country_code: country_code.toUpperCase(), type, title, description: description||null,
-    location: location||null, lat: lat||null, lng: lng||null,
-    severity: severity||'warn', source: 'user', source_url: source_url||null,
-    submitted_by: req.user?.whatsapp || 'anonymous',
-    submitted_user_id: req.user?.id || null,
-    is_test: 0,
-  });
-  const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(result.lastInsertRowid);
-  dispatchAlerts(event).catch(() => {});
-  res.json({ ok: true, event });
-});
-
-// Remove event (admin only)
-app.delete('/api/events/:id', requireAdmin, (req, res) => {
-  db.removeEvent.run(req.params.id);
-  res.json({ ok: true });
-});
-
-// Mark event as test (admin only)
-app.patch('/api/events/:id/test', requireAdmin, (req, res) => {
-  db.markTestEvent.run(req.params.id);
-  res.json({ ok: true });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP C — COUNTRY SUBSCRIPTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Get user's countries
-app.get('/api/user/countries', requireAuth, (req, res) => {
-  const rows = db.getUserCountries.all(req.user.id);
-  res.json(rows.map(r => r.country_code));
-});
-
-// Add country
-app.post('/api/user/countries', requireAuth, (req, res) => {
-  const { country_code } = req.body;
-  if (!country_code) return res.status(400).json({ error: 'country_code required' });
-
-  const user = db.getUserById(req.user.id);
-  const count = db.countUserCountries.get(req.user.id).count;
-  const maxFree = parseInt(db.getSetting('max_free_countries') || '3');
-
-  if (count >= maxFree && user.plan === 'trial') {
-    return res.status(402).json({
-      error: 'Free trial allows up to 3 countries. Upgrade to Traveler ($3/month) to add more.',
-      upgrade_required: true
-    });
-  }
-
-  if (count >= (user.country_slots || 3) && user.plan !== 'premium') {
-    return res.status(402).json({
-      error: 'Upgrade to add more countries.',
-      upgrade_required: true
-    });
-  }
-
-  db.addCountry.run({ user_id: req.user.id, country_code: country_code.toUpperCase() });
-  res.json({ ok: true });
-});
-
-// Remove country
-app.delete('/api/user/countries/:code', requireAuth, (req, res) => {
-  db.removeCountry.run(req.user.id, req.params.code.toUpperCase());
-  res.json({ ok: true });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP D — CRIME STATISTICS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Get crime stats for a country
-app.get('/api/crime/:code', softAuth, (req, res) => {
-  const code = req.params.code.toUpperCase();
-  const global_stats = db.getCrimeStatsByCountry.all(code);
-  const community = db.getCommunityCrime.all(code);
-  res.json({ global_stats, community });
-});
-
-// Get crime stats near a location (for geofence)
-app.get('/api/crime/near', softAuth, (req, res) => {
-  const { lat, lng, radius = 100 } = req.query;
-  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-
-  const latF = parseFloat(lat), lngF = parseFloat(lng);
-  // Simple bounding box filter (1 degree ≈ 111km)
-  const delta = parseFloat(radius) / 111;
-
-  const stats = db.db.prepare(`
-    SELECT *, ((lat - ?)*(lat - ?) + (lng - ?)*(lng - ?)) as dist_sq
-    FROM crime_stats
-    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-    ORDER BY dist_sq ASC LIMIT 10
-  `).all(latF, latF, lngF, lngF, latF-delta, latF+delta, lngF-delta, lngF+delta);
-
-  const community = db.db.prepare(`
-    SELECT *, ((lat - ?)*(lat - ?) + (lng - ?)*(lng - ?)) as dist_sq
-    FROM community_crime
-    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-    AND created_at > datetime('now', '-6 months')
-    ORDER BY dist_sq ASC LIMIT 20
-  `).all(latF, latF, lngF, lngF, latF-delta, latF+delta, lngF-delta, lngF+delta);
-
-  res.json({ global_stats: stats, community });
-});
-
-// Report community crime
-app.post('/api/crime/community', softAuth, (req, res) => {
-  const { country_code, lat, lng, type, description, severity } = req.body;
-  if (!country_code || !lat || !lng || !type) return res.status(400).json({ error: 'Missing required fields' });
-  db.addCommunityCrime.run({
-    country_code: country_code.toUpperCase(), lat, lng, type,
-    description: description||null, reported_by: req.user?.id||null, severity: severity||'warn'
-  });
-  res.json({ ok: true });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP E — ROUTE & NEWS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Route autocomplete — Nominatim
-app.get('/api/route/autocomplete', softAuth, async (req, res) => {
-  const { q, lang = 'en', lat, lng } = req.query;
-  if (!q || q.length < 2) return res.json([]);
-  try {
-    const fetch = require('node-fetch');
-    let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=${lang}`;
-    if (lat && lng) url += `&viewbox=${parseFloat(lng)-2},${parseFloat(lat)+2},${parseFloat(lng)+2},${parseFloat(lat)-2}&bounded=0`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' }, timeout: 5000 });
-    const data = await r.json();
-    res.json(data.map(p => ({
-      name: p.display_name, lat: parseFloat(p.lat), lng: parseFloat(p.lon),
-      type: p.type, category: p.class,
-    })));
-  } catch (e) {
-    res.json([]);
-  }
-});
-
-// Safe route
-app.post('/api/route', softAuth, async (req, res) => {
-  const { from_lat, from_lng, to_lat, to_lng } = req.body;
-  if (!from_lat || !from_lng || !to_lat || !to_lng) return res.status(400).json({ error: 'Coordinates required' });
-  try {
-    const fetch = require('node-fetch');
-    const url = `https://router.project-osrm.org/route/v1/driving/${from_lng},${from_lat};${to_lng},${to_lat}?overview=full&geometries=geojson&steps=true`;
-    const r = await fetch(url, { timeout: 8000 });
-    const d = await r.json();
-    if (!d.routes?.[0]) return res.json({ error: 'No route found' });
-    const route = d.routes[0];
-    const events = db.getEvents72h.all();
-    const warnings = events.filter(e => {
-      if (!e.lat || !e.lng) return false;
-      const coords = route.geometry?.coordinates || [];
-      return coords.some(([lng, lat]) => {
-        const dist = Math.sqrt(Math.pow(lat - e.lat, 2) + Math.pow(lng - e.lng, 2));
-        return dist < 0.5;
-      });
-    });
-    res.json({ route, warnings, distance_km: Math.round(route.distance / 1000), duration_min: Math.round(route.duration / 60) });
-  } catch (e) {
-    res.status(500).json({ error: 'Route service unavailable' });
-  }
-});
-
-// News by country or location
-app.get('/api/news', softAuth, (req, res) => {
-  const { country_code, lat, lng } = req.query;
-  if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  const news = db.getNewsByCountry.all(country_code.toUpperCase());
-  res.json(news);
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GROUP F — ADMIN & PERMISSIONS
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Admin: get all users
-app.get('/api/admin/users', requireAdmin, (req, res) => {
-  const users = db.getAllUsers.all().map(sanitizeUser);
-  res.json(users);
-});
-
-// Admin: update user role
-app.patch('/api/admin/users/:id/role', requireAdmin, (req, res) => {
-  const { role } = req.body;
-  if (!['admin','distributor','user'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  db.updateRole(role, req.params.id);
-  res.json({ ok: true });
-});
-
-// Admin: deactivate user
-app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
-  db.deactivateUser(req.params.id);
-  res.json({ ok: true });
-});
-
-// Admin: get error logs
-app.get('/api/admin/errors', requireAdmin, (req, res) => {
-  const errors = db.getRecentErrors.all();
-  res.json(errors);
-});
-
-// Admin: get app stats
-app.get('/api/admin/stats', requireAdmin, (req, res) => {
-  res.json(db.getStats());
-});
-
-// Admin: update setting
-app.put('/api/admin/settings', requireAdmin, (req, res) => {
-  const { key, value } = req.body;
-  db.setSetting.run(key, value);
-  res.json({ ok: true });
-});
-
-// Admin: get settings
-app.get('/api/admin/settings', requireAdmin, (req, res) => {
-  const rows = db.db.prepare(`SELECT * FROM app_settings`).all();
-  const settings = {};
-  rows.forEach(r => { settings[r.key] = r.value; });
-  res.json(settings);
-});
-
-// Admin: post event
-app.post('/api/admin/events', requireAdmin, (req, res) => {
-  const { country_code, type, title, description, location, lat, lng, severity, is_test } = req.body;
-  if (!country_code || !type || !title) return res.status(400).json({ error: 'Missing required fields' });
-  const result = db.addEvent.run({
-    country_code: country_code.toUpperCase(), type, title, description: description||null,
-    location: location||null, lat: lat||null, lng: lng||null,
-    severity: severity||'warn', source: 'admin', source_url: null,
-    submitted_by: 'admin', submitted_user_id: null,
-    is_test: is_test ? 1 : 0,
-  });
-  const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(result.lastInsertRowid);
-  if (!is_test) dispatchAlerts(event).catch(() => {});
-  res.json({ ok: true, event });
-});
-
-// Admin: remove test events
-app.delete('/api/admin/events/test', requireAdmin, (req, res) => {
-  db.db.prepare(`UPDATE events SET status='removed' WHERE is_test=1`).run();
-  res.json({ ok: true });
-});
-
-// Admin: get all events including test
-app.get('/api/admin/events', requireAdmin, (req, res) => {
-  const events = db.getAllEventsAdmin.all();
-  res.json(events);
-});
-
-// Admin: refresh news
-app.post('/api/admin/refresh-news', requireAdmin, async (req, res) => {
-  refreshAllNews().catch(() => {});
-  res.json({ ok: true, message: 'News refresh started' });
-});
-
-// Distributor: create trial code
-app.post('/api/distributor/codes', requireDistributor, (req, res) => {
-  const user = db.getUserById(req.user.id);
-  const quota = parseInt(db.getSetting('distributor_default_quota') || '25');
-  const existingCodes = db.getTrialCodesByUser.all(req.user.id);
-  const totalUses = existingCodes.reduce((sum, c) => sum + c.max_uses, 0);
-
-  // Admins have unlimited quota
-  if (req.user.role !== 'admin' && totalUses >= quota) {
-    return res.status(403).json({ error: `You have reached your quota of ${quota} trial users` });
-  }
-
-  const { max_uses = 10, trial_days = 7 } = req.body;
-  const code = crypto.randomBytes(4).toString('hex').toUpperCase();
-  const expires_at = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-
-  db.createTrialCode.run({ code, created_by: req.user.id, max_uses, trial_days, expires_at });
-  res.json({ ok: true, code });
-});
-
-// Distributor: get my codes
-app.get('/api/distributor/codes', requireDistributor, (req, res) => {
-  const codes = db.getTrialCodesByUser.all(req.user.id);
-  res.json(codes);
-});
-
-// Distributor: deactivate code
-app.delete('/api/distributor/codes/:code', requireDistributor, (req, res) => {
-  db.deactivateTrialCode.run(req.params.code);
-  res.json({ ok: true });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EXISTING ROUTES (unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Safety score
-app.post('/api/safety-score', softAuth, async (req, res) => {
-  const { lat, lng, country_code } = req.body;
-  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-  try {
-    const { calculateSafetyScore } = require('./safety');
-    const result = await calculateSafetyScore({ lat, lng, country_code, db });
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ score: 50, label: 'Unknown', emoji: '🛡', factors: [] });
-  }
-});
-
-// Detect country from coordinates
-app.post('/api/detect-country', softAuth, async (req, res) => {
-  const { lat, lng } = req.body;
-  if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-  try {
-    const fetch = require('node-fetch');
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
-      headers: { 'User-Agent': 'AtlasAlly/1.0' }, timeout: 5000
-    });
-    const d = await r.json();
-    const countryCode = d.address?.country_code?.toUpperCase();
-    const country = countryCode ? COUNTRIES[countryCode] : null;
-    res.json({ country_code: countryCode, country });
-  } catch {
-    res.json({ country_code: null });
-  }
-});
-
-// Register subscriber (legacy, for backward compat)
-app.post('/api/register', softAuth, (req, res) => {
-  const { whatsapp, name, countries } = req.body;
-  if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
-  try {
-    db.upsertUser({ whatsapp: clean, name: name||null, email: null });
-    const user = db.getUser(clean);
-    if (countries?.length) {
-      countries.forEach(code => {
-        try { db.addCountry.run({ user_id: user.id, country_code: code.toUpperCase() }); } catch {}
-      });
-    }
-    const token = createToken(user);
-    res.json({ ok: true, token });
-  } catch (e) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-// Emergency contacts
-app.get('/api/user/contacts', requireAuth, (req, res) => {
-  res.json(db.getEmergencyContacts.all(req.user.id));
-});
-app.post('/api/user/contacts', requireAuth, (req, res) => {
-  const { name, whatsapp, relation } = req.body;
-  if (!name || !whatsapp) return res.status(400).json({ error: 'name and whatsapp required' });
-  db.addEmergencyContact.run({ user_id: req.user.id, name, whatsapp, relation: relation||null });
-  res.json({ ok: true });
-});
-app.delete('/api/user/contacts/:id', requireAuth, (req, res) => {
-  db.removeEmergencyContact.run(req.params.id, req.user.id);
-  res.json({ ok: true });
-});
-
-// Check-in
-app.post('/api/checkin', softAuth, async (req, res) => {
-  const { whatsapp, lat, lng, country_code, message, safety_score } = req.body;
-  if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser(whatsapp);
-  if (user) {
-    db.logCheckin.run({ user_id: user.id, lat: lat||null, lng: lng||null, country_code: country_code||null, safety_score: safety_score||null, message: message||null, type: 'manual' });
-    const contacts = db.getEmergencyContacts.all(user.id);
-    const country = country_code ? COUNTRIES[country_code] : null;
-    const mapUrl = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
-    const msg = `✅ *${user.name || whatsapp} is safe!*\n${country ? `📍 ${country.flag} ${country.name}\n` : ''}${message ? `💬 "${message}"\n` : ''}${mapUrl ? `🗺️ ${mapUrl}` : ''}\n_Atlas Ally check-in_`;
-    for (const c of contacts) await sendCheckinAlert(c.whatsapp, msg).catch(() => {});
-  }
-  res.json({ ok: true });
-});
-
-// Zone alert
-app.post('/api/zone-alert', softAuth, async (req, res) => {
-  const { whatsapp, zone_name, country_code, lat, lng, alert_type } = req.body;
-  if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const user = db.getUser(whatsapp);
-  if (user) {
-    db.logZoneAlert.run({ user_id: user.id, zone_name: zone_name||null, country_code: country_code||null, lat: lat||null, lng: lng||null, event_type: 'geofence', alert_type: alert_type||'entry' });
-    const contacts = db.getEmergencyContacts.all(user.id);
-    const country = country_code ? COUNTRIES[country_code] : null;
-    const mapUrl = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
-    const msg = alert_type === 'danger'
-      ? `🚨 *DANGER ALERT — ${user.name || whatsapp}*\nEntering high-risk area: ${zone_name||'Unknown'}\n${country ? `${country.flag} ${country.name}\n` : ''}${mapUrl}\n_Atlas Ally journey alert_`
-      : `🛂 *${user.name || whatsapp} crossed into ${zone_name || country?.name || 'new country'}*\n${mapUrl}\n_Atlas Ally geofence alert_`;
-    for (const c of contacts) await sendCheckinAlert(c.whatsapp, msg).catch(() => {});
-  }
-  res.json({ ok: true });
-});
+// ── Misc routes ───────────────────────────────────────────────────────────────
 
 // Checklists
 app.get('/api/checklists', softAuth, (req, res) => res.json(CHECKLISTS));
+
+// Offline country bundle
 app.get('/api/offline/:code', softAuth, (req, res) => {
   const code = req.params.code.toUpperCase();
-  const c = COUNTRIES[code];
+  const c    = COUNTRIES[code];
   if (!c) return res.status(404).json({ error: 'Country not found' });
   const { ADVISORY_LEVELS } = require('./countries');
-  const level = c.advisoryLevel || 1;
-  const cfg = ADVISORY_LEVELS[level] || ADVISORY_LEVELS[1];
-  const events = db.getEventsByCountry.all(code);
-  const news = db.getNewsByCountry.all(code);
-  res.json({ ...c, code, advisoryConfig: cfg, events, news });
+  const cfg = ADVISORY_LEVELS[c.advisoryLevel || 1] || ADVISORY_LEVELS[1];
+  res.json({
+    ...c, code, advisoryConfig: cfg,
+    events: db.getEventsByCountry.all(code),
+    news:   db.getNewsByCountry.all(code),
+  });
+});
+
+// Feedback
+app.post('/api/feedback', softAuth, (req, res) => {
+  const { rating, likes, dislikes, suggestions, bugs, would_pay, price_point, token } = req.body;
+  try {
+    db.db.prepare(`
+      INSERT INTO feedback (user_id, whatsapp, token, rating, likes, dislikes, suggestions, bugs, would_pay, price_point)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      req.user?.id || null, req.user?.whatsapp || null, token || null,
+      rating || null, likes || null, dislikes || null,
+      suggestions || null, bugs || null, would_pay ? 1 : 0, price_point || null
+    );
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to save feedback' });
+  }
+});
+
+// Invite tokens (public validate + use)
+app.get('/api/invite/:token', (req, res) => {
+  const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(req.params.token.toUpperCase());
+  if (!t)                  return res.status(404).json({ error: 'Invalid or expired invite' });
+  if (t.uses >= t.max_uses) return res.status(400).json({ error: 'This invite has been used' });
+  res.json({ ok: true, token: t.token });
+});
+
+app.post('/api/invite/:token/use', softAuth, (req, res) => {
+  const token = req.params.token.toUpperCase();
+  const t     = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(token);
+  if (!t || t.uses >= t.max_uses) return res.status(400).json({ error: 'Invalid invite' });
+  db.db.prepare(`UPDATE invite_tokens SET uses=uses+1, used_by=?, used_at=datetime('now') WHERE token=?`)
+    .run(req.user?.whatsapp || 'anonymous', token);
+  res.json({ ok: true });
+});
+
+// Legacy register (backward compat)
+app.post('/api/register', softAuth, (req, res) => {
+  const { whatsapp, name, countries } = req.body;
+  if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
+  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  try {
+    db.upsertUser({ whatsapp: clean, name: name || null, email: null });
+    const user = db.getUser(clean);
+    countries?.forEach(code => {
+      try { db.addCountry.run({ user_id: user.id, country_code: code.toUpperCase() }); } catch {}
+    });
+    const { createToken } = require('./auth');
+    res.json({ ok: true, token: createToken(user) });
+  } catch {
+    res.status(500).json({ error: 'Registration failed' });
+  }
 });
 
 // Unsubscribe
@@ -786,251 +150,17 @@ app.get('/unsubscribe', (req, res) => {
   res.send('<html><body style="font-family:sans-serif;max-width:400px;margin:40px auto;text-align:center"><h2>Unsubscribed</h2><p>You have been removed from Atlas Ally alerts.</p></body></html>');
 });
 
-// Admin panel auth (legacy)
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  if (password !== process.env.ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
-  res.json({ ok: true, token: 'admin-' + Buffer.from(password).toString('base64') });
-});
-app.post('/api/admin/verify', (req, res) => {
-  const { token } = req.body;
-  const expected = 'admin-' + Buffer.from(process.env.ADMIN_PASSWORD || '').toString('base64');
-  res.json({ ok: token === expected });
-});
-app.get('/api/admin/queue', (req, res) => {
-  const events = db.db.prepare(`SELECT * FROM events WHERE status='pending' ORDER BY created_at DESC`).all();
-  res.json(events);
-});
-app.get('/api/admin/subscribers', (req, res) => {
-  const users = db.getAllUsers.all().map(u => ({ ...sanitizeUser(u), countries: db.getUserCountries.all(u.id).map(c => c.country_code) }));
-  res.json(users);
-});
-
-// Stripe checkout
-app.post('/api/checkout', softAuth, async (req, res) => {
-  const { whatsapp, plan, countries } = req.body;
-  const stripe = require('./stripe').getStripe();
-  if (!stripe) {
-    // No Stripe configured — start trial instead
-    if (whatsapp) {
-      const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
-      db.upsertUser({ whatsapp: clean, name: null, email: null });
-      if (countries?.length) {
-        const user = db.getUser(clean);
-        countries.forEach(c => { try { db.addCountry.run({ user_id: user.id, country_code: c }); } catch {} });
-      }
-    }
-    return res.json({ ok: true, trial: true });
-  }
-  try {
-    const priceId = plan === 'family' ? process.env.STRIPE_FAMILY_PRICE_ID : process.env.STRIPE_BASE_PRICE_ID;
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.BASE_URL}/?checkout=success`,
-      cancel_url: `${process.env.BASE_URL}/landing`,
-      metadata: { whatsapp: whatsapp||'', plan: plan||'traveler' },
-    });
-    res.json({ url: session.url });
-  } catch (e) {
-    res.status(500).json({ error: 'Checkout failed' });
-  }
-});
-
-// Stripe webhook
-app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  const stripe = require('./stripe').getStripe();
-  if (!stripe) return res.json({ ok: true });
-  const sig = req.headers['stripe-signature'];
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (e) {
-    return res.status(400).send('Webhook error');
-  }
-  if (event.type === 'checkout.session.completed') {
-    const wa = event.data.object.metadata?.whatsapp;
-    if (wa) {
-      const user = db.getUser(wa);
-      if (user) db.updatePlan({ plan: 'premium', stripe_id: event.data.object.customer, id: user.id });
-    }
-  }
-  res.json({ ok: true });
-});
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FEEDBACK SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Create feedback table if not exists
-db.db.exec(`
-  CREATE TABLE IF NOT EXISTS feedback (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER,
-    whatsapp    TEXT,
-    token       TEXT,
-    rating      INTEGER,
-    likes       TEXT,
-    dislikes    TEXT,
-    suggestions TEXT,
-    bugs        TEXT,
-    would_pay   INTEGER DEFAULT 0,
-    price_point TEXT,
-    created_at  TEXT DEFAULT (datetime('now'))
-  );
-  CREATE TABLE IF NOT EXISTS invite_tokens (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    token       TEXT NOT NULL UNIQUE,
-    created_by  TEXT DEFAULT 'admin',
-    used        INTEGER DEFAULT 0,
-    used_by     TEXT,
-    used_at     TEXT,
-    max_uses    INTEGER DEFAULT 1,
-    uses        INTEGER DEFAULT 0,
-    active      INTEGER DEFAULT 1,
-    created_at  TEXT DEFAULT (datetime('now'))
-  );
-`);
-
-// Submit feedback
-app.post('/api/feedback', softAuth, (req, res) => {
-  const { rating, likes, dislikes, suggestions, bugs, would_pay, price_point, token } = req.body;
-  try {
-    db.db.prepare(`
-      INSERT INTO feedback (user_id, whatsapp, token, rating, likes, dislikes, suggestions, bugs, would_pay, price_point)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      req.user?.id || null,
-      req.user?.whatsapp || null,
-      token || null,
-      rating || null,
-      likes || null,
-      dislikes || null,
-      suggestions || null,
-      bugs || null,
-      would_pay ? 1 : 0,
-      price_point || null
-    );
-    res.json({ ok: true });
-  } catch(e) {
-    res.status(500).json({ error: 'Failed to save feedback' });
-  }
-});
-
-// Get all feedback (admin)
-app.get('/api/admin/feedback', requireAdmin, (req, res) => {
-  const rows = db.db.prepare(`SELECT * FROM feedback ORDER BY created_at DESC`).all();
-  res.json(rows);
-});
-
-// Generate invite token (admin)
-app.post('/api/admin/invite-tokens', requireAdmin, (req, res) => {
-  const { max_uses = 1 } = req.body;
-  const token = crypto.randomBytes(6).toString('hex').toUpperCase();
-  db.db.prepare(`INSERT INTO invite_tokens (token, created_by, max_uses) VALUES (?, 'admin', ?)`).run(token, max_uses);
-  res.json({ ok: true, token });
-});
-
-// Get all invite tokens (admin)
-app.get('/api/admin/invite-tokens', requireAdmin, (req, res) => {
-  const tokens = db.db.prepare(`SELECT * FROM invite_tokens ORDER BY created_at DESC`).all();
-  res.json(tokens);
-});
-
-// Delete invite token (admin)
-app.delete('/api/admin/invite-tokens/:token', requireAdmin, (req, res) => {
-  db.db.prepare(`UPDATE invite_tokens SET active=0 WHERE token=?`).run(req.params.token);
-  res.json({ ok: true });
-});
-
-// Validate invite token (public)
-app.get('/api/invite/:token', (req, res) => {
-  const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(req.params.token.toUpperCase());
-  if (!t) return res.status(404).json({ error: 'Invalid or expired invite' });
-  if (t.uses >= t.max_uses) return res.status(400).json({ error: 'This invite has been used' });
-  res.json({ ok: true, token: t.token });
-});
-
-// Use invite token during signup
-app.post('/api/invite/:token/use', softAuth, (req, res) => {
-  const token = req.params.token.toUpperCase();
-  const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(token);
-  if (!t || t.uses >= t.max_uses) return res.status(400).json({ error: 'Invalid invite' });
-  db.db.prepare(`UPDATE invite_tokens SET uses=uses+1, used_by=?, used_at=datetime('now') WHERE token=?`)
-    .run(req.user?.whatsapp || 'anonymous', token);
-  res.json({ ok: true });
-});
-
-// Crime stats with types
-app.get('/api/crime/:code/detailed', softAuth, (req, res) => {
-  const code = req.params.code.toUpperCase();
-  const all_stats = db.db.prepare(`SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`).all(code);
-  // Group by city
-  const cities = {};
-  all_stats.forEach(s => {
-    if (!cities[s.city]) cities[s.city] = { city: s.city, lat: s.lat, lng: s.lng, overall: null, types: {} };
-    if (s.category === 'overall') cities[s.city].overall = s;
-    else cities[s.city].types[s.category] = s.crime_index;
-  });
-  const community = db.getCommunityCrime.all(code);
-  res.json({ cities: Object.values(cities), community });
-});
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LEGAL PAGES & ACCOUNT DELETION
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Serve privacy policy and terms pages
+// Legal pages
 app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
-app.get('/terms', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
+app.get('/terms',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
 
-// Delete account — GDPR / user request
-app.delete('/api/user/delete', requireAuth, (req, res) => {
-  const userId = req.user.id;
-  try {
-    // Delete in order to respect foreign keys
-    db.db.prepare(`DELETE FROM emergency_contacts WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM user_countries WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM checkin_log WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM zone_alerts WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM notify_log WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM offline_cache WHERE user_id = ?`).run(userId);
-    db.db.prepare(`DELETE FROM feedback WHERE user_id = ?`).run(userId);
-    db.db.prepare(`UPDATE events SET submitted_user_id = NULL WHERE submitted_user_id = ?`).run(userId);
-    // Anonymize rather than hard delete to preserve event/report data
-    db.db.prepare(`UPDATE users SET
-      whatsapp = 'deleted-' || id,
-      name = 'Deleted User',
-      email = NULL,
-      dob = NULL,
-      state_origin = NULL,
-      country_origin = NULL,
-      active = 0,
-      verified = 0,
-      stripe_id = NULL
-    WHERE id = ?`).run(userId);
-
-    console.log(`User ${userId} account deleted (anonymized)`);
-    res.json({ ok: true, message: 'Account deleted successfully' });
-  } catch(e) {
-    logErr('account_delete', e, req);
-    res.status(500).json({ error: 'Failed to delete account. Please contact support@atlas-ally.com' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SCHEDULED JOBS
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Scheduled jobs ────────────────────────────────────────────────────────────
 refreshAllNews().catch(() => {});
-checkWeatherAlerts(db).catch(() => {});
+checkAllWeather(db).catch(() => {});
 
-const NEWS_INTERVAL = 2 * 60 * 60 * 1000;
-const WEATHER_INTERVAL = 6 * 60 * 60 * 1000;
-setInterval(() => refreshAllNews().catch(() => {}), NEWS_INTERVAL);
-setInterval(() => checkWeatherAlerts(db).catch(() => {}), WEATHER_INTERVAL);
+setInterval(() => refreshAllNews().catch(() => {}),       2 * 60 * 60 * 1000);
+setInterval(() => checkAllWeather(db).catch(() => {}),    6 * 60 * 60 * 1000);
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌍 Atlas Ally running on port ${PORT}`));

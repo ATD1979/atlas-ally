@@ -1,45 +1,31 @@
-// Atlas Ally — Stripe Integration
+// Atlas Ally — Stripe integration
 // Plans:
-//   traveler_base: $3/month — first country
-//   traveler_extra: $1/month per additional country
-//   family: $8/month — 1 account + 3 emergency contacts
+//   traveler_base  $3/mo — first country
+//   traveler_extra $1/mo per additional country
+//   family         $8/mo — 1 account + 3 emergency contacts
 
 let stripe = null;
 
 function getStripe() {
   if (!stripe && process.env.STRIPE_SECRET_KEY) {
-    try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); } catch(e) { console.warn('Stripe not available:', e.message); }
+    try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); }
+    catch (e) { console.warn('Stripe not available:', e.message); }
   }
   return stripe;
 }
 
-// Create a Stripe Checkout session for new subscribers
 async function createCheckoutSession({ email, whatsapp, plan, countries, successUrl, cancelUrl }) {
   const s = getStripe();
   if (!s) throw new Error('Stripe not configured — add STRIPE_SECRET_KEY to Railway variables');
 
-  // Determine line items based on plan and number of countries
-  const lineItems = [];
-
-  if (plan === 'family') {
-    lineItems.push({
-      price: process.env.STRIPE_FAMILY_PRICE_ID,
-      quantity: 1,
-    });
-  } else {
-    // Traveler plan: $3 base + $1 per extra country
-    lineItems.push({
-      price: process.env.STRIPE_BASE_PRICE_ID,
-      quantity: 1,
-    });
-    const extraCountries = Math.max(0, (countries?.length || 1) - 1);
-    if (extraCountries > 0 && process.env.STRIPE_EXTRA_PRICE_ID) {
-      lineItems.push({
-        price: process.env.STRIPE_EXTRA_PRICE_ID,
-        quantity: extraCountries,
-      });
-    }
-  }
+  const lineItems = plan === 'family'
+    ? [{ price: process.env.STRIPE_FAMILY_PRICE_ID, quantity: 1 }]
+    : [
+        { price: process.env.STRIPE_BASE_PRICE_ID, quantity: 1 },
+        ...(Math.max(0, (countries?.length || 1) - 1) > 0 && process.env.STRIPE_EXTRA_PRICE_ID
+          ? [{ price: process.env.STRIPE_EXTRA_PRICE_ID, quantity: Math.max(0, (countries?.length || 1) - 1) }]
+          : []),
+      ];
 
   const session = await s.checkout.sessions.create({
     mode: 'subscription',
@@ -53,10 +39,7 @@ async function createCheckoutSession({ email, whatsapp, plan, countries, success
         countries: (countries || []).join(','),
       },
     },
-    metadata: {
-      whatsapp: whatsapp || '',
-      plan: plan || 'traveler',
-    },
+    metadata: { whatsapp: whatsapp || '', plan: plan || 'traveler' },
     success_url: successUrl || `${process.env.BASE_URL}/?checkout=success`,
     cancel_url: cancelUrl || `${process.env.BASE_URL}/landing`,
     allow_promotion_codes: true,
@@ -65,7 +48,6 @@ async function createCheckoutSession({ email, whatsapp, plan, countries, success
   return { url: session.url, session_id: session.id };
 }
 
-// Handle Stripe webhook events
 async function handleWebhook(rawBody, signature) {
   const s = getStripe();
   if (!s) return { handled: false };
@@ -76,7 +58,7 @@ async function handleWebhook(rawBody, signature) {
   let event;
   try {
     event = s.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch(e) {
+  } catch (e) {
     return { handled: false, error: `Webhook signature failed: ${e.message}` };
   }
 
@@ -84,46 +66,32 @@ async function handleWebhook(rawBody, signature) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object;
-      const whatsapp = session.metadata?.whatsapp || session.subscription_data?.metadata?.whatsapp;
-      const plan = session.metadata?.plan || 'traveler';
-      const stripeId = session.customer;
-
+      const { metadata, customer } = event.data.object;
+      const whatsapp = metadata?.whatsapp;
       if (whatsapp) {
-        db.db.prepare(`UPDATE users SET plan='premium', stripe_id=? WHERE whatsapp=?`).run(stripeId, whatsapp);
-        console.log(`✅ Stripe: ${whatsapp} upgraded to ${plan}`);
+        db.db.prepare(`UPDATE users SET plan='premium', stripe_id=? WHERE whatsapp=?`).run(customer, whatsapp);
+        console.log(`✅ Stripe: ${whatsapp} upgraded to ${metadata?.plan || 'premium'}`);
       }
       break;
     }
-
     case 'customer.subscription.deleted': {
-      const sub = event.data.object;
-      const customerId = sub.customer;
+      const customerId = event.data.object.customer;
       db.db.prepare(`UPDATE users SET plan='free' WHERE stripe_id=?`).run(customerId);
       console.log(`❌ Stripe: subscription cancelled for customer ${customerId}`);
       break;
     }
-
     case 'customer.subscription.updated': {
-      const sub = event.data.object;
-      const status = sub.status;
-      const customerId = sub.customer;
-      if (status === 'active' || status === 'trialing') {
-        db.db.prepare(`UPDATE users SET plan='premium' WHERE stripe_id=?`).run(customerId);
-      } else if (status === 'past_due' || status === 'canceled') {
-        db.db.prepare(`UPDATE users SET plan='free' WHERE stripe_id=?`).run(customerId);
-      }
+      const { status, customer: customerId } = event.data.object;
+      const plan = ['active', 'trialing'].includes(status) ? 'premium' : 'free';
+      db.db.prepare(`UPDATE users SET plan=? WHERE stripe_id=?`).run(plan, customerId);
       break;
     }
-
-    case 'invoice.payment_failed': {
-      const invoice = event.data.object;
-      console.warn(`⚠️ Payment failed for customer ${invoice.customer}`);
+    case 'invoice.payment_failed':
+      console.warn(`⚠️ Payment failed for customer ${event.data.object.customer}`);
       break;
-    }
   }
 
   return { handled: true, type: event.type };
 }
 
-module.exports = { createCheckoutSession, handleWebhook };
+module.exports = { getStripe, createCheckoutSession, handleWebhook };
