@@ -10,7 +10,7 @@ const { CHECKLISTS }   = require('./checklists');
 const { refreshAllNews }   = require('./news');
 const { checkAllWeather }  = require('./weather');
 const { requireAuth, requireAdmin, requireDistributor, softAuth } = require('./auth');
-const { seedCrimeData, seedAdminUser, ensureRuntimeTables } = require('./services/seed');
+const { seedCrimeData, seedAdminUsers, ensureRuntimeTables } = require('./services/seed');
 const {
   apiLimiter, authLimiter, apiSlowDown, apiFingerprint,
   securityHeaders, attachErrorLogger,
@@ -27,7 +27,7 @@ const paymentRoutes  = require('./routes/payments');
 // ── Startup ───────────────────────────────────────────────────────────────────
 ensureRuntimeTables();
 seedCrimeData();
-seedAdminUser();
+seedAdminUsers();
 
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
