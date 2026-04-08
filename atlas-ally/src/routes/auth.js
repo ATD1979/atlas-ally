@@ -7,7 +7,7 @@ const { sendCheckinAlert } = require('../alerts');
 
 // ─── OTP rate limit (per phone, in-memory) ────────────────────────────────────
 const otpRateLimit       = new Map();
-const OTP_MAX_PER_WINDOW = 3;
+const OTP_MAX_PER_WINDOW = 10;
 const OTP_WINDOW_MS      = 5 * 60 * 1000;
 
 function checkOTPRateLimit(whatsapp) {
@@ -27,6 +27,13 @@ function sanitizeUser(u) {
   const safe = { ...u };
   delete safe.stripe_id;
   delete safe.dob;
+  // For admin/premium users, null out trial_end so the frontend
+  // cannot compute a trial countdown from the user object
+  if (safe.plan === 'premium' || safe.role === 'admin') {
+    safe.trial_end = null;
+    safe.trial_days_left = 0;
+    safe.on_premium = true;
+  }
   return safe;
 }
 
