@@ -74,11 +74,15 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
     </div>
     <div class="login-sub">Admin Panel</div>
     <div class="field-group">
+      <div class="field-label">Your WhatsApp Number</div>
+      <input class="field-input" type="tel" id="wa-input" placeholder="+1 XXX XXX XXXX" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
+    </div>
+    <div class="field-group">
       <div class="field-label">Admin Password</div>
-      <input class="field-input" type="password" id="pw-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')login()">
+      <input class="field-input" type="password" id="pw-input" placeholder="Enter your password" onkeydown="if(event.key==='Enter')login()">
     </div>
     <button class="btn-primary" onclick="login()" id="login-btn">Sign In</button>
-    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Wrong password</div>
+    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Invalid credentials</div>
   </div>
 </div>
 
@@ -110,6 +114,7 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <button class="tab-btn" onclick="switchPanel('events',this)">🗑️ Events</button>
       <button class="tab-btn" onclick="switchPanel('tokens',this)">🎟️ Invites</button>
       <button class="tab-btn" onclick="switchPanel('feedback',this)">📋 Feedback</button>
+      <button class="tab-btn" onclick="switchPanel('password',this)">🔑 Password</button>
     </div>
 
     <!-- Moderation Queue -->
@@ -226,6 +231,28 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div id="subs-list"><div class="empty-state">Loading…</div></div>
     </div>
 
+    <!-- Change Password -->
+    <div id="panel-password" class="panel" style="display:none;">
+      <div class="section-label">Change Your Admin Password</div>
+      <div style="max-width:400px;margin-top:12px;">
+        <div id="pw-change-who" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:16px;"></div>
+        <div class="field-group">
+          <div class="field-label">Current Password</div>
+          <input class="field-input" type="password" id="pw-current" placeholder="Your current password">
+        </div>
+        <div class="field-group">
+          <div class="field-label">New Password</div>
+          <input class="field-input" type="password" id="pw-new" placeholder="At least 8 characters">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Confirm New Password</div>
+          <input class="field-input" type="password" id="pw-confirm" placeholder="Repeat new password">
+        </div>
+        <button class="btn-primary" onclick="changePassword()" id="pw-change-btn" style="width:100%;">Update Password</button>
+        <div id="pw-change-msg" style="font-family:var(--mono);font-size:12px;text-align:center;margin-top:10px;display:none;"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -242,22 +269,28 @@ function showToast(msg, type='success') {
 }
 
 async function login() {
-  const pw = document.getElementById('pw-input').value;
+  const wa  = document.getElementById('wa-input').value.trim();
+  const pw  = document.getElementById('pw-input').value;
   const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!wa || !pw) { err.textContent = 'Enter your WhatsApp number and password'; err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
-    const res = await fetch(API + '/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
+    const res  = await fetch(API + '/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({whatsapp:wa, password:pw}) });
     const data = await res.json();
     if (data.token) {
       TOKEN = data.token;
       localStorage.setItem('jsn_admin_token', TOKEN);
+      localStorage.setItem('jsn_admin_wa', wa);
       showAdminApp();
     } else {
-      document.getElementById('login-error').style.display = 'block';
+      err.textContent = data.error || 'Invalid credentials';
+      err.style.display = 'block';
     }
   } catch(e) {
-    document.getElementById('login-error').style.display = 'block';
-    document.getElementById('login-error').textContent = 'Connection error';
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
   }
   btn.disabled = false; btn.textContent = 'Sign In';
 }
@@ -275,8 +308,45 @@ function authHeaders() {
 function showAdminApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-app').style.display = 'block';
-  document.getElementById('admin-sub').textContent = 'Logged in · ' + new Date().toLocaleTimeString();
+  const wa = localStorage.getItem('jsn_admin_wa') || '';
+  document.getElementById('admin-sub').textContent = 'Logged in as ' + wa + ' · ' + new Date().toLocaleTimeString();
+  const whoEl = document.getElementById('pw-change-who');
+  if (whoEl) whoEl.textContent = 'Changing password for: ' + wa;
   loadStats(); loadQueue(); loadSubscribers();
+}
+
+async function changePassword() {
+  const current  = document.getElementById('pw-current').value;
+  const newPw    = document.getElementById('pw-new').value;
+  const confirm  = document.getElementById('pw-confirm').value;
+  const btn      = document.getElementById('pw-change-btn');
+  const msg      = document.getElementById('pw-change-msg');
+
+  msg.style.display = 'none';
+  if (!current || !newPw) { msg.textContent = 'Fill in all fields'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
+  if (newPw !== confirm)  { msg.textContent = 'Passwords do not match'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
+  if (newPw.length < 8)  { msg.textContent = 'Password must be at least 8 characters'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Updating…';
+  try {
+    const res  = await fetch(API + '/api/admin/set-password', { method:'POST', headers: authHeaders(), body: JSON.stringify({ currentPassword: current, newPassword: newPw }) });
+    const data = await res.json();
+    if (data.ok) {
+      msg.textContent = '✅ Password updated! Use it next time you log in.';
+      msg.style.color = 'var(--safe2)';
+      document.getElementById('pw-current').value = '';
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+    } else {
+      msg.textContent = data.error || 'Failed to update';
+      msg.style.color = 'var(--danger2)';
+    }
+  } catch(e) {
+    msg.textContent = 'Connection error';
+    msg.style.color = 'var(--danger2)';
+  }
+  msg.style.display = 'block';
+  btn.disabled = false; btn.textContent = 'Update Password';
 }
 
 async function loadStats() {
