@@ -64,11 +64,8 @@ app.use('/api', softAuth, dataRoutes);
 // Stripe checkout & webhook
 app.use('/api', softAuth, paymentRoutes);
 
-// Admin login & verify are public (no prior auth needed)
-app.use('/api/admin/login',  adminRoutes);
-app.use('/api/admin/verify', adminRoutes);
-// All other admin routes require admin JWT
-app.use('/api/admin',       requireAdmin,       adminRoutes);
+// Admin routes (login/verify are public; individual routes enforce their own auth)
+app.use('/api/admin',       adminRoutes);
 app.use('/api/distributor', requireDistributor, adminRoutes);
 
 // ── Misc routes ───────────────────────────────────────────────────────────────

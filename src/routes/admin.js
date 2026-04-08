@@ -9,11 +9,11 @@ const { requireAdmin }            = require('../auth');
 
 // ── Admin: users ──────────────────────────────────────────────────────────────
 
-router.get('/users', (req, res) => {
+router.get('/users', requireAdmin, (req, res) => {
   res.json(db.getAllUsers.all().map(sanitizeUser));
 });
 
-router.patch('/users/:id/role', (req, res) => {
+router.patch('/users/:id/role', requireAdmin, (req, res) => {
   const { role } = req.body;
   if (!['admin', 'distributor', 'user'].includes(role))
     return res.status(400).json({ error: 'Invalid role' });
@@ -21,13 +21,13 @@ router.patch('/users/:id/role', (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', requireAdmin, (req, res) => {
   db.deactivateUser(req.params.id);
   res.json({ ok: true });
 });
 
 // Legacy subscribers list (mirrors /users with country data)
-router.get('/subscribers', (req, res) => {
+router.get('/subscribers', requireAdmin, (req, res) => {
   const users = db.getAllUsers.all().map(u => ({
     ...sanitizeUser(u),
     countries: db.getUserCountries.all(u.id).map(c => c.country_code),
@@ -37,11 +37,11 @@ router.get('/subscribers', (req, res) => {
 
 // ── Admin: events ─────────────────────────────────────────────────────────────
 
-router.get('/events', (req, res) => {
+router.get('/events', requireAdmin, (req, res) => {
   res.json(db.getAllEventsAdmin.all());
 });
 
-router.post('/events', (req, res) => {
+router.post('/events', requireAdmin, (req, res) => {
   const { country_code, type, title, description, location, lat, lng, severity, is_test } = req.body;
   if (!country_code || !type || !title)
     return res.status(400).json({ error: 'Missing required fields' });
@@ -59,24 +59,24 @@ router.post('/events', (req, res) => {
   res.json({ ok: true, event });
 });
 
-router.delete('/events/test', (req, res) => {
+router.delete('/events/test', requireAdmin, (req, res) => {
   db.db.prepare(`UPDATE events SET status='removed' WHERE is_test=1`).run();
   res.json({ ok: true });
 });
 
-router.get('/queue', (req, res) => {
+router.get('/queue', requireAdmin, (req, res) => {
   res.json(db.db.prepare(`SELECT * FROM events WHERE status='pending' ORDER BY created_at DESC`).all());
 });
 
 // ── Admin: settings ───────────────────────────────────────────────────────────
 
-router.get('/settings', (req, res) => {
+router.get('/settings', requireAdmin, (req, res) => {
   const settings = {};
   db.db.prepare(`SELECT * FROM app_settings`).all().forEach(r => { settings[r.key] = r.value; });
   res.json(settings);
 });
 
-router.put('/settings', (req, res) => {
+router.put('/settings', requireAdmin, (req, res) => {
   const { key, value } = req.body;
   db.setSetting.run(key, value);
   res.json({ ok: true });
@@ -84,39 +84,39 @@ router.put('/settings', (req, res) => {
 
 // ── Admin: stats & errors ─────────────────────────────────────────────────────
 
-router.get('/stats', (req, res) => res.json(db.getStats()));
+router.get('/stats', requireAdmin, (req, res) => res.json(db.getStats()));
 
-router.get('/errors', (req, res) => {
+router.get('/errors', requireAdmin, (req, res) => {
   res.json(db.getRecentErrors.all());
 });
 
 // ── Admin: news ───────────────────────────────────────────────────────────────
 
-router.post('/refresh-news', async (req, res) => {
+router.post('/refresh-news', requireAdmin, async (req, res) => {
   refreshAllNews().catch(() => {});
   res.json({ ok: true, message: 'News refresh started' });
 });
 
 // ── Admin: feedback ───────────────────────────────────────────────────────────
 
-router.get('/feedback', (req, res) => {
+router.get('/feedback', requireAdmin, (req, res) => {
   res.json(db.db.prepare(`SELECT * FROM feedback ORDER BY created_at DESC`).all());
 });
 
 // ── Admin: invite tokens ──────────────────────────────────────────────────────
 
-router.get('/invite-tokens', (req, res) => {
+router.get('/invite-tokens', requireAdmin, (req, res) => {
   res.json(db.db.prepare(`SELECT * FROM invite_tokens ORDER BY created_at DESC`).all());
 });
 
-router.post('/invite-tokens', (req, res) => {
+router.post('/invite-tokens', requireAdmin, (req, res) => {
   const { max_uses = 1 } = req.body;
   const token = crypto.randomBytes(6).toString('hex').toUpperCase();
   db.db.prepare(`INSERT INTO invite_tokens (token, created_by, max_uses) VALUES (?, 'admin', ?)`).run(token, max_uses);
   res.json({ ok: true, token });
 });
 
-router.delete('/invite-tokens/:token', (req, res) => {
+router.delete('/invite-tokens/:token', requireAdmin, (req, res) => {
   db.db.prepare(`UPDATE invite_tokens SET active=0 WHERE token=?`).run(req.params.token);
   res.json({ ok: true });
 });
