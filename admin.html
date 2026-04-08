@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Ally — Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c10;
+    --bg2:      #0d1117;
+    --bg3:      #131920;
+    --border:   #1e2d3d;
+    --accent:   #00e5ff;
+    --accent2:  #ff6b35;
+    --green:    #00ff88;
+    --warn:     #ffcc00;
+    --danger:   #ff3b55;
+    --text:     #e2e8f0;
+    --muted:    #5a7a8a;
+    --mono:     'Space Mono', monospace;
+    --display:  'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid scanlines overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,229,255,0.015) 2px,
+      rgba(0,229,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Login Screen ── */
+  #login-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: var(--bg);
+  }
+
+  .login-box {
+    width: 360px;
+    border: 1px solid var(--accent);
+    background: var(--bg2);
+    padding: 40px;
+    position: relative;
+    box-shadow: 0 0 40px rgba(0,229,255,0.1), inset 0 0 40px rgba(0,229,255,0.02);
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 20px; right: 20px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .login-logo {
+    font-family: var(--display);
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .login-sub {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  .field-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { border-color: var(--accent); }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm {
+    width: auto;
+    padding: 7px 14px;
+    font-size: 11px;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  #login-msg {
+    margin-top: 12px;
+    font-size: 11px;
+    text-align: center;
+    color: var(--danger);
+    min-height: 16px;
+  }
+
+  /* ── Main Layout ── */
+  #app { display: none; position: relative; z-index: 1; }
+
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    z-index: 50;
+  }
+
+  .topbar-logo {
+    font-family: var(--display);
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .topbar-badge {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--accent);
+    padding: 2px 8px;
+  }
+
+  .topbar-spacer { flex: 1; }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .topbar-user {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .logout-btn {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: var(--mono);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* ── Nav Tabs ── */
+  .nav {
+    position: fixed;
+    top: 52px; left: 0; right: 0;
+    height: 40px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    padding: 0 24px;
+    gap: 2px;
+    z-index: 49;
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    padding: 0 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: var(--mono);
+  }
+
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Content ── */
+  .content {
+    padding: 112px 24px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Stat Cards ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.4;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-val {
+    font-family: var(--display);
+    font-size: 32px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Section headers ── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    margin-top: 28px;
+  }
+
+  .section-title {
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Tables ── */
+  .table-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    font-size: 12px;
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 0;
+  }
+
+  .badge-admin { background: rgba(0,229,255,0.15); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+  .badge-premium { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .badge-trial { background: rgba(255,204,0,0.15); color: var(--warn); border: 1px solid rgba(255,204,0,0.3); }
+  .badge-expired { background: rgba(255,59,85,0.15); color: var(--danger); border: 1px solid rgba(255,59,85,0.3); }
+  .badge-free { background: rgba(90,122,138,0.15); color: var(--muted); border: 1px solid var(--border); }
+
+  /* ── Forms / Cards ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: var(--display);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    margin-bottom: 0;
+  }
+
+  select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    resize: vertical;
+    min-height: 80px;
+    margin-bottom: 0;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  /* ── Error log ── */
+  .log-entry {
+    background: var(--bg3);
+    border-left: 2px solid var(--danger);
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .log-time { color: var(--muted); font-size: 10px; }
+  .log-type { color: var(--danger); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 12px 20px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    max-width: 300px;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #toast.err { border-color: var(--danger); color: var(--danger); }
+  #toast.ok  { border-color: var(--green);  color: var(--green);  }
+
+  /* ── Loading ── */
+  .loading {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .loading::after {
+    content: '';
+    animation: dots 1.2s infinite;
+  }
+
+  @keyframes dots {
+    0%  { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .content { padding: 100px 12px 40px; }
+    .topbar, .nav { padding: 0 12px; }
+    .stat-val { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">ATLAS ALLY</div>
+    <div class="login-sub">Command Center</div>
+
+    <div id="login-phone-step">
+      <div class="field-label">WhatsApp Number</div>
+      <input id="l-phone" type="tel" placeholder="+16825617016" />
+      <button class="btn" onclick="loginSendOTP()">Send Verification Code</button>
+    </div>
+
+    <div id="login-otp-step" style="display:none">
+      <div class="field-label">6-Digit Code sent to <span id="l-display-num" style="color:var(--accent)"></span></div>
+      <input id="l-otp" type="text" maxlength="6" placeholder="000000" />
+      <button class="btn" onclick="loginVerify()">Verify & Enter</button>
+      <button class="btn btn-outline" style="margin-top:8px" onclick="backToPhone()">← Back</button>
+    </div>
+
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">ATLAS ALLY</div>
+    <div class="topbar-badge">ADMIN</div>
+    <div class="topbar-spacer"></div>
+    <div class="status-dot"></div>
+    <div class="topbar-user" id="topbar-user"></div>
+    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+  </div>
+
+  <div class="nav">
+    <button class="nav-tab active" onclick="switchTab('dashboard')">⬡ Dashboard</button>
+    <button class="nav-tab" onclick="switchTab('users')">⬡ Users</button>
+    <button class="nav-tab" onclick="switchTab('events')">⬡ Events</button>
+    <button class="nav-tab" onclick="switchTab('invite')">⬡ Invite Tokens</button>
+    <button class="nav-tab" onclick="switchTab('errors')">⬡ Error Log</button>
+    <button class="nav-tab" onclick="switchTab('settings')">⬡ Settings</button>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="stat-grid" id="stat-grid">
+        <div class="loading">Loading stats</div>
+      </div>
+
+      <div class="section-head">
+        <div class="section-title">Recent Activity</div>
+        <div class="section-line"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Plan</th>
+              <th>Countries</th>
+              <th>Last Login</th>
+            </tr>
+          </thead>
+          <tbody id="recent-users-body">
+            <tr><td colspan="4" class="loading">Loading</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <div class="section-head">
+        <div class="section-title">All Users</div>
+        <div class="section-line"></div>
+        <button class="btn btn-sm" onclick="loadUsers()">↻ Refresh</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Send Free Token to User</div>
+        <div class="form-row">
+          <div class="form-group">
+            <div class="field-label">WhatsApp Number</div>
+            <input id="token-wa" type="tel" placeholder="+1234567890" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Days to Grant</div>
+            <input id="token-days" type="number" value="7" min="1" max="365" />
+          </div>
+          <button class="btn btn-sm" style="margin-bottom:0" onclick="sendFreeToken()">Send Token</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>WhatsApp</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Plan</th>
+              <th>Trial End</th>
+              <th>Countries</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr><td colspan="8" class="loading">Loading</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="panel" id="panel-events">
+      <div class="section-head">
+        <div class="section-title">Post Event / Alert</div>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">New Event</div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <div class="field-label">Country Code</div>
+            <input id="ev-country" type="text" placeholder="JO" maxlength="2" style="text-transform:uppercase" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Type</div>
+            <select id="ev-type">
+              <option value="siren">🔴 Siren</option>
+              <option value="missile">🚀 Missile</option>
+              <option value="drone">🛸 Drone</option>
+              <option value="troop">🪖 Troop Movement</option>
+              <option value="strike">💥 Strike</option>
+              <option value="gunfire">🔫 Gunfire</option>
+              <option value="checkpoint">🚧 Checkpoint</option>
+              <option value="chemical">☣️ Chemical</option>
+              <option value="weather">🌩️ Weather</option>
+              <option value="health">🏥 Health</option>
+              <option value="news">📰 News</option>
+              <option value="clear">✅ All Clear</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="field-label">Severity</div>
+            <select id="ev-severity">
+              <option value="danger">Danger</option>
+              <option value="warn">Warning</option>
+              <option value="info">Info</option>
+              <option value="safe">Safe</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="flex:2">
+            <div class="field-label">Title</div>
+            <input id="ev-title" type="text" placeholder="Air raid sirens activated in Amman" />
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="flex:2">
+            <div class="field-label">Description (optional)</div>
+            <textarea id="ev-desc" placeholder="Additional details..."></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <div class="field-label">Lat (optional)</div>
+            <input id="ev-lat" type="number" step="0.0001" placeholder="31.9539" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Lng (optional)</div>
+            <input id="ev-lng" type="number" step="0.0001" placeholder="35.9106" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Location Label</div>
+            <input id="ev-location" type="text" placeholder="Amman" />
+          </div>
+          <button class="btn btn-sm" style="margin-bottom:0" onclick="postEvent()">Post &amp; Dispatch</button>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <div class="section-title">Recent Events</div>
+        <div class="section-line"></div>
+        <button class="btn btn-sm btn-danger" onclick="deleteTestEvents()">Delete Test Events</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Country</th>
+              <th>Type</th>
+              <th>Title</th>
+              <th>Severity</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="events-body">
+            <tr><td colspan="5" class="loading">Loading</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- INVITE TOKENS -->
+    <div class="panel" id="panel-invite">
+      <div class="section-head">
+        <div class="section-title">Invite Tokens</div>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Generate New Token</div>
+        <div class="form-row">
+          <div class="form-group">
+            <div class="field-label">Max Uses</div>
+            <input id="inv-uses" type="number" value="1" min="1" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Trial Days</div>
+            <input id="inv-days" type="number" value="30" min="1" />
+          </div>
+          <div class="form-group">
+            <div class="field-label">Label (optional)</div>
+            <input id="inv-label" type="text" placeholder="Partner promo" />
+          </div>
+          <button class="btn btn-sm" style="margin-bottom:0" onclick="createToken()">Generate</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Uses</th>
+              <th>Max Uses</th>
+              <th>Trial Days</th>
+              <th>Label</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tokens-body">
+            <tr><td colspan="7" class="loading">Loading</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ERROR LOG -->
+    <div class="panel" id="panel-errors">
+      <div class="section-head">
+        <div class="section-title">Error Log</div>
+        <div class="section-line"></div>
+        <button class="btn btn-sm" onclick="loadErrors()">↻ Refresh</button>
+      </div>
+      <div id="errors-list">
+        <div class="loading">Loading</div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <div class="section-head">
+        <div class="section-title">App Settings</div>
+        <div class="section-line"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">System Settings</div>
+        <div id="settings-form">
+          <div class="loading">Loading</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Maintenance</div>
+        <div class="form-row">
+          <button class="btn btn-sm btn-outline" onclick="refreshNews()">↻ Refresh News Feeds</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+const API = '';
+let authToken = localStorage.getItem('atlas_admin_token');
+let currentUser = null;
+let otpPhone = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+async function loginSendOTP() {
+  const phone = document.getElementById('l-phone').value.trim();
+  if (!phone) { setLoginMsg('Enter your WhatsApp number'); return; }
+
+  const btn = document.querySelector('#login-phone-step .btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  setLoginMsg('');
+
+  try {
+    const r = await fetch(API + '/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whatsapp: phone, purpose: 'admin-login' })
+    });
+    const d = await r.json();
+    if (!r.ok) { setLoginMsg(d.error || 'Failed to send code'); btn.disabled = false; btn.textContent = 'Send Verification Code'; return; }
+
+    otpPhone = phone;
+    document.getElementById('l-display-num').textContent = phone;
+    document.getElementById('login-phone-step').style.display = 'none';
+    document.getElementById('login-otp-step').style.display = 'block';
+    setLoginMsg('');
+  } catch (e) {
+    setLoginMsg('Network error — try again');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Send Verification Code';
+}
+
+async function loginVerify() {
+  const code = document.getElementById('l-otp').value.trim();
+  if (code.length !== 6) { setLoginMsg('Enter the 6-digit code'); return; }
+
+  const btn = document.querySelector('#login-otp-step .btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+  setLoginMsg('');
+
+  try {
+    const r = await fetch(API + '/api/auth/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ whatsapp: otpPhone, code })
+    });
+    const d = await r.json();
+    if (!r.ok) { setLoginMsg(d.error || 'Invalid code'); btn.disabled = false; btn.textContent = 'Verify & Enter'; return; }
+
+    authToken = d.token;
+    currentUser = d.user;
+    localStorage.setItem('atlas_admin_token', authToken);
+    enterApp();
+  } catch (e) {
+    setLoginMsg('Network error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Verify & Enter';
+}
+
+function backToPhone() {
+  document.getElementById('login-phone-step').style.display = 'block';
+  document.getElementById('login-otp-step').style.display = 'none';
+  setLoginMsg('');
+}
+
+function setLoginMsg(msg) {
+  document.getElementById('login-msg').textContent = msg;
+}
+
+function logout() {
+  localStorage.removeItem('atlas_admin_token');
+  location.reload();
+}
+
+// ── App Init ─────────────────────────────────────────────────────────────────
+
+async function enterApp() {
+  // Verify token is still admin
+  try {
+    const r = await fetch(API + '/api/auth/me', { headers: getHeaders() });
+    if (!r.ok) { logout(); return; }
+    const d = await r.json();
+    if (d.user?.role !== 'admin') { setLoginMsg('Access denied — admin only'); logout(); return; }
+    currentUser = d.user;
+  } catch { logout(); return; }
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbar-user').textContent = currentUser.name || currentUser.whatsapp;
+
+  loadDashboard();
+}
+
+function getHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + authToken
+  };
+}
+
+// Auto-login if token exists
+if (authToken) enterApp();
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'users') loadUsers();
+  if (tab === 'events') loadEvents();
+  if (tab === 'invite') loadTokens();
+  if (tab === 'errors') loadErrors();
+  if (tab === 'settings') loadSettings();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  setTimeout(() => el.className = '', 3000);
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  try {
+    const r = await fetch(API + '/api/admin/stats', { headers: getHeaders() });
+    const d = await r.json();
+
+    document.getElementById('stat-grid').innerHTML = [
+      ['Total Users', d.total_users ?? '—', ''],
+      ['Premium', d.premium_users ?? '—', 'paying'],
+      ['Trial Active', d.trial_users ?? '—', 'free trials'],
+      ['Events Posted', d.total_events ?? '—', 'all time'],
+      ['Countries', d.active_countries ?? '—', 'monitored'],
+      ['Error Count', d.error_count ?? '—', 'recent errors'],
+    ].map(([label, val, sub]) => `
+      <div class="stat-card">
+        <div class="stat-label">${label}</div>
+        <div class="stat-val">${val}</div>
+        ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+      </div>
+    `).join('');
+  } catch {
+    document.getElementById('stat-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
+  }
+
+  // Recent users
+  try {
+    const r = await fetch(API + '/api/admin/users', { headers: getHeaders() });
+    const users = await r.json();
+    const recent = users.slice(0, 10);
+
+    document.getElementById('recent-users-body').innerHTML = recent.map(u => `
+      <tr>
+        <td>${escH(u.name || '—')}</td>
+        <td>${planBadge(u)}</td>
+        <td style="color:var(--muted)">${u.country_count || 0}</td>
+        <td style="color:var(--muted);font-size:11px">${u.last_login ? timeAgo(u.last_login) : 'never'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" style="color:var(--muted);padding:20px">No users yet</td></tr>';
+  } catch {
+    document.getElementById('recent-users-body').innerHTML = '<tr><td colspan="4">Error loading</td></tr>';
+  }
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+async function loadUsers() {
+  document.getElementById('users-body').innerHTML = '<tr><td colspan="8" class="loading">Loading</td></tr>';
+  try {
+    const r = await fetch(API + '/api/admin/subscribers', { headers: getHeaders() });
+    const users = await r.json();
+
+    document.getElementById('users-body').innerHTML = users.map(u => `
+      <tr>
+        <td>${escH(u.name || '—')}</td>
+        <td style="color:var(--accent);font-size:11px">${escH(u.whatsapp)}</td>
+        <td style="color:var(--muted);font-size:11px">${escH(u.email || '—')}</td>
+        <td>${u.role === 'admin' ? '<span class="badge badge-admin">admin</span>' : ''}</td>
+        <td>${planBadge(u)}</td>
+        <td style="color:var(--muted);font-size:11px">${u.trial_end ? u.trial_end.split('T')[0] : '—'}</td>
+        <td style="color:var(--muted)">${(u.countries || []).join(', ') || '—'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" style="font-size:9px;padding:4px 8px" onclick="promoteUser(${u.id}, '${escH(u.role)}')">
+            ${u.role === 'admin' ? 'Demote' : 'Make Admin'}
+          </button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" style="color:var(--muted);padding:20px">No users</td></tr>';
+  } catch {
+    document.getElementById('users-body').innerHTML = '<tr><td colspan="8">Error loading users</td></tr>';
+  }
+}
+
+async function promoteUser(id, currentRole) {
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  if (!confirm(`Set user #${id} role to "${newRole}"?`)) return;
+  try {
+    const r = await fetch(API + '/api/admin/users/' + id + '/role', {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ role: newRole })
+    });
+    if (r.ok) { toast('Role updated', 'ok'); loadUsers(); }
+    else toast('Failed to update role', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+async function sendFreeToken() {
+  const wa = document.getElementById('token-wa').value.trim();
+  const days = parseInt(document.getElementById('token-days').value) || 7;
+  if (!wa) { toast('Enter a WhatsApp number', 'err'); return; }
+
+  try {
+    // Generate an invite token and send it
+    const r = await fetch(API + '/api/admin/invite-tokens', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ max_uses: 1, trial_days: days, label: 'manual-gift-' + wa })
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed', 'err'); return; }
+    toast(`Token ${d.token} created (${days} days). Share with user manually.`, 'ok');
+    loadTokens();
+  } catch { toast('Error', 'err'); }
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+async function loadEvents() {
+  document.getElementById('events-body').innerHTML = '<tr><td colspan="5" class="loading">Loading</td></tr>';
+  try {
+    const r = await fetch(API + '/api/admin/events', { headers: getHeaders() });
+    const events = await r.json();
+
+    document.getElementById('events-body').innerHTML = events.slice(0, 30).map(e => `
+      <tr>
+        <td><span style="color:var(--accent)">${e.country_code}</span></td>
+        <td>${e.type}</td>
+        <td>${escH(e.title)}</td>
+        <td><span class="badge ${e.severity === 'danger' ? 'badge-expired' : e.severity === 'warn' ? 'badge-trial' : 'badge-free'}">${e.severity}</span></td>
+        <td style="color:var(--muted);font-size:11px">${timeAgo(e.created_at)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="color:var(--muted);padding:20px">No events</td></tr>';
+  } catch {
+    document.getElementById('events-body').innerHTML = '<tr><td colspan="5">Error</td></tr>';
+  }
+}
+
+async function postEvent() {
+  const payload = {
+    country_code: document.getElementById('ev-country').value.trim().toUpperCase(),
+    type:         document.getElementById('ev-type').value,
+    severity:     document.getElementById('ev-severity').value,
+    title:        document.getElementById('ev-title').value.trim(),
+    description:  document.getElementById('ev-desc').value.trim() || null,
+    lat:          parseFloat(document.getElementById('ev-lat').value) || null,
+    lng:          parseFloat(document.getElementById('ev-lng').value) || null,
+    location:     document.getElementById('ev-location').value.trim() || null,
+  };
+
+  if (!payload.country_code || !payload.title) { toast('Country code and title required', 'err'); return; }
+
+  try {
+    const r = await fetch(API + '/api/admin/events', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (r.ok) {
+      toast(`Event posted + dispatched to subscribers`, 'ok');
+      ['ev-title','ev-desc','ev-lat','ev-lng','ev-location'].forEach(id => document.getElementById(id).value = '');
+      loadEvents();
+    } else {
+      toast(d.error || 'Failed to post event', 'err');
+    }
+  } catch { toast('Error', 'err'); }
+}
+
+async function deleteTestEvents() {
+  if (!confirm('Delete all test events?')) return;
+  try {
+    const r = await fetch(API + '/api/admin/events/test', { method: 'DELETE', headers: getHeaders() });
+    if (r.ok) { toast('Test events deleted', 'ok'); loadEvents(); }
+    else toast('Failed', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+// ── Invite Tokens ─────────────────────────────────────────────────────────────
+
+async function loadTokens() {
+  document.getElementById('tokens-body').innerHTML = '<tr><td colspan="7" class="loading">Loading</td></tr>';
+  try {
+    const r = await fetch(API + '/api/admin/invite-tokens', { headers: getHeaders() });
+    const tokens = await r.json();
+
+    document.getElementById('tokens-body').innerHTML = tokens.map(t => `
+      <tr>
+        <td style="color:var(--accent);font-family:var(--mono)">${t.token}</td>
+        <td>${t.uses}</td>
+        <td>${t.max_uses}</td>
+        <td>${t.trial_days ?? 7}</td>
+        <td style="color:var(--muted)">${escH(t.label || '—')}</td>
+        <td style="color:var(--muted);font-size:11px">${t.created_at ? t.created_at.split('T')[0] : '—'}</td>
+        <td>
+          <button class="btn btn-sm btn-danger" style="font-size:9px;padding:4px 8px" onclick="deleteToken('${t.token}')">Delete</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="color:var(--muted);padding:20px">No tokens</td></tr>';
+  } catch {
+    document.getElementById('tokens-body').innerHTML = '<tr><td colspan="7">Error</td></tr>';
+  }
+}
+
+async function createToken() {
+  const payload = {
+    max_uses:   parseInt(document.getElementById('inv-uses').value) || 1,
+    trial_days: parseInt(document.getElementById('inv-days').value) || 30,
+    label:      document.getElementById('inv-label').value.trim() || null,
+  };
+
+  try {
+    const r = await fetch(API + '/api/admin/invite-tokens', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (r.ok) { toast(`Token created: ${d.token}`, 'ok'); loadTokens(); }
+    else toast(d.error || 'Failed', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+async function deleteToken(token) {
+  if (!confirm(`Delete token ${token}?`)) return;
+  try {
+    const r = await fetch(API + '/api/admin/invite-tokens/' + token, { method: 'DELETE', headers: getHeaders() });
+    if (r.ok) { toast('Token deleted', 'ok'); loadTokens(); }
+    else toast('Failed', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+// ── Errors ────────────────────────────────────────────────────────────────────
+
+async function loadErrors() {
+  document.getElementById('errors-list').innerHTML = '<div class="loading">Loading</div>';
+  try {
+    const r = await fetch(API + '/api/admin/errors', { headers: getHeaders() });
+    const errors = await r.json();
+
+    if (!errors.length) {
+      document.getElementById('errors-list').innerHTML = '<div style="color:var(--green);padding:20px;font-size:11px;letter-spacing:1px">✓ No recent errors</div>';
+      return;
+    }
+
+    document.getElementById('errors-list').innerHTML = errors.slice(0, 50).map(e => `
+      <div class="log-entry">
+        <div style="display:flex;gap:12px;margin-bottom:4px">
+          <span class="log-type">${e.type || 'error'}</span>
+          <span class="log-time">${e.created_at || ''}</span>
+          ${e.endpoint ? `<span style="color:var(--muted);font-size:10px">${e.endpoint}</span>` : ''}
+        </div>
+        <div style="color:var(--text)">${escH(e.message || '')}</div>
+        ${e.stack ? `<div style="color:var(--muted);font-size:10px;margin-top:4px;white-space:pre-wrap">${escH(e.stack.slice(0,200))}</div>` : ''}
+      </div>
+    `).join('');
+  } catch {
+    document.getElementById('errors-list').innerHTML = '<div class="log-entry">Failed to load errors</div>';
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+let settingsData = {};
+
+async function loadSettings() {
+  try {
+    const r = await fetch(API + '/api/admin/settings', { headers: getHeaders() });
+    settingsData = await r.json();
+
+    document.getElementById('settings-form').innerHTML = Object.entries(settingsData).map(([key, val]) => `
+      <div style="margin-bottom:12px">
+        <div class="field-label">${key}</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="setting-${key}" value="${escH(String(val))}" style="flex:1;margin-bottom:0" />
+          <button class="btn btn-sm btn-outline" onclick="saveSetting('${key}')">Save</button>
+        </div>
+      </div>
+    `).join('') || '<div style="color:var(--muted)">No settings found</div>';
+  } catch {
+    document.getElementById('settings-form').innerHTML = '<div style="color:var(--danger)">Failed to load settings</div>';
+  }
+}
+
+async function saveSetting(key) {
+  const val = document.getElementById('setting-' + key).value;
+  try {
+    const r = await fetch(API + '/api/admin/settings', {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ key, value: val })
+    });
+    if (r.ok) toast('Setting saved', 'ok');
+    else toast('Failed', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+async function refreshNews() {
+  try {
+    const r = await fetch(API + '/api/admin/refresh-news', { method: 'POST', headers: getHeaders() });
+    if (r.ok) toast('News refresh triggered', 'ok');
+    else toast('Failed', 'err');
+  } catch { toast('Error', 'err'); }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function escH(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function planBadge(u) {
+  if (u.plan === 'premium') return '<span class="badge badge-premium">premium</span>';
+  if (u.role === 'admin') return '<span class="badge badge-admin">admin</span>';
+  const now = new Date();
+  const end = u.trial_end ? new Date(u.trial_end) : null;
+  if (end && end > now) return `<span class="badge badge-trial">trial</span>`;
+  if (end && end <= now) return '<span class="badge badge-expired">expired</span>';
+  return '<span class="badge badge-free">free</span>';
+}
+
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const sec = (Date.now() - new Date(ts.includes('Z') ? ts : ts + 'Z').getTime()) / 1000;
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+</script>
+</body>
+</html>
