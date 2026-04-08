@@ -4,7 +4,8 @@ const crypto = require('crypto');
 const db     = require('../db');
 const { dispatchAlerts }          = require('../alerts');
 const { refreshAllNews }          = require('../news');
-const { sanitizeUser, requireAdmin } = require('./auth');
+const { sanitizeUser }            = require('./auth');
+const { requireAdmin }            = require('../auth');
 
 // ── Admin: users ──────────────────────────────────────────────────────────────
 
