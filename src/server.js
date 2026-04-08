@@ -64,29 +64,12 @@ app.use('/api', softAuth, dataRoutes);
 // Stripe checkout & webhook
 app.use('/api', softAuth, paymentRoutes);
 
-// Admin (auth enforced by requireAdmin / requireDistributor guards)
+// Admin login & verify are public (no prior auth needed)
+app.use('/api/admin/login',  adminRoutes);
+app.use('/api/admin/verify', adminRoutes);
+// All other admin routes require admin JWT
 app.use('/api/admin',       requireAdmin,       adminRoutes);
 app.use('/api/distributor', requireDistributor, adminRoutes);
-
-// ── Aliases for obfuscated frontend which calls /api/contacts/:wa and /api/countries/:wa ──
-app.get('/api/contacts/:whatsapp',    requireAuth, (req, res) => res.json(db.getEmergencyContacts.all(req.user.id)));
-app.post('/api/contacts/:whatsapp',   requireAuth, (req, res) => {
-  const { name, whatsapp, relation } = req.body;
-  if (!name || !whatsapp) return res.status(400).json({ error: 'name and whatsapp required' });
-  db.addEmergencyContact.run({ user_id: req.user.id, name, whatsapp, relation: relation || null });
-  res.json({ ok: true });
-});
-app.delete('/api/contacts/:whatsapp/:id', requireAuth, (req, res) => {
-  db.removeEmergencyContact.run(req.params.id, req.user.id);
-  res.json({ ok: true });
-});
-app.get('/api/countries/:whatsapp',   requireAuth, (req, res) => res.json(db.getUserCountries.all(req.user.id).map(r => r.country_code)));
-app.post('/api/countries/:whatsapp',  requireAuth, (req, res) => {
-  const { country_code } = req.body;
-  if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  db.addCountry.run({ user_id: req.user.id, country_code: country_code.toUpperCase() });
-  res.json({ ok: true });
-});
 
 // ── Misc routes ───────────────────────────────────────────────────────────────
 
@@ -171,6 +154,7 @@ app.get('/unsubscribe', (req, res) => {
 });
 
 // Legal pages
+app.get('/admin',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
 app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
 app.get('/terms',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
 

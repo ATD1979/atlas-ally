@@ -36,6 +36,7 @@ try {
     safeAddColumn('users', 'trial_code', 'TEXT');
     safeAddColumn('users', 'verified', 'INTEGER DEFAULT 0');
     safeAddColumn('users', 'last_login', 'TEXT');
+    safeAddColumn('users', 'admin_password', 'TEXT');
   }
   // Events table migrations
   const eventsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='events'`).get();

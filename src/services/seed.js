@@ -64,14 +64,12 @@ function seedAdminUsers() {
         SET role      = 'admin',
             plan      = 'premium',
             verified  = 1,
-            active    = 1,
             email     = COALESCE(NULLIF(@email,''), email),
             name      = COALESCE(NULLIF(@name,''), name),
-            trial_end = NULL
+            trial_end = datetime('now', '+3650 days')
         WHERE whatsapp = @whatsapp
       `).run({ whatsapp: admin.whatsapp, email: admin.email, name: admin.name });
-      const check = db.getUser(admin.whatsapp);
-      console.log(`✅ Admin ready: ${admin.name} (${admin.whatsapp}) — plan=${check?.plan} role=${check?.role} trial_end=${check?.trial_end}`);
+      console.log(`✅ Admin ready: ${admin.name} (${admin.whatsapp})`);
     } catch (e) {
       console.warn(`Admin seed warning for ${admin.name}:`, e.message);
     }

@@ -3,1274 +3,619 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlas Ally — Command Center</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<title>Admin — Atlas Ally</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:       #080c10;
-    --bg2:      #0d1117;
-    --bg3:      #131920;
-    --border:   #1e2d3d;
-    --accent:   #00e5ff;
-    --accent2:  #ff6b35;
-    --green:    #00ff88;
-    --warn:     #ffcc00;
-    --danger:   #ff3b55;
-    --text:     #e2e8f0;
-    --muted:    #5a7a8a;
-    --mono:     'Space Mono', monospace;
-    --display:  'Syne', sans-serif;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── Grid scanlines overlay ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,229,255,0.015) 2px,
-      rgba(0,229,255,0.015) 4px
-    );
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── Login Screen ── */
-  #login-screen {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    background: var(--bg);
-  }
-
-  .login-box {
-    width: 360px;
-    border: 1px solid var(--accent);
-    background: var(--bg2);
-    padding: 40px;
-    position: relative;
-    box-shadow: 0 0 40px rgba(0,229,255,0.1), inset 0 0 40px rgba(0,229,255,0.02);
-  }
-
-  .login-box::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: 20px; right: 20px; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  }
-
-  .login-logo {
-    font-family: var(--display);
-    font-size: 22px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    margin-bottom: 6px;
-  }
-
-  .login-sub {
-    color: var(--muted);
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 32px;
-  }
-
-  .field-label {
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-
-  input {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 14px;
-    padding: 10px 14px;
-    outline: none;
-    margin-bottom: 16px;
-    transition: border-color 0.2s;
-  }
-
-  input:focus { border-color: var(--accent); }
-
-  .btn {
-    width: 100%;
-    padding: 12px;
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    font-family: var(--display);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-  }
-
-  .btn:hover { opacity: 0.85; }
-  .btn:active { transform: scale(0.98); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-sm {
-    width: auto;
-    padding: 7px 14px;
-    font-size: 11px;
-  }
-  .btn-outline {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-  }
-
-  #login-msg {
-    margin-top: 12px;
-    font-size: 11px;
-    text-align: center;
-    color: var(--danger);
-    min-height: 16px;
-  }
-
-  /* ── Main Layout ── */
-  #app { display: none; position: relative; z-index: 1; }
-
-  .topbar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 52px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    gap: 24px;
-    z-index: 50;
-  }
-
-  .topbar-logo {
-    font-family: var(--display);
-    font-size: 16px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    white-space: nowrap;
-  }
-
-  .topbar-badge {
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    background: rgba(0,229,255,0.1);
-    border: 1px solid rgba(0,229,255,0.3);
-    color: var(--accent);
-    padding: 2px 8px;
-  }
-
-  .topbar-spacer { flex: 1; }
-
-  .status-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 6px var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .topbar-user {
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .logout-btn {
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--muted);
-    background: none;
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    cursor: pointer;
-    font-family: var(--mono);
-    transition: color 0.2s, border-color 0.2s;
-  }
-  .logout-btn:hover { color: var(--danger); border-color: var(--danger); }
-
-  /* ── Nav Tabs ── */
-  .nav {
-    position: fixed;
-    top: 52px; left: 0; right: 0;
-    height: 40px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: stretch;
-    padding: 0 24px;
-    gap: 2px;
-    z-index: 49;
-    overflow-x: auto;
-  }
-
-  .nav-tab {
-    padding: 0 16px;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    font-family: var(--mono);
-  }
-
-  .nav-tab:hover { color: var(--text); }
-  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* ── Content ── */
-  .content {
-    padding: 112px 24px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* ── Stat Cards ── */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
-    margin-bottom: 32px;
-  }
-
-  .stat-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent), transparent);
-    opacity: 0.4;
-  }
-
-  .stat-label {
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-
-  .stat-val {
-    font-family: var(--display);
-    font-size: 32px;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .stat-sub {
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  /* ── Section headers ── */
-  .section-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    margin-top: 28px;
-  }
-
-  .section-title {
-    font-family: var(--display);
-    font-size: 14px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text);
-  }
-
-  .section-line {
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  /* ── Tables ── */
-  .table-wrap {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  th {
-    font-size: 9px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--muted);
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(30,45,61,0.5);
-    font-size: 12px;
-    vertical-align: middle;
-  }
-
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(0,229,255,0.03); }
-
-  .badge {
-    display: inline-block;
-    font-size: 9px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 0;
-  }
-
-  .badge-admin { background: rgba(0,229,255,0.15); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
-  .badge-premium { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
-  .badge-trial { background: rgba(255,204,0,0.15); color: var(--warn); border: 1px solid rgba(255,204,0,0.3); }
-  .badge-expired { background: rgba(255,59,85,0.15); color: var(--danger); border: 1px solid rgba(255,59,85,0.3); }
-  .badge-free { background: rgba(90,122,138,0.15); color: var(--muted); border: 1px solid var(--border); }
-
-  /* ── Forms / Cards ── */
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 24px;
-    margin-bottom: 16px;
-  }
-
-  .card-title {
-    font-family: var(--display);
-    font-size: 12px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 16px;
-  }
-
-  .form-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    flex-wrap: wrap;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    flex: 1;
-    min-width: 160px;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    margin-bottom: 0;
-  }
-
-  select {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 10px 14px;
-    outline: none;
-  }
-
-  select:focus { border-color: var(--accent); }
-
-  textarea {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 10px 14px;
-    outline: none;
-    resize: vertical;
-    min-height: 80px;
-    margin-bottom: 0;
-  }
-
-  textarea:focus { border-color: var(--accent); }
-
-  /* ── Error log ── */
-  .log-entry {
-    background: var(--bg3);
-    border-left: 2px solid var(--danger);
-    padding: 10px 14px;
-    margin-bottom: 6px;
-    font-size: 11px;
-  }
-
-  .log-time { color: var(--muted); font-size: 10px; }
-  .log-type { color: var(--danger); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
-
-  /* ── Toast ── */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--bg2);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 12px 20px;
-    font-size: 12px;
-    letter-spacing: 1px;
-    z-index: 999;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: opacity 0.3s, transform 0.3s;
-    pointer-events: none;
-    max-width: 300px;
-  }
-
-  #toast.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  #toast.err { border-color: var(--danger); color: var(--danger); }
-  #toast.ok  { border-color: var(--green);  color: var(--green);  }
-
-  /* ── Loading ── */
-  .loading {
-    color: var(--muted);
-    font-size: 11px;
-    letter-spacing: 2px;
-    padding: 24px;
-    text-align: center;
-  }
-
-  .loading::after {
-    content: '';
-    animation: dots 1.2s infinite;
-  }
-
-  @keyframes dots {
-    0%  { content: '.'; }
-    33% { content: '..'; }
-    66% { content: '...'; }
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 600px) {
-    .content { padding: 100px 12px 40px; }
-    .topbar, .nav { padding: 0 12px; }
-    .stat-val { font-size: 24px; }
-  }
+:root{--bg:#0a0f1e;--bg2:#0f1628;--bg3:#161e36;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#e8eaf0;--muted:#7a859e;--accent:#3b82f6;--accent2:#60a5fa;--danger:#ef4444;--danger2:#fca5a5;--warn:#f59e0b;--warn2:#fcd34d;--safe:#10b981;--safe2:#6ee7b7;--mono:'IBM Plex Mono',monospace;--display:'Syne',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px;}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo div:first-child{font-size:32px;margin-bottom:8px;}
+.login-logo div:last-child{font-size:18px;font-weight:700;}
+.login-sub{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-bottom:24px;text-transform:uppercase;letter-spacing:0.1em;}
+#admin-app{display:none;}
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;}
+.header-title{font-size:16px;font-weight:700;}
+.header-sub{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.logout-btn{font-family:var(--mono);font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;}
+.main{max-width:960px;margin:0 auto;padding:20px 16px 40px;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.stat-num{font-size:26px;font-weight:800;line-height:1;}
+.stat-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.08em;}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:4px;}
+.tab-btn{flex:1;padding:8px;border:none;background:none;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;border-radius:7px;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.08em;}
+.tab-btn.active{background:var(--bg3);color:var(--text);}
+.panel{display:none;}
+.panel.active{display:block;}
+.section-label{font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.pending-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;}
+.pending-type{font-family:var(--mono);font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;}
+.pending-title{font-size:15px;font-weight:700;margin-bottom:6px;line-height:1.4;}
+.pending-meta{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.pending-desc{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;font-family:var(--mono);}
+.pending-actions{display:flex;gap:8px;}
+.btn-approve{flex:1;background:rgba(16,185,129,0.12);color:var(--safe2);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:8px;font-size:13px;font-weight:700;font-family:var(--display);cursor:pointer;transition:opacity 0.15s;}
+.btn-approve:hover{opacity:0.8;}
+.btn-reject{flex:1;background:rgba(239,68,68,0.1);color:var(--danger2);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;font-size:13px;font-weight:700;font-family:var(--display);cursor:pointer;}
+.field-group{margin-bottom:12px;}
+.field-label{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;}
+.field-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:var(--display);outline:none;transition:border-color 0.15s;}
+.field-input:focus{border-color:var(--accent);}
+.field-input::placeholder{color:var(--muted);}
+.field-select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:var(--display);outline:none;appearance:none;}
+.btn-primary{width:100%;background:var(--accent);color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:var(--display);cursor:pointer;margin-top:4px;}
+.btn-danger-full{width:100%;background:rgba(239,68,68,0.15);color:var(--danger2);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:var(--display);cursor:pointer;margin-top:8px;}
+.sub-item{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px;display:grid;grid-template-columns:1fr auto;gap:8px;}
+.sub-contact{font-family:var(--mono);font-size:12px;color:var(--text);}
+.sub-prefs{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+.sub-date{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s ease;z-index:500;}
+.toast.success{background:var(--safe);color:white;}
+.toast.error{background:var(--danger);color:white;}
+.toast.show{opacity:1;}
+.form-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+.siren-quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.empty-state{text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+@media(max-width:600px){.stat-grid{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
+<!-- Login -->
 <div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">ATLAS ALLY</div>
-    <div class="login-sub">Command Center</div>
-
-    <div id="login-phone-step">
-      <div class="field-label">WhatsApp Number</div>
-      <input id="l-phone" type="tel" placeholder="+16825617016" />
-      <button class="btn" onclick="loginSendOTP()">Send Verification Code</button>
+  <div class="login-card">
+    <div class="login-logo">
+      <div>🛡️</div>
+      <div>Atlas Ally</div>
     </div>
-
-    <div id="login-otp-step" style="display:none">
-      <div class="field-label">6-Digit Code sent to <span id="l-display-num" style="color:var(--accent)"></span></div>
-      <input id="l-otp" type="text" maxlength="6" placeholder="000000" />
-      <button class="btn" onclick="loginVerify()">Verify & Enter</button>
-      <button class="btn btn-outline" style="margin-top:8px" onclick="backToPhone()">← Back</button>
+    <div class="login-sub">Admin Panel</div>
+    <div class="field-group">
+      <div class="field-label">Your WhatsApp Number</div>
+      <input class="field-input" type="tel" id="wa-input" placeholder="+1 XXX XXX XXXX" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
     </div>
-
-    <div id="login-msg"></div>
+    <div class="field-group">
+      <div class="field-label">Admin Password</div>
+      <input class="field-input" type="password" id="pw-input" placeholder="Enter your password" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn-primary" onclick="login()" id="login-btn">Sign In</button>
+    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Invalid credentials</div>
   </div>
 </div>
 
-<!-- ── APP ── -->
-<div id="app">
-  <div class="topbar">
-    <div class="topbar-logo">ATLAS ALLY</div>
-    <div class="topbar-badge">ADMIN</div>
-    <div class="topbar-spacer"></div>
-    <div class="status-dot"></div>
-    <div class="topbar-user" id="topbar-user"></div>
-    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+<!-- Admin App -->
+<div id="admin-app">
+  <header>
+    <div>
+      <div class="header-title">🛡️ 🌍 Atlas Ally — Admin</div>
+      <div class="header-sub" id="admin-sub">Loading…</div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </header>
+
+  <div class="main">
+    <!-- Stats row -->
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num" id="a-today">—</div><div class="stat-label">Sirens Today</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-subs">—</div><div class="stat-label">Subscribers</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-pending" style="color:var(--warn2);">—</div><div class="stat-label">Pending Review</div></div>
+      <div class="stat-card"><div class="stat-num" id="a-sent">—</div><div class="stat-label">Alerts Sent</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="display:flex;flex-wrap:wrap;gap:4px;">
+      <button class="tab-btn active" onclick="switchPanel('queue',this)">📋 Queue</button>
+      <button class="tab-btn" onclick="switchPanel('post',this)">📢 Post Event</button>
+      <button class="tab-btn" onclick="switchPanel('siren',this)">🚨 Siren</button>
+      <button class="tab-btn" onclick="switchPanel('subs',this)">👥 Users</button>
+      <button class="tab-btn" onclick="switchPanel('events',this)">🗑️ Events</button>
+      <button class="tab-btn" onclick="switchPanel('tokens',this)">🎟️ Invites</button>
+      <button class="tab-btn" onclick="switchPanel('feedback',this)">📋 Feedback</button>
+      <button class="tab-btn" onclick="switchPanel('password',this)">🔑 Password</button>
+    </div>
+
+    <!-- Moderation Queue -->
+    <div id="panel-queue" class="panel active">
+      <div class="section-label">Pending submissions</div>
+      <div id="queue-list"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- Post Event -->
+    <div id="panel-post" class="panel">
+      <div class="section-label">Post verified event — sends alerts to all subscribers of that country</div>
+      <div class="form-card">
+        <div class="field-group"><div class="field-label">Country</div>
+          <select class="field-select" id="p-country">
+            <option value="JO">🇯🇴 Jordan</option>
+            <option value="UA">🇺🇦 Ukraine</option>
+            <option value="LB">🇱🇧 Lebanon</option>
+            <option value="EG">🇪🇬 Egypt</option>
+            <option value="MX">🇲🇽 Mexico</option>
+            <option value="PK">🇵🇰 Pakistan</option>
+            <option value="TH">🇹🇭 Thailand</option>
+            <option value="FR">🇫🇷 France</option>
+            <option value="JP">🇯🇵 Japan</option>
+            <option value="ZA">🇿🇦 South Africa</option>
+          </select>
+        </div>
+        <div class="field-group"><div class="field-label">Type</div>
+          <select class="field-select" id="p-type">
+            <option value="siren">🔴 Air siren</option>
+            <option value="drone">🛸 Drone / UAV</option>
+            <option value="missile">🚀 Missile</option>
+            <option value="strike">💥 Explosion / strike</option>
+            <option value="troop">🪖 Troop movement</option>
+            <option value="gunfire">🔫 Gunfire</option>
+            <option value="checkpoint">🚧 Checkpoint</option>
+            <option value="chemical">☣️ Chemical hazard</option>
+            <option value="weather">🌪️ Severe weather</option>
+            <option value="health">🏥 Health alert</option>
+            <option value="news">📰 News development</option>
+            <option value="clear">✅ All clear</option>
+          </select>
+        </div>
+        <div class="field-group"><div class="field-label">Severity</div>
+          <select class="field-select" id="p-severity">
+            <option value="danger">🔴 Danger</option>
+            <option value="warn" selected>🟡 Warning</option>
+            <option value="info">🔵 Info</option>
+            <option value="safe">🟢 Safe / All clear</option>
+          </select>
+        </div>
+        <div class="field-group"><div class="field-label">Title / headline</div><input class="field-input" id="p-title" placeholder="Short descriptive headline" maxlength="200"></div>
+        <div class="field-group"><div class="field-label">Description (optional)</div><input class="field-input" id="p-desc" placeholder="Additional context and details"></div>
+        <div class="field-group"><div class="field-label">Location (optional)</div><input class="field-input" id="p-loc" placeholder="e.g. Amman, Zarqa, Kyiv…"></div>
+        <div class="field-group"><div class="field-label">Source name</div><input class="field-input" id="p-source" placeholder="e.g. Reuters, JAF official" value="Verified report"></div>
+        <div class="field-group"><div class="field-label">Source URL (optional)</div><input class="field-input" id="p-url" type="url" placeholder="https://…"></div>
+        <button class="btn-primary" onclick="postEvent()" id="post-btn">📢 Post & Send Alerts Now</button>
+      </div>
+    </div>
+
+    <!-- Log Siren -->
+    <div id="panel-siren" class="panel">
+      <div class="section-label">Log air siren (sends immediate alerts)</div>
+      <div class="form-card">
+        <div class="field-group"><div class="field-label">Location</div><input class="field-input" id="s-loc" placeholder="e.g. Amman North, Zarqa, Irbid…"></div>
+        <div class="siren-quick">
+          <button onclick="document.getElementById('s-loc').value='Amman'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Amman</button>
+          <button onclick="document.getElementById('s-loc').value='Zarqa'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Zarqa</button>
+          <button onclick="document.getElementById('s-loc').value='Irbid'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Irbid</button>
+          <button onclick="document.getElementById('s-loc').value='Aqaba'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Aqaba</button>
+          <button onclick="document.getElementById('s-loc').value='Mafraq'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Mafraq</button>
+          <button onclick="document.getElementById('s-loc').value='Multiple areas'" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer;">Multiple</button>
+        </div>
+        <div class="field-group"><div class="field-label">Duration (seconds, optional)</div><input class="field-input" id="s-dur" type="number" placeholder="e.g. 90"></div>
+        <div class="field-group"><div class="field-label">Notes (optional)</div><input class="field-input" id="s-notes" placeholder="Any additional context"></div>
+        <button class="btn-danger-full" onclick="logSiren()" id="siren-btn">🚨 Log Siren & Alert All Subscribers</button>
+      </div>
+    </div>
+
+    <!-- Events management -->
+    <div id="panel-events" class="panel">
+      <div class="section-label">Manage events — remove test alerts</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn-danger" onclick="removeAllTestEvents()" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🗑️ Remove All Test Events</button>
+        <button class="btn" onclick="loadAllEvents()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">🔄 Refresh</button>
+      </div>
+      <div id="all-events-list"><div class="empty-state">Click Refresh to load events</div></div>
+    </div>
+
+    <!-- Invite Tokens -->
+    <div id="panel-tokens" class="panel">
+      <div class="section-label">Invite tokens — share with beta testers</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
+        <select id="token-uses" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;">
+          <option value="1">1 use</option>
+          <option value="5">5 uses</option>
+          <option value="10">10 uses</option>
+          <option value="25">25 uses</option>
+          <option value="50">50 uses</option>
+        </select>
+        <button onclick="generateToken()" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:8px;padding:10px 16px;cursor:pointer;font-family:var(--mono);font-size:11px;">+ Generate Token</button>
+      </div>
+      <div id="token-list"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- Feedback -->
+    <div id="panel-feedback" class="panel">
+      <div class="section-label">User feedback submissions</div>
+      <div id="feedback-list"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- Subscribers -->
+    <div id="panel-subs" class="panel">
+      <div class="section-label">Active subscribers</div>
+      <div id="subs-list"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <!-- Change Password -->
+    <div id="panel-password" class="panel" style="display:none;">
+      <div class="section-label">Change Your Admin Password</div>
+      <div style="max-width:400px;margin-top:12px;">
+        <div id="pw-change-who" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:16px;"></div>
+        <div class="field-group">
+          <div class="field-label">Current Password</div>
+          <input class="field-input" type="password" id="pw-current" placeholder="Your current password">
+        </div>
+        <div class="field-group">
+          <div class="field-label">New Password</div>
+          <input class="field-input" type="password" id="pw-new" placeholder="At least 8 characters">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Confirm New Password</div>
+          <input class="field-input" type="password" id="pw-confirm" placeholder="Repeat new password">
+        </div>
+        <button class="btn-primary" onclick="changePassword()" id="pw-change-btn" style="width:100%;">Update Password</button>
+        <div id="pw-change-msg" style="font-family:var(--mono);font-size:12px;text-align:center;margin-top:10px;display:none;"></div>
+      </div>
+    </div>
+
   </div>
+</div>
 
-  <div class="nav">
-    <button class="nav-tab active" onclick="switchTab('dashboard')">⬡ Dashboard</button>
-    <button class="nav-tab" onclick="switchTab('users')">⬡ Users</button>
-    <button class="nav-tab" onclick="switchTab('events')">⬡ Events</button>
-    <button class="nav-tab" onclick="switchTab('invite')">⬡ Invite Tokens</button>
-    <button class="nav-tab" onclick="switchTab('errors')">⬡ Error Log</button>
-    <button class="nav-tab" onclick="switchTab('settings')">⬡ Settings</button>
-  </div>
-
-  <div class="content">
-
-    <!-- DASHBOARD -->
-    <div class="panel active" id="panel-dashboard">
-      <div class="stat-grid" id="stat-grid">
-        <div class="loading">Loading stats</div>
-      </div>
-
-      <div class="section-head">
-        <div class="section-title">Recent Activity</div>
-        <div class="section-line"></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Plan</th>
-              <th>Countries</th>
-              <th>Last Login</th>
-            </tr>
-          </thead>
-          <tbody id="recent-users-body">
-            <tr><td colspan="4" class="loading">Loading</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- USERS -->
-    <div class="panel" id="panel-users">
-      <div class="section-head">
-        <div class="section-title">All Users</div>
-        <div class="section-line"></div>
-        <button class="btn btn-sm" onclick="loadUsers()">↻ Refresh</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Send Free Token to User</div>
-        <div class="form-row">
-          <div class="form-group">
-            <div class="field-label">WhatsApp Number</div>
-            <input id="token-wa" type="tel" placeholder="+1234567890" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Days to Grant</div>
-            <input id="token-days" type="number" value="7" min="1" max="365" />
-          </div>
-          <button class="btn btn-sm" style="margin-bottom:0" onclick="sendFreeToken()">Send Token</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>WhatsApp</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Plan</th>
-              <th>Trial End</th>
-              <th>Countries</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="users-body">
-            <tr><td colspan="8" class="loading">Loading</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- EVENTS -->
-    <div class="panel" id="panel-events">
-      <div class="section-head">
-        <div class="section-title">Post Event / Alert</div>
-        <div class="section-line"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">New Event</div>
-        <div class="form-row" style="margin-bottom:10px">
-          <div class="form-group">
-            <div class="field-label">Country Code</div>
-            <input id="ev-country" type="text" placeholder="JO" maxlength="2" style="text-transform:uppercase" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Type</div>
-            <select id="ev-type">
-              <option value="siren">🔴 Siren</option>
-              <option value="missile">🚀 Missile</option>
-              <option value="drone">🛸 Drone</option>
-              <option value="troop">🪖 Troop Movement</option>
-              <option value="strike">💥 Strike</option>
-              <option value="gunfire">🔫 Gunfire</option>
-              <option value="checkpoint">🚧 Checkpoint</option>
-              <option value="chemical">☣️ Chemical</option>
-              <option value="weather">🌩️ Weather</option>
-              <option value="health">🏥 Health</option>
-              <option value="news">📰 News</option>
-              <option value="clear">✅ All Clear</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <div class="field-label">Severity</div>
-            <select id="ev-severity">
-              <option value="danger">Danger</option>
-              <option value="warn">Warning</option>
-              <option value="info">Info</option>
-              <option value="safe">Safe</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row" style="margin-bottom:10px">
-          <div class="form-group" style="flex:2">
-            <div class="field-label">Title</div>
-            <input id="ev-title" type="text" placeholder="Air raid sirens activated in Amman" />
-          </div>
-        </div>
-        <div class="form-row" style="margin-bottom:10px">
-          <div class="form-group" style="flex:2">
-            <div class="field-label">Description (optional)</div>
-            <textarea id="ev-desc" placeholder="Additional details..."></textarea>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <div class="field-label">Lat (optional)</div>
-            <input id="ev-lat" type="number" step="0.0001" placeholder="31.9539" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Lng (optional)</div>
-            <input id="ev-lng" type="number" step="0.0001" placeholder="35.9106" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Location Label</div>
-            <input id="ev-location" type="text" placeholder="Amman" />
-          </div>
-          <button class="btn btn-sm" style="margin-bottom:0" onclick="postEvent()">Post &amp; Dispatch</button>
-        </div>
-      </div>
-
-      <div class="section-head">
-        <div class="section-title">Recent Events</div>
-        <div class="section-line"></div>
-        <button class="btn btn-sm btn-danger" onclick="deleteTestEvents()">Delete Test Events</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Country</th>
-              <th>Type</th>
-              <th>Title</th>
-              <th>Severity</th>
-              <th>Time</th>
-            </tr>
-          </thead>
-          <tbody id="events-body">
-            <tr><td colspan="5" class="loading">Loading</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- INVITE TOKENS -->
-    <div class="panel" id="panel-invite">
-      <div class="section-head">
-        <div class="section-title">Invite Tokens</div>
-        <div class="section-line"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Generate New Token</div>
-        <div class="form-row">
-          <div class="form-group">
-            <div class="field-label">Max Uses</div>
-            <input id="inv-uses" type="number" value="1" min="1" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Trial Days</div>
-            <input id="inv-days" type="number" value="30" min="1" />
-          </div>
-          <div class="form-group">
-            <div class="field-label">Label (optional)</div>
-            <input id="inv-label" type="text" placeholder="Partner promo" />
-          </div>
-          <button class="btn btn-sm" style="margin-bottom:0" onclick="createToken()">Generate</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Token</th>
-              <th>Uses</th>
-              <th>Max Uses</th>
-              <th>Trial Days</th>
-              <th>Label</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tokens-body">
-            <tr><td colspan="7" class="loading">Loading</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ERROR LOG -->
-    <div class="panel" id="panel-errors">
-      <div class="section-head">
-        <div class="section-title">Error Log</div>
-        <div class="section-line"></div>
-        <button class="btn btn-sm" onclick="loadErrors()">↻ Refresh</button>
-      </div>
-      <div id="errors-list">
-        <div class="loading">Loading</div>
-      </div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div class="panel" id="panel-settings">
-      <div class="section-head">
-        <div class="section-title">App Settings</div>
-        <div class="section-line"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">System Settings</div>
-        <div id="settings-form">
-          <div class="loading">Loading</div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:16px">
-        <div class="card-title">Maintenance</div>
-        <div class="form-row">
-          <button class="btn btn-sm btn-outline" onclick="refreshNews()">↻ Refresh News Feeds</button>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /content -->
-</div><!-- /app -->
-
-<div id="toast"></div>
+<div class="toast" id="toast"></div>
 
 <script>
+let TOKEN = localStorage.getItem('jsn_admin_token') || null;
 const API = '';
-let authToken = localStorage.getItem('atlas_admin_token');
-let currentUser = null;
-let otpPhone = null;
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
 
-async function loginSendOTP() {
-  const phone = document.getElementById('l-phone').value.trim();
-  if (!phone) { setLoginMsg('Enter your WhatsApp number'); return; }
-
-  const btn = document.querySelector('#login-phone-step .btn');
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-  setLoginMsg('');
-
+async function login() {
+  const wa  = document.getElementById('wa-input').value.trim();
+  const pw  = document.getElementById('pw-input').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!wa || !pw) { err.textContent = 'Enter your WhatsApp number and password'; err.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
   try {
-    const r = await fetch(API + '/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp: phone, purpose: 'admin-login' })
-    });
-    const d = await r.json();
-    if (!r.ok) { setLoginMsg(d.error || 'Failed to send code'); btn.disabled = false; btn.textContent = 'Send Verification Code'; return; }
-
-    otpPhone = phone;
-    document.getElementById('l-display-num').textContent = phone;
-    document.getElementById('login-phone-step').style.display = 'none';
-    document.getElementById('login-otp-step').style.display = 'block';
-    setLoginMsg('');
-  } catch (e) {
-    setLoginMsg('Network error — try again');
+    const res  = await fetch(API + '/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({whatsapp:wa, password:pw}) });
+    const data = await res.json();
+    if (data.token) {
+      TOKEN = data.token;
+      localStorage.setItem('jsn_admin_token', TOKEN);
+      localStorage.setItem('jsn_admin_wa', wa);
+      showAdminApp();
+    } else {
+      err.textContent = data.error || 'Invalid credentials';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
   }
-  btn.disabled = false;
-  btn.textContent = 'Send Verification Code';
-}
-
-async function loginVerify() {
-  const code = document.getElementById('l-otp').value.trim();
-  if (code.length !== 6) { setLoginMsg('Enter the 6-digit code'); return; }
-
-  const btn = document.querySelector('#login-otp-step .btn');
-  btn.disabled = true;
-  btn.textContent = 'Verifying...';
-  setLoginMsg('');
-
-  try {
-    const r = await fetch(API + '/api/auth/admin-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ whatsapp: otpPhone, code })
-    });
-    const d = await r.json();
-    if (!r.ok) { setLoginMsg(d.error || 'Invalid code'); btn.disabled = false; btn.textContent = 'Verify & Enter'; return; }
-
-    authToken = d.token;
-    currentUser = d.user;
-    localStorage.setItem('atlas_admin_token', authToken);
-    enterApp();
-  } catch (e) {
-    setLoginMsg('Network error');
-  }
-  btn.disabled = false;
-  btn.textContent = 'Verify & Enter';
-}
-
-function backToPhone() {
-  document.getElementById('login-phone-step').style.display = 'block';
-  document.getElementById('login-otp-step').style.display = 'none';
-  setLoginMsg('');
-}
-
-function setLoginMsg(msg) {
-  document.getElementById('login-msg').textContent = msg;
+  btn.disabled = false; btn.textContent = 'Sign In';
 }
 
 function logout() {
-  localStorage.removeItem('atlas_admin_token');
-  location.reload();
+  TOKEN = null; localStorage.removeItem('jsn_admin_token');
+  document.getElementById('admin-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
-// ── App Init ─────────────────────────────────────────────────────────────────
+function authHeaders() {
+  return { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN };
+}
 
-async function enterApp() {
-  // Verify token is still admin
-  try {
-    const r = await fetch(API + '/api/auth/me', { headers: getHeaders() });
-    if (!r.ok) { logout(); return; }
-    const d = await r.json();
-    if (d.user?.role !== 'admin') { setLoginMsg('Access denied — admin only'); logout(); return; }
-    currentUser = d.user;
-  } catch { logout(); return; }
-
+function showAdminApp() {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('topbar-user').textContent = currentUser.name || currentUser.whatsapp;
-
-  loadDashboard();
+  document.getElementById('admin-app').style.display = 'block';
+  const wa = localStorage.getItem('jsn_admin_wa') || '';
+  document.getElementById('admin-sub').textContent = 'Logged in as ' + wa + ' · ' + new Date().toLocaleTimeString();
+  const whoEl = document.getElementById('pw-change-who');
+  if (whoEl) whoEl.textContent = 'Changing password for: ' + wa;
+  loadStats(); loadQueue(); loadSubscribers();
 }
 
-function getHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + authToken
-  };
-}
+async function changePassword() {
+  const current  = document.getElementById('pw-current').value;
+  const newPw    = document.getElementById('pw-new').value;
+  const confirm  = document.getElementById('pw-confirm').value;
+  const btn      = document.getElementById('pw-change-btn');
+  const msg      = document.getElementById('pw-change-msg');
 
-// Auto-login if token exists
-if (authToken) enterApp();
+  msg.style.display = 'none';
+  if (!current || !newPw) { msg.textContent = 'Fill in all fields'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
+  if (newPw !== confirm)  { msg.textContent = 'Passwords do not match'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
+  if (newPw.length < 8)  { msg.textContent = 'Password must be at least 8 characters'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-
-function switchTab(tab) {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('panel-' + tab).classList.add('active');
-
-  if (tab === 'dashboard') loadDashboard();
-  if (tab === 'users') loadUsers();
-  if (tab === 'events') loadEvents();
-  if (tab === 'invite') loadTokens();
-  if (tab === 'errors') loadErrors();
-  if (tab === 'settings') loadSettings();
-}
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
-function toast(msg, type = '') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show ' + type;
-  setTimeout(() => el.className = '', 3000);
-}
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-
-async function loadDashboard() {
+  btn.disabled = true; btn.textContent = 'Updating…';
   try {
-    const r = await fetch(API + '/api/admin/stats', { headers: getHeaders() });
-    const d = await r.json();
-
-    document.getElementById('stat-grid').innerHTML = [
-      ['Total Users', d.total_users ?? '—', ''],
-      ['Premium', d.premium_users ?? '—', 'paying'],
-      ['Trial Active', d.trial_users ?? '—', 'free trials'],
-      ['Events Posted', d.total_events ?? '—', 'all time'],
-      ['Countries', d.active_countries ?? '—', 'monitored'],
-      ['Error Count', d.error_count ?? '—', 'recent errors'],
-    ].map(([label, val, sub]) => `
-      <div class="stat-card">
-        <div class="stat-label">${label}</div>
-        <div class="stat-val">${val}</div>
-        ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
-      </div>
-    `).join('');
-  } catch {
-    document.getElementById('stat-grid').innerHTML = '<div class="loading">Failed to load stats</div>';
+    const res  = await fetch(API + '/api/admin/set-password', { method:'POST', headers: authHeaders(), body: JSON.stringify({ currentPassword: current, newPassword: newPw }) });
+    const data = await res.json();
+    if (data.ok) {
+      msg.textContent = '✅ Password updated! Use it next time you log in.';
+      msg.style.color = 'var(--safe2)';
+      document.getElementById('pw-current').value = '';
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+    } else {
+      msg.textContent = data.error || 'Failed to update';
+      msg.style.color = 'var(--danger2)';
+    }
+  } catch(e) {
+    msg.textContent = 'Connection error';
+    msg.style.color = 'var(--danger2)';
   }
-
-  // Recent users
-  try {
-    const r = await fetch(API + '/api/admin/users', { headers: getHeaders() });
-    const users = await r.json();
-    const recent = users.slice(0, 10);
-
-    document.getElementById('recent-users-body').innerHTML = recent.map(u => `
-      <tr>
-        <td>${escH(u.name || '—')}</td>
-        <td>${planBadge(u)}</td>
-        <td style="color:var(--muted)">${u.country_count || 0}</td>
-        <td style="color:var(--muted);font-size:11px">${u.last_login ? timeAgo(u.last_login) : 'never'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="4" style="color:var(--muted);padding:20px">No users yet</td></tr>';
-  } catch {
-    document.getElementById('recent-users-body').innerHTML = '<tr><td colspan="4">Error loading</td></tr>';
-  }
+  msg.style.display = 'block';
+  btn.disabled = false; btn.textContent = 'Update Password';
 }
 
-// ── Users ─────────────────────────────────────────────────────────────────────
-
-async function loadUsers() {
-  document.getElementById('users-body').innerHTML = '<tr><td colspan="8" class="loading">Loading</td></tr>';
+async function loadStats() {
   try {
-    const r = await fetch(API + '/api/admin/subscribers', { headers: getHeaders() });
-    const users = await r.json();
-
-    document.getElementById('users-body').innerHTML = users.map(u => `
-      <tr>
-        <td>${escH(u.name || '—')}</td>
-        <td style="color:var(--accent);font-size:11px">${escH(u.whatsapp)}</td>
-        <td style="color:var(--muted);font-size:11px">${escH(u.email || '—')}</td>
-        <td>${u.role === 'admin' ? '<span class="badge badge-admin">admin</span>' : ''}</td>
-        <td>${planBadge(u)}</td>
-        <td style="color:var(--muted);font-size:11px">${u.trial_end ? u.trial_end.split('T')[0] : '—'}</td>
-        <td style="color:var(--muted)">${(u.countries || []).join(', ') || '—'}</td>
-        <td>
-          <button class="btn btn-sm btn-outline" style="font-size:9px;padding:4px 8px" onclick="promoteUser(${u.id}, '${escH(u.role)}')">
-            ${u.role === 'admin' ? 'Demote' : 'Make Admin'}
-          </button>
-        </td>
-      </tr>
-    `).join('') || '<tr><td colspan="8" style="color:var(--muted);padding:20px">No users</td></tr>';
-  } catch {
-    document.getElementById('users-body').innerHTML = '<tr><td colspan="8">Error loading users</td></tr>';
-  }
+    const res = await fetch(API + '/api/admin/stats', { headers: authHeaders() });
+    const d = await res.json();
+    document.getElementById('a-today').textContent = d.sirenStats.today || 0;
+    document.getElementById('a-subs').textContent = d.subscribers;
+    document.getElementById('a-pending').textContent = d.pending;
+    document.getElementById('a-sent').textContent = d.alertsSent;
+  } catch(e) {}
 }
 
-async function promoteUser(id, currentRole) {
-  const newRole = currentRole === 'admin' ? 'user' : 'admin';
-  if (!confirm(`Set user #${id} role to "${newRole}"?`)) return;
+async function loadQueue() {
   try {
-    const r = await fetch(API + '/api/admin/users/' + id + '/role', {
-      method: 'PATCH',
-      headers: getHeaders(),
-      body: JSON.stringify({ role: newRole })
-    });
-    if (r.ok) { toast('Role updated', 'ok'); loadUsers(); }
-    else toast('Failed to update role', 'err');
-  } catch { toast('Error', 'err'); }
+    const res = await fetch(API + '/api/admin/pending', { headers: authHeaders() });
+    if (res.status === 401) { logout(); return; }
+    const events = await res.json();
+    const list = document.getElementById('queue-list');
+    if (!events.length) { list.innerHTML = '<div class="empty-state">✅ No pending submissions</div>'; return; }
+    list.innerHTML = events.map(e => `
+      <div class="pending-item" id="pi-${e.id}">
+        <div class="pending-type">${e.type.toUpperCase()}</div>
+        <div class="pending-title">${escH(e.title)}</div>
+        <div class="pending-meta">
+          <span>📍 ${escH(e.location || 'No location')}</span>
+          <span>👤 ${escH(e.submitted_by || 'anonymous')}</span>
+          <span>🕐 ${new Date(e.created_at + 'Z').toLocaleString()}</span>
+          ${e.source_url ? `<a href="${escH(e.source_url)}" target="_blank" style="color:var(--accent2);">View source ↗</a>` : ''}
+        </div>
+        ${e.description ? `<div class="pending-desc">${escH(e.description)}</div>` : ''}
+        <div class="pending-actions">
+          <button class="btn-approve" onclick="approve(${e.id})">✅ Approve & Send Alerts</button>
+          <button class="btn-reject" onclick="reject(${e.id})">✗ Reject</button>
+        </div>
+      </div>`).join('');
+  } catch(e) { console.error(e); }
 }
 
-async function sendFreeToken() {
-  const wa = document.getElementById('token-wa').value.trim();
-  const days = parseInt(document.getElementById('token-days').value) || 7;
-  if (!wa) { toast('Enter a WhatsApp number', 'err'); return; }
-
+async function approve(id) {
   try {
-    // Generate an invite token and send it
-    const r = await fetch(API + '/api/admin/invite-tokens', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ max_uses: 1, trial_days: days, label: 'manual-gift-' + wa })
-    });
-    const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Failed', 'err'); return; }
-    toast(`Token ${d.token} created (${days} days). Share with user manually.`, 'ok');
-    loadTokens();
-  } catch { toast('Error', 'err'); }
+    const res = await fetch(API + '/api/admin/approve/' + id, { method:'POST', headers: authHeaders() });
+    const d = await res.json();
+    if (d.success) {
+      showToast('✅ Approved — alerts sending');
+      document.getElementById('pi-' + id).remove();
+      loadStats();
+      if (!document.getElementById('queue-list').children.length) {
+        document.getElementById('queue-list').innerHTML = '<div class="empty-state">✅ No pending submissions</div>';
+      }
+    }
+  } catch(e) { showToast('Error approving', 'error'); }
 }
 
-// ── Events ────────────────────────────────────────────────────────────────────
-
-async function loadEvents() {
-  document.getElementById('events-body').innerHTML = '<tr><td colspan="5" class="loading">Loading</td></tr>';
+async function reject(id) {
   try {
-    const r = await fetch(API + '/api/admin/events', { headers: getHeaders() });
-    const events = await r.json();
-
-    document.getElementById('events-body').innerHTML = events.slice(0, 30).map(e => `
-      <tr>
-        <td><span style="color:var(--accent)">${e.country_code}</span></td>
-        <td>${e.type}</td>
-        <td>${escH(e.title)}</td>
-        <td><span class="badge ${e.severity === 'danger' ? 'badge-expired' : e.severity === 'warn' ? 'badge-trial' : 'badge-free'}">${e.severity}</span></td>
-        <td style="color:var(--muted);font-size:11px">${timeAgo(e.created_at)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="color:var(--muted);padding:20px">No events</td></tr>';
-  } catch {
-    document.getElementById('events-body').innerHTML = '<tr><td colspan="5">Error</td></tr>';
-  }
+    await fetch(API + '/api/admin/reject/' + id, { method:'POST', headers: authHeaders() });
+    document.getElementById('pi-' + id).remove();
+    showToast('Rejected');
+    loadStats();
+  } catch(e) {}
 }
 
 async function postEvent() {
-  const payload = {
-    country_code: document.getElementById('ev-country').value.trim().toUpperCase(),
-    type:         document.getElementById('ev-type').value,
-    severity:     document.getElementById('ev-severity').value,
-    title:        document.getElementById('ev-title').value.trim(),
-    description:  document.getElementById('ev-desc').value.trim() || null,
-    lat:          parseFloat(document.getElementById('ev-lat').value) || null,
-    lng:          parseFloat(document.getElementById('ev-lng').value) || null,
-    location:     document.getElementById('ev-location').value.trim() || null,
+  const title = document.getElementById('p-title').value.trim();
+  if (!title) { showToast('Title required', 'error'); return; }
+  const body = {
+    country_code: document.getElementById('p-country').value,
+    type: document.getElementById('p-type').value,
+    severity: document.getElementById('p-severity').value,
+    title, description: document.getElementById('p-desc').value.trim(),
+    location: document.getElementById('p-loc').value.trim(),
+    source: document.getElementById('p-source').value.trim(),
+    source_url: document.getElementById('p-url').value.trim(),
   };
-
-  if (!payload.country_code || !payload.title) { toast('Country code and title required', 'err'); return; }
-
+  const btn = document.getElementById('post-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const r = await fetch(API + '/api/admin/events', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    if (r.ok) {
-      toast(`Event posted + dispatched to subscribers`, 'ok');
-      ['ev-title','ev-desc','ev-lat','ev-lng','ev-location'].forEach(id => document.getElementById(id).value = '');
-      loadEvents();
-    } else {
-      toast(d.error || 'Failed to post event', 'err');
-    }
-  } catch { toast('Error', 'err'); }
+    const res = await fetch(API + '/api/admin/event', { method:'POST', headers: authHeaders(), body:JSON.stringify(body) });
+    const d = await res.json();
+    if (d.success) {
+      showToast('📢 Posted — alerts sending to all subscribers');
+      ['p-title','p-desc','p-loc','p-url'].forEach(id => document.getElementById(id).value = '');
+      loadStats();
+    } else { showToast(d.error || 'Error', 'error'); }
+  } catch(e) { showToast('Connection error', 'error'); }
+  btn.disabled = false; btn.textContent = '📢 Post & Send Alerts Now';
 }
 
-async function deleteTestEvents() {
-  if (!confirm('Delete all test events?')) return;
+async function logSiren() {
+  const loc = document.getElementById('s-loc').value.trim() || 'Unspecified';
+  const body = { location: loc, duration_s: parseInt(document.getElementById('s-dur').value) || null, notes: document.getElementById('s-notes').value.trim() };
+  const btn = document.getElementById('siren-btn');
+  btn.disabled = true; btn.textContent = 'Logging…';
   try {
-    const r = await fetch(API + '/api/admin/events/test', { method: 'DELETE', headers: getHeaders() });
-    if (r.ok) { toast('Test events deleted', 'ok'); loadEvents(); }
-    else toast('Failed', 'err');
-  } catch { toast('Error', 'err'); }
+    const res = await fetch(API + '/api/admin/siren', { method:'POST', headers: authHeaders(), body:JSON.stringify(body) });
+    const d = await res.json();
+    if (d.success) {
+      showToast('🚨 Siren logged — alerts sent');
+      ['s-loc','s-dur','s-notes'].forEach(id => document.getElementById(id).value = '');
+      loadStats();
+    } else { showToast(d.error || 'Error', 'error'); }
+  } catch(e) { showToast('Error', 'error'); }
+  btn.disabled = false; btn.textContent = '🚨 Log Siren & Alert All Subscribers';
 }
 
-// ── Invite Tokens ─────────────────────────────────────────────────────────────
+async function loadSubscribers() {
+  try {
+    const res = await fetch(API + '/api/admin/subscribers', { headers: authHeaders() });
+    const subs = await res.json();
+    const list = document.getElementById('subs-list');
+    if (!subs.length) { list.innerHTML = '<div class="empty-state">No subscribers yet</div>'; return; }
+    list.innerHTML = subs.map(s => {
+      const prefs = ['siren','drone','news','troop','clear'].filter(p => s['alert_'+p]).join(', ');
+      const contact = [s.phone, s.email, s.whatsapp ? 'WA:'+s.whatsapp : ''].filter(Boolean).join(' · ');
+      return `<div class="sub-item"><div><div class="sub-contact">${escH(contact)}</div><div class="sub-prefs">Alerts: ${prefs}</div></div><div class="sub-date">${new Date(s.created_at).toLocaleDateString()}</div></div>`;
+    }).join('');
+  } catch(e) {}
+}
 
+function switchPanel(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'events') loadAllEvents();
+  if (name === 'tokens') loadTokens();
+  if (name === 'feedback') loadFeedback();
+}
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Events management ─────────────────────────────────────────────────────────
+async function loadAllEvents() {
+  const el = document.getElementById('all-events-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch(API + '/api/admin/events', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const events = await r.json();
+    if (!events.length) { el.innerHTML = '<div class="empty-state">No events found.</div>'; return; }
+    el.innerHTML = events.map(e => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--text);font-weight:600;">${escH(e.title)}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">${e.country_code} · ${e.type} · ${e.severity} · ${e.is_test ? '⚠️ TEST' : 'LIVE'} · ${e.status}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(e.created_at).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          ${e.status !== 'removed' ? `<button onclick="removeEvent(${e.id}, this)" style="background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Remove</button>` : '<span style="color:var(--muted);font-size:11px;">Removed</span>'}
+          ${!e.is_test ? `<button onclick="markTest(${e.id}, this)" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fcd34d;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Mark Test</button>` : ''}
+        </div>
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load events.</div>'; }
+}
+
+async function removeEvent(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  const r = await fetch(API + '/api/events/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { btn.textContent = 'Removed'; btn.style.opacity = '.5'; }
+}
+
+async function markTest(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  const r = await fetch(API + '/api/events/' + id + '/test', { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { btn.textContent = 'Marked'; btn.style.opacity = '.5'; }
+}
+
+async function removeAllTestEvents() {
+  if (!confirm('Remove ALL test events? This cannot be undone.')) return;
+  const r = await fetch(API + '/api/admin/events/test', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.ok) { alert('All test events removed.'); loadAllEvents(); }
+}
+
+// ── Invite tokens ──────────────────────────────────────────────────────────────
 async function loadTokens() {
-  document.getElementById('tokens-body').innerHTML = '<tr><td colspan="7" class="loading">Loading</td></tr>';
+  const el = document.getElementById('token-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
   try {
-    const r = await fetch(API + '/api/admin/invite-tokens', { headers: getHeaders() });
+    const r = await fetch(API + '/api/admin/invite-tokens', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
     const tokens = await r.json();
-
-    document.getElementById('tokens-body').innerHTML = tokens.map(t => `
-      <tr>
-        <td style="color:var(--accent);font-family:var(--mono)">${t.token}</td>
-        <td>${t.uses}</td>
-        <td>${t.max_uses}</td>
-        <td>${t.trial_days ?? 7}</td>
-        <td style="color:var(--muted)">${escH(t.label || '—')}</td>
-        <td style="color:var(--muted);font-size:11px">${t.created_at ? t.created_at.split('T')[0] : '—'}</td>
-        <td>
-          <button class="btn btn-sm btn-danger" style="font-size:9px;padding:4px 8px" onclick="deleteToken('${t.token}')">Delete</button>
-        </td>
-      </tr>
-    `).join('') || '<tr><td colspan="7" style="color:var(--muted);padding:20px">No tokens</td></tr>';
-  } catch {
-    document.getElementById('tokens-body').innerHTML = '<tr><td colspan="7">Error</td></tr>';
-  }
-}
-
-async function createToken() {
-  const payload = {
-    max_uses:   parseInt(document.getElementById('inv-uses').value) || 1,
-    trial_days: parseInt(document.getElementById('inv-days').value) || 30,
-    label:      document.getElementById('inv-label').value.trim() || null,
-  };
-
-  try {
-    const r = await fetch(API + '/api/admin/invite-tokens', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    if (r.ok) { toast(`Token created: ${d.token}`, 'ok'); loadTokens(); }
-    else toast(d.error || 'Failed', 'err');
-  } catch { toast('Error', 'err'); }
-}
-
-async function deleteToken(token) {
-  if (!confirm(`Delete token ${token}?`)) return;
-  try {
-    const r = await fetch(API + '/api/admin/invite-tokens/' + token, { method: 'DELETE', headers: getHeaders() });
-    if (r.ok) { toast('Token deleted', 'ok'); loadTokens(); }
-    else toast('Failed', 'err');
-  } catch { toast('Error', 'err'); }
-}
-
-// ── Errors ────────────────────────────────────────────────────────────────────
-
-async function loadErrors() {
-  document.getElementById('errors-list').innerHTML = '<div class="loading">Loading</div>';
-  try {
-    const r = await fetch(API + '/api/admin/errors', { headers: getHeaders() });
-    const errors = await r.json();
-
-    if (!errors.length) {
-      document.getElementById('errors-list').innerHTML = '<div style="color:var(--green);padding:20px;font-size:11px;letter-spacing:1px">✓ No recent errors</div>';
-      return;
-    }
-
-    document.getElementById('errors-list').innerHTML = errors.slice(0, 50).map(e => `
-      <div class="log-entry">
-        <div style="display:flex;gap:12px;margin-bottom:4px">
-          <span class="log-type">${e.type || 'error'}</span>
-          <span class="log-time">${e.created_at || ''}</span>
-          ${e.endpoint ? `<span style="color:var(--muted);font-size:10px">${e.endpoint}</span>` : ''}
+    if (!tokens.length) { el.innerHTML = '<div class="empty-state">No tokens yet. Generate one above.</div>'; return; }
+    el.innerHTML = tokens.map(t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;">
+          <div style="font-family:monospace;font-size:16px;font-weight:700;color:#93c5fd;letter-spacing:.15em;">${t.token}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);margin-top:2px;">
+            Uses: ${t.uses}/${t.max_uses} · ${t.active ? '✅ Active' : '❌ Inactive'} · Created ${new Date(t.created_at).toLocaleDateString()}
+            ${t.used_by ? ' · Used by: ' + escH(t.used_by) : ''}
+          </div>
         </div>
-        <div style="color:var(--text)">${escH(e.message || '')}</div>
-        ${e.stack ? `<div style="color:var(--muted);font-size:10px;margin-top:4px;white-space:pre-wrap">${escH(e.stack.slice(0,200))}</div>` : ''}
-      </div>
-    `).join('');
-  } catch {
-    document.getElementById('errors-list').innerHTML = '<div class="log-entry">Failed to load errors</div>';
-  }
-}
-
-// ── Settings ──────────────────────────────────────────────────────────────────
-
-let settingsData = {};
-
-async function loadSettings() {
-  try {
-    const r = await fetch(API + '/api/admin/settings', { headers: getHeaders() });
-    settingsData = await r.json();
-
-    document.getElementById('settings-form').innerHTML = Object.entries(settingsData).map(([key, val]) => `
-      <div style="margin-bottom:12px">
-        <div class="field-label">${key}</div>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="setting-${key}" value="${escH(String(val))}" style="flex:1;margin-bottom:0" />
-          <button class="btn btn-sm btn-outline" onclick="saveSetting('${key}')">Save</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="copyToken('${t.token}')" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.4);color:#93c5fd;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Copy</button>
+          ${t.active ? `<button onclick="deactivateToken('${t.token}', this)" style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;">Disable</button>` : ''}
         </div>
-      </div>
-    `).join('') || '<div style="color:var(--muted)">No settings found</div>';
-  } catch {
-    document.getElementById('settings-form').innerHTML = '<div style="color:var(--danger)">Failed to load settings</div>';
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load tokens.</div>'; }
+}
+
+async function generateToken() {
+  const maxUses = parseInt(document.getElementById('token-uses').value);
+  const r = await fetch(API + '/api/admin/invite-tokens', {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ max_uses: maxUses })
+  });
+  const d = await r.json();
+  if (d.token) {
+    await navigator.clipboard.writeText(d.token).catch(() => {});
+    alert('Token created: ' + d.token + '\n\nCopied to clipboard!\n\nShare this with your beta tester. They enter it during signup.');
+    loadTokens();
   }
 }
 
-async function saveSetting(key) {
-  const val = document.getElementById('setting-' + key).value;
+function copyToken(token) {
+  navigator.clipboard.writeText(token).then(() => alert('Copied: ' + token)).catch(() => prompt('Copy this token:', token));
+}
+
+async function deactivateToken(token, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  await fetch(API + '/api/admin/invite-tokens/' + token, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  loadTokens();
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+async function loadFeedback() {
+  const el = document.getElementById('feedback-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
   try {
-    const r = await fetch(API + '/api/admin/settings', {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify({ key, value: val })
-    });
-    if (r.ok) toast('Setting saved', 'ok');
-    else toast('Failed', 'err');
-  } catch { toast('Error', 'err'); }
+    const r = await fetch(API + '/api/admin/feedback', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = '<div class="empty-state">No feedback yet.</div>'; return; }
+
+    // Summary stats
+    const avgRating = (rows.filter(r => r.rating).reduce((s, r) => s + r.rating, 0) / rows.filter(r => r.rating).length).toFixed(1);
+    const wouldPay = rows.filter(r => r.would_pay).length;
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#fbbf24;">${avgRating}⭐</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Avg rating</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#4ade80;">${rows.length}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Responses</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:24px;font-weight:800;color:#60a5fa;">${wouldPay}</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay</div>
+        </div>
+      </div>` +
+    rows.map(f => `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-family:monospace;font-size:10px;color:var(--muted);">${new Date(f.created_at).toLocaleString()} · ${escH(f.whatsapp||'Anonymous')}</div>
+          <div style="font-size:16px;">${'⭐'.repeat(f.rating||0)}${'☆'.repeat(5-(f.rating||0))}</div>
+        </div>
+        ${f.likes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#4ade80;text-transform:uppercase;">Likes: </span><span style="font-size:12px;">${escH(f.likes)}</span></div>` : ''}
+        ${f.dislikes ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#f87171;text-transform:uppercase;">Dislikes: </span><span style="font-size:12px;">${escH(f.dislikes)}</span></div>` : ''}
+        ${f.suggestions ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#60a5fa;text-transform:uppercase;">Suggestions: </span><span style="font-size:12px;">${escH(f.suggestions)}</span></div>` : ''}
+        ${f.bugs ? `<div style="margin-bottom:6px;"><span style="font-family:monospace;font-size:9px;color:#fcd34d;text-transform:uppercase;">Bugs: </span><span style="font-size:12px;">${escH(f.bugs)}</span></div>` : ''}
+        ${f.would_pay !== null ? `<div style="font-family:monospace;font-size:10px;color:var(--muted);">Would pay: ${f.would_pay ? '✅ Yes' : '❌ No'} ${f.price_point ? '· Price: '+escH(f.price_point) : ''}</div>` : ''}
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load feedback.</div>'; }
 }
 
-async function refreshNews() {
-  try {
-    const r = await fetch(API + '/api/admin/refresh-news', { method: 'POST', headers: getHeaders() });
-    if (r.ok) toast('News refresh triggered', 'ok');
-    else toast('Failed', 'err');
-  } catch { toast('Error', 'err'); }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function escH(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function planBadge(u) {
-  if (u.plan === 'premium') return '<span class="badge badge-premium">premium</span>';
-  if (u.role === 'admin') return '<span class="badge badge-admin">admin</span>';
-  const now = new Date();
-  const end = u.trial_end ? new Date(u.trial_end) : null;
-  if (end && end > now) return `<span class="badge badge-trial">trial</span>`;
-  if (end && end <= now) return '<span class="badge badge-expired">expired</span>';
-  return '<span class="badge badge-free">free</span>';
-}
-
-function timeAgo(ts) {
-  if (!ts) return '—';
-  const sec = (Date.now() - new Date(ts.includes('Z') ? ts : ts + 'Z').getTime()) / 1000;
-  if (sec < 60) return 'just now';
-  if (sec < 3600) return Math.floor(sec/60) + 'm ago';
-  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
-  return Math.floor(sec/86400) + 'd ago';
+// Auto-login if token exists
+if (TOKEN) {
+  fetch(API + '/api/admin/stats', { headers: { 'Authorization':'Bearer '+TOKEN } })
+    .then(r => r.ok ? showAdminApp() : logout())
+    .catch(() => {});
 }
 </script>
 </body>
