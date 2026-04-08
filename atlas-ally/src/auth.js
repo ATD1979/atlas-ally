@@ -10,8 +10,9 @@ function generateOTP() {
 }
 
 function createToken(user) {
+  const plan = (user.role === 'admin') ? 'premium' : user.plan;
   return jwt.sign(
-    { id: user.id, whatsapp: user.whatsapp, role: user.role, plan: user.plan },
+    { id: user.id, whatsapp: user.whatsapp, role: user.role, plan },
     JWT_SECRET,
     { expiresIn: '30d' }
   );

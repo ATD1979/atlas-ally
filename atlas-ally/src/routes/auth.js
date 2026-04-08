@@ -32,13 +32,20 @@ function sanitizeUser(u) {
 
 // Returns trial status fields to attach to any auth response
 function trialStatus(user) {
-  if (user.plan === 'premium') return { trial_active: false, trial_expired: false, on_premium: true };
+  if (user.plan === 'premium' || user.role === 'admin') {
+    return {
+      trial_active:    false,
+      trial_expired:   false,
+      trial_days_left: 0,
+      on_premium:      true,
+    };
+  }
   const daysLeft = db.getTrialDaysLeft(user);
   return {
-    trial_active:  daysLeft > 0,
-    trial_expired: daysLeft <= 0,
+    trial_active:    daysLeft > 0,
+    trial_expired:   daysLeft <= 0,
     trial_days_left: Math.max(0, Math.floor(daysLeft)),
-    on_premium:    false,
+    on_premium:      false,
   };
 }
 
