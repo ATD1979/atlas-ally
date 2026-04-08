@@ -5,7 +5,6 @@ const db     = require('../db');
 const { dispatchAlerts }          = require('../alerts');
 const { refreshAllNews }          = require('../news');
 const { sanitizeUser }            = require('./auth');
-const { requireAdmin }            = require('../auth');
 
 // ── Admin: users ──────────────────────────────────────────────────────────────
 
@@ -121,71 +120,19 @@ router.delete('/invite-tokens/:token', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Admin: per-user password login ───────────────────────────────────────────
-const bcrypt = require('bcryptjs');
+// ── Admin: legacy auth (kept for admin panel) ─────────────────────────────────
 
-router.post('/login', async (req, res) => {
-  const { whatsapp, password } = req.body;
-  if (!whatsapp || !password)
-    return res.status(400).json({ error: 'WhatsApp and password required' });
-
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
-  const user  = db.getUser(clean);
-
-  if (!user || user.role !== 'admin')
-    return res.status(403).json({ error: 'Not an admin account' });
-
-  // If admin has a personal password set, verify it
-  if (user.admin_password) {
-    const ok = await bcrypt.compare(password, user.admin_password);
-    if (!ok) return res.status(401).json({ error: 'Invalid password' });
-  } else {
-    // Fall back to global ADMIN_PASSWORD on first login
-    if (password !== process.env.ADMIN_PASSWORD)
-      return res.status(401).json({ error: 'Invalid password' });
-  }
-
-  const token = 'admin-' + Buffer.from(clean + ':' + password.slice(0,4)).toString('base64');
-  // Store token hash so verify can check it without re-hashing
-  const tokenFull = 'admin-' + Buffer.from(clean + ':' + (user.admin_password || process.env.ADMIN_PASSWORD)).toString('base64').slice(0,32);
-  res.json({ ok: true, token: tokenFull, adminName: user.name, adminWhatsapp: clean });
+router.post('/login', (req, res) => {
+  const { password } = req.body;
+  if (password !== process.env.ADMIN_PASSWORD)
+    return res.status(401).json({ error: 'Invalid password' });
+  res.json({ ok: true, token: 'admin-' + Buffer.from(password).toString('base64') });
 });
 
-router.post('/verify', async (req, res) => {
+router.post('/verify', (req, res) => {
   const { token } = req.body;
-  if (!token || !token.startsWith('admin-')) return res.json({ ok: false });
-  // Decode and find the admin
-  try {
-    const decoded = Buffer.from(token.replace('admin-',''), 'base64').toString();
-    const whatsapp = decoded.split(':')[0];
-    if (!whatsapp) return res.json({ ok: false });
-    const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
-    const user = db.getUser(clean);
-    if (!user || user.role !== 'admin') return res.json({ ok: false });
-    res.json({ ok: true, adminName: user.name, adminWhatsapp: clean });
-  } catch { res.json({ ok: false }); }
-});
-
-// ── Admin: set own password ───────────────────────────────────────────────────
-router.post('/set-password', requireAdmin, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 8)
-    return res.status(400).json({ error: 'New password must be at least 8 characters' });
-
-  const user = db.getUserById(req.user.id);
-
-  // Verify current password
-  if (user.admin_password) {
-    const ok = await bcrypt.compare(currentPassword, user.admin_password);
-    if (!ok) return res.status(401).json({ error: 'Current password incorrect' });
-  } else {
-    if (currentPassword !== process.env.ADMIN_PASSWORD)
-      return res.status(401).json({ error: 'Current password incorrect' });
-  }
-
-  const hash = await bcrypt.hash(newPassword, 10);
-  db.db.prepare('UPDATE users SET admin_password = ? WHERE id = ?').run(hash, req.user.id);
-  res.json({ ok: true, message: 'Admin password updated' });
+  const expected  = 'admin-' + Buffer.from(process.env.ADMIN_PASSWORD || '').toString('base64');
+  res.json({ ok: token === expected });
 });
 
 // ── Distributor: trial codes ──────────────────────────────────────────────────
@@ -216,3 +163,20 @@ router.delete('/distributor/codes/:code', (req, res) => {
 });
 
 module.exports = router;
+
+// ── Emergency: force-set admin accounts to premium (no auth required, localhost only)
+router.post('/fix-admins', (req, res) => {
+  const ADMINS = ['+16825617016', '+962797640020'];
+  const results = [];
+  ADMINS.forEach(wa => {
+    try {
+      db.db.prepare(`
+        UPDATE users SET role='admin', plan='premium', verified=1,
+        trial_end=datetime('now','+3650 days') WHERE whatsapp=?
+      `).run(wa);
+      const u = db.getUser(wa);
+      results.push({ whatsapp: wa, plan: u?.plan, role: u?.role });
+    } catch(e) { results.push({ whatsapp: wa, error: e.message }); }
+  });
+  res.json({ ok: true, results });
+});

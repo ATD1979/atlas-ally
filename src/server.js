@@ -68,6 +68,26 @@ app.use('/api', softAuth, paymentRoutes);
 app.use('/api/admin',       requireAdmin,       adminRoutes);
 app.use('/api/distributor', requireDistributor, adminRoutes);
 
+// ── Aliases for obfuscated frontend which calls /api/contacts/:wa and /api/countries/:wa ──
+app.get('/api/contacts/:whatsapp',    requireAuth, (req, res) => res.json(db.getEmergencyContacts.all(req.user.id)));
+app.post('/api/contacts/:whatsapp',   requireAuth, (req, res) => {
+  const { name, whatsapp, relation } = req.body;
+  if (!name || !whatsapp) return res.status(400).json({ error: 'name and whatsapp required' });
+  db.addEmergencyContact.run({ user_id: req.user.id, name, whatsapp, relation: relation || null });
+  res.json({ ok: true });
+});
+app.delete('/api/contacts/:whatsapp/:id', requireAuth, (req, res) => {
+  db.removeEmergencyContact.run(req.params.id, req.user.id);
+  res.json({ ok: true });
+});
+app.get('/api/countries/:whatsapp',   requireAuth, (req, res) => res.json(db.getUserCountries.all(req.user.id).map(r => r.country_code)));
+app.post('/api/countries/:whatsapp',  requireAuth, (req, res) => {
+  const { country_code } = req.body;
+  if (!country_code) return res.status(400).json({ error: 'country_code required' });
+  db.addCountry.run({ user_id: req.user.id, country_code: country_code.toUpperCase() });
+  res.json({ ok: true });
+});
+
 // ── Misc routes ───────────────────────────────────────────────────────────────
 
 // Checklists

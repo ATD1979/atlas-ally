@@ -10,7 +10,8 @@ const apiLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+// Auth routes need a generous limit — mobile users on retry loops hit 20 fast
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 50 });
 
 const apiSlowDown = slowDown({
   windowMs: 60 * 1000,
@@ -23,7 +24,13 @@ const apiSlowDown = slowDown({
 
 const BLOCKED_AGENTS = ['python-requests', 'curl/', 'wget/', 'scrapy', 'httpclient', 'okhttp', 'axios/'];
 
+// Auth routes are always exempt — login requests have no token or referer by definition
+const AUTH_PATHS = ['/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/signup', '/api/auth/admin-login'];
+
 function apiFingerprint(req, res, next) {
+  // Never fingerprint-block auth endpoints
+  if (AUTH_PATHS.some(p => req.path.startsWith(p))) return next();
+
   const ua      = req.headers['user-agent'] || '';
   const referer = req.headers['referer']    || '';
   const isBot   = BLOCKED_AGENTS.some(b => ua.toLowerCase().includes(b));
@@ -31,9 +38,11 @@ function apiFingerprint(req, res, next) {
   const hasValidReferer = referer.includes('atlas-ally.com') || referer.includes('localhost');
   const hasAuth         = !!req.headers.authorization;
 
+  // Only hard-block confirmed bots with no auth and no valid referer
   if (isBot && !hasAuth && !hasValidReferer)
     return res.status(403).json({ error: 'Access denied' });
 
+  // Log suspicious unauthenticated access (don't block — just log)
   if (!hasAuth && !hasValidReferer && req.path.startsWith('/api/')) {
     try {
       db.logError.run({

@@ -987,13 +987,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
         </div>
       </div>
 
-      <!-- Admin panel link — shown only for admin users -->
-      <div id="admin-panel-link" style="display:none;margin-top:16px;padding:14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--brand2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Admin Access</div>
-        <div style="font-size:12px;color:var(--dm);margin-bottom:10px;line-height:1.5;">You have admin privileges. Open the admin panel to manage events, users, and alerts.</div>
-        <button onclick="window.open('/admin','_blank')" style="width:100%;background:var(--brand);color:white;border:none;border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:700;cursor:pointer;">🛡️ Open Admin Panel →</button>
-      </div>
-
       <!-- Delete account -->
       <div id="delete-account-section" style="display:none;margin-top:8px;padding-top:16px;border-top:1px solid var(--db);">
         <div class="sec-title" style="color:var(--danger);">Danger Zone</div>
@@ -1130,26 +1123,4 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
     <button onclick="submitFeedback()" style="width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;">Submit Feedback 🚀</button>
   </div>
 </div>
-<script>
-// Show admin panel link if user has admin role
-(function checkAdminRole() {
-  function revealIfAdmin() {
-    try {
-      const u = JSON.parse(localStorage.getItem('atlas_user') || 'null');
-      if (u && u.role === 'admin') {
-        const el = document.getElementById('admin-panel-link');
-        if (el) el.style.display = 'block';
-      }
-    } catch(e) {}
-  }
-  // Check on load
-  revealIfAdmin();
-  // Also re-check after login (poll briefly)
-  let checks = 0;
-  const iv = setInterval(() => {
-    revealIfAdmin();
-    if (++checks > 30) clearInterval(iv);
-  }, 1000);
-})();
-</script>
 </body>
