@@ -7,6 +7,7 @@ const fetch = require('node-fetch');
 const xml2js = require('xml2js');
 const { COUNTRIES } = require('./countries');
 const db = require('./db');
+const { extractLocation } = require('./geocoder');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -107,14 +108,15 @@ async function refreshNewsForCountry(countryCode) {
     const item = extractItem(raw);
     if (!item.title || item.title.length < 10) continue;
     try {
+      const loc = extractLocation(item.title + ' ' + item.description, countryCode);
       db.cacheNews.run({
         country_code: countryCode,
         source_name: 'Google News',
         title: item.title,
         description: item.description,
         url: item.url,
-        lat: null,
-        lng: null,
+        lat: loc.lat || null,
+        lng: loc.lng || null,
         published_at: item.published_at,
       });
       count++;
@@ -129,14 +131,15 @@ async function refreshNewsForCountry(countryCode) {
         const item = extractItem(raw);
         if (!item.title || item.title.length < 10) continue;
         try {
+          const loc = extractLocation(item.title + ' ' + item.description, countryCode);
           db.cacheNews.run({
             country_code: countryCode,
             source_name: feed.name,
             title: item.title,
             description: item.description,
             url: item.url,
-            lat: null,
-            lng: null,
+            lat: loc.lat || null,
+            lng: loc.lng || null,
             published_at: item.published_at,
           });
           count++;

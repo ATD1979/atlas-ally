@@ -119,15 +119,40 @@ router.post('/route', async (req, res) => {
 // ── News ──────────────────────────────────────────────────────────────────────
 
 router.get('/news', (req, res) => {
-  const { country_code } = req.query;
+  const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
-  const items = db.getNewsByCountry.all(code);
+  let items = db.getNewsByCountry.all(code);
+
   // If nothing cached yet, kick off a background refresh for this country
   if (!items.length) {
     const { refreshNewsForCountry } = require('../news');
     refreshNewsForCountry(code).catch(() => {});
   }
+
+  const userLat = parseFloat(lat);
+  const userLng = parseFloat(lng);
+  if (!isNaN(userLat) && !isNaN(userLng)) {
+    const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
+    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+    const RADIUS_KM = 150;
+
+    // Attach distance; fall back to country center for articles with no city coords
+    items = items.map(article => {
+      const aLat = article.lat || center.lat;
+      const aLng = article.lng || center.lng;
+      const distance_km = Math.round(distanceKm(userLat, userLng, aLat, aLng));
+      return { ...article, distance_km };
+    });
+
+    // Keep only articles within 150 km; if that leaves nothing, show all (country fallback)
+    const nearby = items.filter(a => a.distance_km <= RADIUS_KM);
+    items = nearby.length ? nearby : items;
+
+    // Sort nearest-first
+    items.sort((a, b) => a.distance_km - b.distance_km);
+  }
+
   res.json(items);
 });
 
