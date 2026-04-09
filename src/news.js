@@ -18,7 +18,7 @@ function googleNewsUrl(query, lang = 'en', country = 'US') {
 
 // Country code → Google News language/region config
 const GOOGLE_NEWS_CONFIG = {
-  JO: { lang: 'en', gl: 'JO', query: 'Jordan air raid siren missile drone attack security alert' },
+  JO: { lang: 'en', gl: 'JO', query: 'Jordan news safety travel' },
   UA: { lang: 'en', gl: 'UA', query: 'Ukraine war conflict news' },
   LB: { lang: 'en', gl: 'LB', query: 'Lebanon news security' },
   EG: { lang: 'en', gl: 'EG', query: 'Egypt news' },
@@ -113,6 +113,8 @@ async function refreshNewsForCountry(countryCode) {
         title: item.title,
         description: item.description,
         url: item.url,
+        lat: null,
+        lng: null,
         published_at: item.published_at,
       });
       count++;
@@ -133,6 +135,8 @@ async function refreshNewsForCountry(countryCode) {
             title: item.title,
             description: item.description,
             url: item.url,
+            lat: null,
+            lng: null,
             published_at: item.published_at,
           });
           count++;

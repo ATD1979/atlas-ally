@@ -17,7 +17,10 @@ const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 const SECURITY_KEYWORDS = [
   'air raid', 'siren', 'missile', 'drone', 'attack', 'explosion', 'rocket',
   'bomb', 'strike', 'shooting', 'gunfire', 'military', 'armed', 'artillery',
-  'airstrike', 'UAV', 'blast', 'evacuation', 'emergency alert',
+  'airstrike', 'UAV', 'blast', 'evacuation', 'emergency',
+  'accident', 'crash', 'fire', 'flood', 'earthquake', 'protest', 'riot',
+  'warning', 'alert', 'incident', 'crime', 'arrest', 'killed', 'injured',
+  'border', 'security', 'police', 'soldiers', 'troops', 'conflict',
 ];
 
 const TYPE_MAP = [
@@ -209,7 +212,9 @@ async function ingestJordanRSS() {
                               text.includes('aqaba') || text.includes('zarqa') ||
                               feed.name === 'Jordan Times' || feed.name === 'Petra News';
       if (!isJordanRelated) continue;
-      if (!isSecurityRelevant(text)) continue;
+      // Accept any news from Jordan-specific feeds; for global feeds require security keyword
+      const isGlobalFeed = feed.name !== 'Jordan Times' && feed.name !== 'Petra News';
+      if (isGlobalFeed && !isSecurityRelevant(text)) continue;
 
       const { type, severity } = classifyEvent(`${title} ${desc}`);
       const center = COUNTRY_CENTERS.JO;

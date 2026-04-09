@@ -157,12 +157,12 @@ app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'publi
 app.get('/terms',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
 
 // ── Scheduled jobs ────────────────────────────────────────────────────────────
-refreshAllNews().catch(() => {});
-ingestSecurityEvents().catch(() => {});
+refreshAllNews().catch(e => console.error('Initial news refresh failed:', e.message));
+ingestSecurityEvents().catch(e => console.error('Initial event ingest failed:', e.message));
 checkAllWeather(db).catch(() => {});
 
-setInterval(() => refreshAllNews().catch(() => {}),       2 * 60 * 60 * 1000);
-setInterval(() => ingestSecurityEvents().catch(() => {}), 30 * 60 * 1000);   // every 30 min
+setInterval(() => refreshAllNews().catch(e => console.error('News refresh:', e.message)), 30 * 60 * 1000); // every 30 min
+setInterval(() => ingestSecurityEvents().catch(e => console.error('Event ingest:', e.message)), 15 * 60 * 1000); // every 15 min
 setInterval(() => checkAllWeather(db).catch(() => {}),    6 * 60 * 60 * 1000);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
