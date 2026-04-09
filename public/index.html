@@ -1206,4 +1206,24 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
     });
   });
 })();
+</script>
+
+<script>
+// ── PATCH: Feed tab → Live Feed panel ──
+// The obfuscated drawerNav may mis-compare 'feed' and skip openPanel/loadFeed.
+// This runs after all existing handlers and guarantees the correct routing.
+(function () {
+  var feedBtn = document.querySelector('button[onclick*="drawerNav(\'feed\'"]');
+  if (!feedBtn) return;
+
+  feedBtn.addEventListener('click', function () {
+    // Let any synchronous onclick finish first, then enforce correct routing.
+    setTimeout(function () {
+      // Open the Live Feed panel (slides up, z-index 400)
+      if (typeof openPanel === 'function') openPanel('feed-panel');
+      // Load news / incidents / crime into the panel tabs
+      if (typeof loadFeed === 'function') loadFeed();
+    }, 0);
+  });
+})();
 </script></body>
