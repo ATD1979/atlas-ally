@@ -78,7 +78,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--body);}
 .country-btn{display:flex;align-items:center;gap:5px;background:var(--dk3);border:1px solid var(--db2);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;color:var(--dt);}
 
 /* Map */
-#map-wrap{flex:1;position:relative;overflow:hidden;margin-bottom:0;transition:margin-left .3s ease;}
+#map-wrap{position:relative;overflow:hidden;margin-bottom:0;height:calc(100vh - 54px - 70px);max-height:calc(100vh - 54px - 70px);transition:margin-left .3s ease;}
 #map{width:100%;height:100%;}
 .leaflet-container{background:#e8e4dd;}
 .map-scan{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden;}
@@ -921,6 +921,29 @@ meta[name=theme-color] { content: #0E7490; }
 
 /* ── App bottom padding matches tab bar ── */
 #app { padding-bottom: 70px !important; }
+
+/* ── Hide onboarding until JS activates it ── */
+#onboarding:not(.active) { display:none !important; }
+#onboarding:not(.active) * { display:none !important; }
+
+/* ── Ensure tab bar always on top ── */
+#main-tab-bar { z-index: 9999 !important; }
+
+/* ── Map never goes under tab bar ── */
+#map-wrap { 
+  height: calc(100vh - 54px - 70px) !important;
+  max-height: calc(100vh - 54px - 70px) !important;
+  flex: none !important;
+}
+
+/* ── Content drawer fits between header and tab bar ── */
+#content-drawer {
+  top: 54px !important;
+  bottom: 70px !important;
+}
+
+/* ── App no extra padding needed - tab bar is fixed ── */
+#app { padding-bottom: 0 !important; }
 </style>
 </head>
 <body>
@@ -1008,7 +1031,7 @@ meta[name=theme-color] { content: #0E7490; }
     </div>
   </div>
   <!-- ── Permanent bottom tab bar ── -->
-  <nav id="main-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:200;background:#FFFFFF;border-top:1px solid #E5EAEF;display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,0.06);">
+  <nav id="main-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#FFFFFF;border-top:1px solid #E5EAEF;display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,0.06);">
     <button onclick="drawerNav('map',this)" class="main-tab active" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.8"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg>
       <span style="font-size:9px;font-weight:700;letter-spacing:0.3px;color:#0E7490;">Map</span>
