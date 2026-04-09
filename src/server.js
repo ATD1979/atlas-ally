@@ -36,6 +36,8 @@ app.use(cors());
 app.use(express.json());
 app.use(securityHeaders);
 app.use(attachErrorLogger);
+// No-cache for HTML so Railway never serves stale pages
+app.use((req,res,next)=>{if(req.path.endsWith('.html')||req.path==='/')res.setHeader('Cache-Control','no-store');next();});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ── API middleware ────────────────────────────────────────────────────────────
