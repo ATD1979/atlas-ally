@@ -121,7 +121,31 @@ router.post('/route', async (req, res) => {
 router.get('/news', (req, res) => {
   const { country_code } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  res.json(db.getNewsByCountry.all(country_code.toUpperCase()));
+  const code = country_code.toUpperCase();
+  const items = db.getNewsByCountry.all(code);
+  // If nothing cached yet, kick off a background refresh for this country
+  if (!items.length) {
+    const { refreshNewsForCountry } = require('../news');
+    refreshNewsForCountry(code).catch(() => {});
+  }
+  res.json(items);
+});
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+router.get('/events', (req, res) => {
+  const { country_code } = req.query;
+  if (!country_code) return res.status(400).json({ error: 'country_code required' });
+  const code = country_code.toUpperCase();
+  const events = db.getEventsByCountry.all(code);
+  // If nothing in DB yet, trigger ingest in background
+  if (!events.length) {
+    try {
+      const { ingestSecurityEvents } = require('../services/events-ingest');
+      ingestSecurityEvents().catch(() => {});
+    } catch(e) {}
+  }
+  res.json(events);
 });
 
 module.exports = router;
