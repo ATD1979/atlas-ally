@@ -145,12 +145,23 @@ router.get('/news', (req, res) => {
       return { ...article, distance_km };
     });
 
+    // Articles with no real city coords get country-center distance — mark them
+    // so we can deprioritize them vs articles with real extracted locations
+    items = items.map(a => ({
+      ...a,
+      has_real_location: !!(a.lat && a.lng),
+    }));
+
     // Keep only articles within 150 km; if that leaves nothing, show all (country fallback)
     const nearby = items.filter(a => a.distance_km <= RADIUS_KM);
     items = nearby.length ? nearby : items;
 
-    // Sort nearest-first
-    items.sort((a, b) => a.distance_km - b.distance_km);
+    // Sort: real nearby locations first, then country-center articles by date
+    items.sort((a, b) => {
+      if (a.has_real_location && !b.has_real_location) return -1;
+      if (!a.has_real_location && b.has_real_location) return 1;
+      return a.distance_km - b.distance_km;
+    });
   }
 
   res.json(items);

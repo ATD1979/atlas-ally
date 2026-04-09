@@ -68,26 +68,48 @@ async function fetchRSS(url) {
   }
 }
 
+// Domains clearly outside any of our 20 country regions — drop their articles
+// (These outlets cover the world but aren't local sources)
+const REMOTE_DOMAINS = [
+  'abc.net.au', 'smh.com.au', 'theaustralian.com.au', '9news.com.au',
+  'skynews.com.au', 'news.com.au', 'heraldsun.com.au', 'theage.com.au',
+  'nzherald.co.nz', 'stuff.co.nz', 'rnz.co.nz',
+  'cbc.ca', 'globalnews.ca', 'thestar.com', 'nationalpost.com',
+  'independent.ie', 'irishtimes.com', 'rte.ie',
+  'scotsman.com', 'heraldscotland.com',
+];
+
 function extractItem(item) {
-  const title = item.title?._ || item.title || '';
+  const rawTitle = String(item.title?._ || item.title || '');
   const description = item.description?._ || item.description ||
                       item.summary?._ || item.summary || '';
   const url = item.link?.$ ? item.link.$.href :
               (typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '');
   const published = item.pubDate || item.published || item.updated || new Date().toISOString();
 
-  // Clean Google News redirect URLs
-  let cleanUrl = String(url).trim();
-  if (cleanUrl.includes('news.google.com/rss/articles')) {
-    // Keep as-is — Google News links redirect to original article
+  // Google News titles are "Article Headline - Publisher Name"
+  // Extract publisher from the trailing " - Source" suffix
+  let title = rawTitle;
+  let sourceDomain = null;
+  const dashIdx = rawTitle.lastIndexOf(' - ');
+  if (dashIdx > 10) {
+    title = rawTitle.slice(0, dashIdx).trim();
+    sourceDomain = rawTitle.slice(dashIdx + 3).trim().toLowerCase()
+      .replace(/\s+/g, '-').replace(/[^a-z0-9.-]/g, '');
   }
 
   return {
-    title: String(title).replace(/<[^>]*>/g, '').replace(/&amp;/g,'&').replace(/&quot;/g,'"').trim().slice(0, 200),
+    title: title.replace(/<[^>]*>/g, '').replace(/&amp;/g,'&').replace(/&quot;/g,'"').trim().slice(0, 200),
     description: String(description).replace(/<[^>]*>/g, '').trim().slice(0, 500),
-    url: cleanUrl,
+    url: String(url).trim(),
     published_at: (() => { try { return new Date(published).toISOString(); } catch { return new Date().toISOString(); } })(),
+    sourceDomain,
   };
+}
+
+function isRemoteSource(item) {
+  if (!item.sourceDomain) return false;
+  return REMOTE_DOMAINS.some(d => item.sourceDomain.includes(d.replace('.','')));
 }
 
 async function refreshNewsForCountry(countryCode) {
@@ -104,14 +126,15 @@ async function refreshNewsForCountry(countryCode) {
   const gnUrl = googleNewsUrl(config.query, config.lang, config.gl);
   const gnItems = await fetchRSS(gnUrl);
 
-  for (const raw of gnItems.slice(0, 12)) {
+  for (const raw of gnItems.slice(0, 15)) {
     const item = extractItem(raw);
     if (!item.title || item.title.length < 10) continue;
+    if (isRemoteSource(item)) continue;  // drop Australian/NZ/Canadian outlets
     try {
       const loc = extractLocation(item.title + ' ' + item.description, countryCode);
       db.cacheNews.run({
         country_code: countryCode,
-        source_name: 'Google News',
+        source_name: item.sourceDomain || 'Google News',
         title: item.title,
         description: item.description,
         url: item.url,
