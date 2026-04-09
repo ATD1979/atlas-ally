@@ -18,7 +18,7 @@ function googleNewsUrl(query, lang = 'en', country = 'US') {
 
 // Country code → Google News language/region config
 const GOOGLE_NEWS_CONFIG = {
-  JO: { lang: 'en', gl: 'JO', query: 'Jordan news safety security' },
+  JO: { lang: 'en', gl: 'JO', query: 'Jordan air raid siren missile drone attack security alert' },
   UA: { lang: 'en', gl: 'UA', query: 'Ukraine war conflict news' },
   LB: { lang: 'en', gl: 'LB', query: 'Lebanon news security' },
   EG: { lang: 'en', gl: 'EG', query: 'Egypt news' },

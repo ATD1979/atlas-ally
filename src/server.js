@@ -8,6 +8,7 @@ const db = require('./db');
 const { COUNTRIES }    = require('./countries');
 const { CHECKLISTS }   = require('./checklists');
 const { refreshAllNews }   = require('./news');
+const { ingestSecurityEvents } = require('./services/events-ingest');
 const { checkAllWeather }  = require('./weather');
 const { requireAuth, requireAdmin, requireDistributor, softAuth } = require('./auth');
 const { seedCrimeData, seedAdminUsers, ensureRuntimeTables } = require('./services/seed');
@@ -157,9 +158,11 @@ app.get('/terms',   (req, res) => res.sendFile(path.join(__dirname, '..', 'publi
 
 // ── Scheduled jobs ────────────────────────────────────────────────────────────
 refreshAllNews().catch(() => {});
+ingestSecurityEvents().catch(() => {});
 checkAllWeather(db).catch(() => {});
 
 setInterval(() => refreshAllNews().catch(() => {}),       2 * 60 * 60 * 1000);
+setInterval(() => ingestSecurityEvents().catch(() => {}), 30 * 60 * 1000);   // every 30 min
 setInterval(() => checkAllWeather(db).catch(() => {}),    6 * 60 * 60 * 1000);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
