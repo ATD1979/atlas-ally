@@ -889,6 +889,38 @@ meta[name=theme-color] { content: #0E7490; }
 .dnav-btn::before, .dnav-btn::after,
 .nbtn::before, .nbtn::after { display:none !important; }
 .main-tab:focus { outline: none !important; box-shadow: none !important; }
+
+/* ── Kill all bottom indicators ── */
+.dnav-btn::before, .dnav-btn::after,
+.nbtn::before, .nbtn::after,
+.main-tab::before, .main-tab::after { display:none !important; content:none !important; }
+.drawer-nav { display:none !important; }
+#bnav { display:none !important; }
+.drawer-handle-wrap { display:none !important; }
+.drawer-handle { display:none !important; }
+.ob-dots { display:none !important; }
+.ob-dot { display:none !important; }
+
+/* ── Tab bar safe area fix for Samsung ── */
+#main-tab-bar {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+  background: #FFFFFF !important;
+}
+
+/* ── White blocker below tab bar ── */
+#main-tab-bar::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: max(16px, env(safe-area-inset-bottom, 16px));
+  background: #FFFFFF;
+  z-index: 199;
+}
+
+/* ── App bottom padding matches tab bar ── */
+#app { padding-bottom: 70px !important; }
 </style>
 </head>
 <body>
@@ -954,15 +986,7 @@ meta[name=theme-color] { content: #0E7490; }
 
   <!-- Travel drawer always expanded -->
   <div id="content-drawer" class="travel-drawer" style="border-radius:0;border-top:none;box-shadow:none;position:fixed;top:54px;left:0;right:0;bottom:60px;overflow:hidden;display:none;flex-direction:column;background:#F0F4F8;z-index:100;">
-    <div style="display:none" class="drawer-handle-wrap"><div class="drawer-handle"></div></div>
-    <div style="display:none" class="drawer-peek" onclick="toggleDrawer()">
-      <div class="peek-score-wrap"><div class="peek-score-num" id="peek-score">—</div><div class="peek-score-label" id="peek-label">SAFETY</div></div>
-      <div class="peek-status"><div class="peek-country" id="peek-country">Select a country to begin</div><div class="peek-sub" id="peek-sub">Tap to expand ↑</div></div>
-      <div class="peek-actions">
-        <button class="peek-btn peek-safe" onclick="event.stopPropagation();openCheckin()">✅<span>Safe</span></button>
-        <button class="peek-btn peek-warn" onclick="event.stopPropagation();openReport()">⚠️<span>Report</span></button>
-      </div>
-    </div>
+    
     <div class="drawer-expanded" id="drawer-expanded" style="display:flex;flex-direction:column;flex:1;overflow-y:auto;max-height:none;">
       <div class="score-card">
         <div class="score-card-left"><div class="score-num-big" id="score-big">—</div><div class="score-label-big" id="score-label-big">Safety Score</div><div class="score-factors-text" id="score-factors">Enable GPS for live scoring</div></div>
@@ -980,7 +1004,7 @@ meta[name=theme-color] { content: #0E7490; }
         <button class="qbtn" onclick="locateUser()"><span class="qico">📍</span><span class="qlbl">Find Me</span></button>
       </div>
       <div class="nearby-section"><div class="nearby-title">Nearby alerts</div><div id="nearby-alerts"><div class="no-nearby">No active alerts in your area</div></div></div>
-      <div style="display:none" class="drawer-nav"></div>
+      
     </div>
   </div>
   <!-- ── Permanent bottom tab bar ── -->
