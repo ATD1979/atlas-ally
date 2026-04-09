@@ -9,6 +9,7 @@
 const fetch  = require('node-fetch');
 const xml2js = require('xml2js');
 const db     = require('../db');
+const { extractLocation } = require('../geocoder');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -128,15 +129,16 @@ async function ingestGDELT(countryCode) {
       const text = `${art.title || ''} ${art.seendate || ''}`;
       if (!isSecurityRelevant(text)) continue;
       const { type, severity } = classifyEvent(art.title || '');
+      const geo = extractLocation(`${art.title || ''} ${art.seendate || ''}`, countryCode);
       const ok = insertEvent({
         country_code: countryCode,
         type,
         severity,
         title:       art.title || 'Security Incident',
         description: art.seendate ? `Reported: ${art.seendate}` : '',
-        location:    null,
-        lat:         null,
-        lng:         null,
+        location:    geo?.location || null,
+        lat:         geo?.lat || null,
+        lng:         geo?.lng || null,
         source:      art.domain || 'GDELT',
         source_url:  art.url || `https://api.gdeltproject.org`,
       });
@@ -217,7 +219,7 @@ async function ingestJordanRSS() {
       if (isGlobalFeed && !isSecurityRelevant(text)) continue;
 
       const { type, severity } = classifyEvent(`${title} ${desc}`);
-      const center = COUNTRY_CENTERS.JO;
+      const geo = extractLocation(`${title} ${desc}`, 'JO');
 
       const ok = insertEvent({
         country_code: 'JO',
@@ -225,9 +227,9 @@ async function ingestJordanRSS() {
         severity,
         title,
         description: desc,
-        location:    'Jordan',
-        lat:         center.lat,
-        lng:         center.lng,
+        location:    geo?.location || 'Jordan',
+        lat:         geo?.lat || null,
+        lng:         geo?.lng || null,
         source:      feed.name,
         source_url:  url || `${feed.url}#${Date.now()}`,
       });
@@ -267,7 +269,7 @@ async function ingestReliefWeb(countryCode) {
       if (!title || title.length < 10) continue;
 
       const { type, severity } = classifyEvent(`${title} ${body}`);
-      const center = COUNTRY_CENTERS[countryCode] || { lat: null, lng: null };
+      const geo = extractLocation(`${title} ${body}`, countryCode);
 
       const ok = insertEvent({
         country_code: countryCode,
@@ -275,9 +277,9 @@ async function ingestReliefWeb(countryCode) {
         severity,
         title,
         description: body,
-        location:    null,
-        lat:         center.lat,
-        lng:         center.lng,
+        location:    geo?.location || null,
+        lat:         geo?.lat || null,
+        lng:         geo?.lng || null,
         source:      'ReliefWeb / UN OCHA',
         source_url:  link,
       });

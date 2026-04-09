@@ -134,10 +134,11 @@ router.get('/news', (req, res) => {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 router.get('/events', (req, res) => {
-  const { country_code } = req.query;
+  const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
   const events = db.getEventsByCountry.all(code);
+
   // If nothing in DB yet, trigger ingest in background
   if (!events.length) {
     try {
@@ -145,6 +146,23 @@ router.get('/events', (req, res) => {
       ingestSecurityEvents().catch(() => {});
     } catch(e) {}
   }
+
+  // If user GPS provided, attach distance_km and sort nearest-first
+  const userLat = parseFloat(lat);
+  const userLng = parseFloat(lng);
+  if (!isNaN(userLat) && !isNaN(userLng)) {
+    const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
+    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+    const enriched = events.map(ev => {
+      const evLat = ev.lat || center.lat;
+      const evLng = ev.lng || center.lng;
+      const distance_km = Math.round(distanceKm(userLat, userLng, evLat, evLng));
+      return { ...ev, distance_km };
+    });
+    enriched.sort((a, b) => a.distance_km - b.distance_km);
+    return res.json(enriched);
+  }
+
   res.json(events);
 });
 

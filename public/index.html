@@ -1210,20 +1210,134 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 
 <script>
 // ── PATCH: Feed tab → Live Feed panel ──
-// The obfuscated drawerNav may mis-compare 'feed' and skip openPanel/loadFeed.
-// This runs after all existing handlers and guarantees the correct routing.
 (function () {
   var feedBtn = document.querySelector('button[onclick*="drawerNav(\'feed\'"]');
   if (!feedBtn) return;
-
   feedBtn.addEventListener('click', function () {
-    // Let any synchronous onclick finish first, then enforce correct routing.
     setTimeout(function () {
-      // Open the Live Feed panel (slides up, z-index 400)
       if (typeof openPanel === 'function') openPanel('feed-panel');
-      // Load news / incidents / crime into the panel tabs
       if (typeof loadFeed === 'function') loadFeed();
     }, 0);
   });
+})();
+
+// ── PATCH: GPS-aware incident loading ──
+// Intercepts the obfuscated loadFeedEvents to pass user GPS to /api/events,
+// then re-renders incident cards with a distance badge.
+(function () {
+  // Wait for obfuscated code to define loadFeedEvents, then wrap it
+  var _origLoadFeedEvents = null;
+
+  function formatDist(km) {
+    if (km < 1)   return (km * 1000).toFixed(0) + ' m away';
+    if (km < 10)  return km.toFixed(1) + ' km away';
+    return Math.round(km) + ' km away';
+  }
+
+  function distColor(km) {
+    if (km < 10)  return '#ff3b30';   // red — very close
+    if (km < 50)  return '#ff9500';   // orange — nearby
+    if (km < 200) return '#ffcc00';   // yellow — same region
+    return '#8e8e93';                 // grey — far
+  }
+
+  function injectDistanceBadge(card, km) {
+    // Don't add twice
+    if (card.querySelector('.atlas-dist-badge')) return;
+    var badge = document.createElement('span');
+    badge.className = 'atlas-dist-badge';
+    badge.textContent = formatDist(km);
+    badge.style.cssText = [
+      'display:inline-block',
+      'margin-left:8px',
+      'padding:2px 7px',
+      'border-radius:10px',
+      'font-size:11px',
+      'font-weight:600',
+      'color:#fff',
+      'background:' + distColor(km),
+      'vertical-align:middle',
+    ].join(';');
+    // Attach to first heading or title element in the card
+    var heading = card.querySelector('h3,h4,.event-title,.feed-title,strong') || card.firstElementChild;
+    if (heading) heading.appendChild(badge);
+  }
+
+  async function loadEventsWithGPS(countryCode) {
+    var API = (typeof window.API_BASE !== 'undefined' ? window.API_BASE : '');
+    var url  = API + '/api/events?country_code=' + countryCode;
+
+    // Attach GPS if available (currentLat/currentLng set by obfuscated code)
+    var lat = (typeof currentLat !== 'undefined') ? currentLat : null;
+    var lng = (typeof currentLng !== 'undefined') ? currentLng : null;
+    if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
+
+    try {
+      var res  = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+      var data = await res.json();
+
+      // Find or create the incidents list container
+      var container = document.querySelector('#incidents-list, .incidents-list, [data-tab="incidents"] .feed-list, #feed-panel .tab-content');
+      if (!container) return;
+
+      if (!data.length) {
+        container.innerHTML = '<p style="text-align:center;color:#888;padding:24px">No incidents reported</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(function(ev) {
+        var severityColor = ev.severity === 'critical' ? '#ff3b30' : ev.severity === 'high' ? '#ff9500' : '#ffcc00';
+        var distBadge = (lat && lng && typeof ev.distance_km === 'number')
+          ? '<span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;background:' + distColor(ev.distance_km) + '">' + formatDist(ev.distance_km) + '</span>'
+          : '';
+        var locTag = ev.location ? ' · ' + ev.location : '';
+        var time   = ev.created_at ? new Date(ev.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+        return [
+          '<div class="feed-item" style="border-left:3px solid ' + severityColor + ';padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,0.04);border-radius:6px">',
+          '  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">',
+          '    <strong style="font-size:14px">' + (ev.title || 'Incident') + '</strong>',
+          '    ' + distBadge,
+          '  </div>',
+          '  <div style="font-size:12px;color:#aaa;margin-top:4px">' + ev.source + locTag + (time ? ' · ' + time : '') + '</div>',
+          '  ' + (ev.description ? '<div style="font-size:13px;margin-top:6px;color:#ccc">' + ev.description.slice(0,160) + '</div>' : ''),
+          '</div>',
+        ].join('');
+      }).join('');
+
+    } catch(e) {
+      console.warn('Atlas GPS events load failed:', e);
+    }
+  }
+
+  // Override the obfuscated loadFeedEvents by watching for tab switches
+  // and re-loading incidents with GPS data whenever the incidents tab is active
+  document.addEventListener('click', function(e) {
+    var target = e.target.closest('[data-tab],[onclick]');
+    if (!target) return;
+    var label = (target.dataset.tab || target.getAttribute('onclick') || '').toLowerCase();
+    if (label.includes('incident') || label.includes('event')) {
+      var country = (typeof activeCountry !== 'undefined') ? activeCountry : null;
+      if (!country && typeof currentCountry !== 'undefined') country = currentCountry;
+      if (country) setTimeout(function() { loadEventsWithGPS(country); }, 150);
+    }
+  });
+
+  // Also hook into loadFeed so GPS events fire every 60s auto-refresh
+  var _origLoadFeed = window.loadFeed;
+  Object.defineProperty(window, 'loadFeed', {
+    get: function() { return _origLoadFeed; },
+    set: function(fn) {
+      _origLoadFeed = function() {
+        if (fn) fn.apply(this, arguments);
+        var country = (typeof activeCountry !== 'undefined') ? activeCountry
+                    : (typeof currentCountry !== 'undefined') ? currentCountry : null;
+        if (country) loadEventsWithGPS(country);
+      };
+    },
+    configurable: true,
+  });
+
+  // Expose globally so it can be called directly too
+  window.loadEventsWithGPS = loadEventsWithGPS;
 })();
 </script></body>
