@@ -1,5 +1,5 @@
 // Atlas Ally SW v4 — force cache clear
-const CACHE_VERSION = 'atlas-ally-v4-light';
+const CACHE_VERSION = 'atlas-ally-v5';
 
 self.addEventListener('install', () => self.skipWaiting());
 
