@@ -173,7 +173,7 @@ db.exec(`
     source_name   TEXT,
     title         TEXT,
     description   TEXT,
-    url           TEXT,
+    url           TEXT UNIQUE,
     lat           REAL,
     lng           REAL,
     published_at  TEXT,
