@@ -50,6 +50,26 @@ try {
     safeAddColumn('news_cache', 'lat', 'REAL');
     safeAddColumn('news_cache', 'lng', 'REAL');
   }
+    // Recreate news_cache with UNIQUE url constraint
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS news_cache_new (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        country_code  TEXT NOT NULL,
+        source_name   TEXT,
+        title         TEXT,
+        description   TEXT,
+        url           TEXT UNIQUE,
+        lat           REAL,
+        lng           REAL,
+        published_at  TEXT,
+        cached_at     TEXT DEFAULT (datetime('now'))
+      );
+      INSERT OR IGNORE INTO news_cache_new SELECT * FROM news_cache;
+      DROP TABLE news_cache;
+      ALTER TABLE news_cache_new RENAME TO news_cache;
+    `);
+  } catch(e) { console.warn('news_cache migration:', e.message); }
 } catch(e) {
   console.warn('Migration warning (non-fatal):', e.message);
 }
