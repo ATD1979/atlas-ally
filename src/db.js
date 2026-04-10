@@ -50,9 +50,6 @@ try {
     safeAddColumn('news_cache', 'lat', 'REAL');
     safeAddColumn('news_cache', 'lng', 'REAL');
   }
-    // Recreate news_cache with UNIQUE url constraint
-  try {
-    db.exec(`
   // Wipe and recreate news_cache with correct schema
   try {
     db.exec(`
