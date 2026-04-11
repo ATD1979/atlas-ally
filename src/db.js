@@ -68,8 +68,7 @@ try {
       );
     `);
   } catch(e) { console.warn('news_cache migration:', e.message); }
-  console.warn('Migration warning (non-fatal):', e.message);
-}
+  } catch(e) { console.warn('Migration warning (non-fatal):', e.message); }
 
 // ─── Schema (CREATE TABLE IF NOT EXISTS — safe to run on existing db) ─────────
 db.exec(`
