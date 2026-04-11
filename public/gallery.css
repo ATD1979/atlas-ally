@@ -122,7 +122,7 @@ a[href] .fi-item:hover {
 .fi-ico.fi-blue  { background: rgba(37,99,235,0.15)  !important; border-color: rgba(37,99,235,0.4)  !important; }
 .fi-ico.fi-gray  { background: rgba(148,163,184,0.15)!important; border-color: rgba(148,163,184,0.4)!important; }
 
-.fi-item > div[style*="flex:1"] > div:not(.fi-title):not(.fi-meta) {
+.fi-item div[style*="--mono"] {
   display: none !important;
 }
 
