@@ -1376,23 +1376,48 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
         var distBadge = (lat && lng && typeof article.distance_km === 'number')
           ? '<span style="display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:' + newsDistColor(article.distance_km) + ';margin-left:6px">' + formatNewsDist(article.distance_km) + '</span>'
           : '';
-        var time = article.published_at
-          ? new Date(article.published_at).toLocaleDateString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})
-          : '';
-        var src  = article.source_name || 'News';
-        return [
-          '<div class="fi-item" style="cursor:pointer" onclick="window.open(\'' + (article.url || '#').replace(/'/g, "\\'") + '\',\'_blank\')">',
-          '  <div class="fi-ico" style="border-color:#0e7490;background:rgba(14,116,144,0.1);font-size:16px">📰</div>',
-          '  <div style="flex:1;min-width:0">',
-          '    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:3px">',
-          '      <span style="font-size:13px;font-weight:600;color:#1a1a1a">' + (article.title || 'Untitled').slice(0, 120) + '</span>',
-          '      ' + distBadge,
-          '    </div>',
-          '    <div style="font-size:11px;color:#888">' + src + (time ? ' · ' + time : '') + '</div>',
-          '    ' + (article.description ? '<div style="font-size:12px;color:#555;margin-top:4px;line-height:1.4">' + article.description.slice(0, 140) + '</div>' : ''),
-          '  </div>',
-          '</div>',
-        ].join('');
+       var time = article.published_at
+  ? new Date(article.published_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+  : '';
+
+var src = (article.source_name || 'News').toUpperCase();
+
+// Icon emoji + background color by category
+var iconMap = {
+  crime:   { emoji: '🔴', cls: 'fi-red'   },
+  event:   { emoji: '⚠️',  cls: 'fi-amber' },
+  weather: { emoji: '🌧️', cls: 'fi-blue'  },
+  health:  { emoji: '🏥', cls: 'fi-green' },
+  politics:{ emoji: '🏛️', cls: 'fi-amber' },
+};
+var iMap = iconMap[article.category] || { emoji: '🗞️', cls: 'fi-gray' };
+
+// Tag pill label + class by category
+var tagMap = {
+  crime:   { label: 'URGENT',    cls: 'tag-urgent'   },
+  event:   { label: 'ADVISORY',  cls: 'tag-advisory' },
+  weather: { label: 'WEATHER',   cls: 'tag-weather'  },
+  health:  { label: 'ALL CLEAR', cls: 'tag-allclear' },
+};
+var tMap = tagMap[article.category] || { label: src, cls: 'tag-default' };
+
+// Distance label
+var distLabel = lat && lng && typeof article.distance_km === 'number'
+  ? Math.round(article.distance_km) + ' km'
+  : 'Global';
+
+return [
+  '<a class="fitem" href="' + (article.url || '#') + '" target="_blank" rel="noopener">',
+    '<div class="ficon ' + iMap.cls + '">' + iMap.emoji + '</div>',
+    '<div class="fbody">',
+      '<div class="fhead">' + (article.title || 'Untitled').slice(0, 100) + '</div>',
+      '<div class="fsub">',
+        '<span class="ftag ' + tMap.cls + '">' + tMap.label + '</span>',
+        '<span class="ftime">' + distLabel + ' · ' + time + '</span>',
+      '</div>',
+    '</div>',
+  '</a>'
+].join('');
       }).join('');
 
     } catch(e) {
