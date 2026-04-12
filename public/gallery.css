@@ -97,10 +97,10 @@ a[href] .fi-item {
 a[href] .fi-item:hover {
   background: #f1f5f9;
 }
-a[href] .fi-item:hover {
-  background: rgba(255,255,255,0.09);
+.fi-item > div[style*="flex"] {
+  min-width: 0;
+  flex: 1;
 }
-
 .fi-ico {
   width: 42px;
   height: 42px;
@@ -122,8 +122,6 @@ a[href] .fi-item:hover {
 .fi-ico.fi-blue  { background: rgba(37,99,235,0.15)  !important; border-color: rgba(37,99,235,0.4)  !important; }
 .fi-ico.fi-gray  { background: rgba(148,163,184,0.15)!important; border-color: rgba(148,163,184,0.4)!important; }
 
-.fi-item div[style*="--mono"] {
-  display: none !important;
 }
 
 .fi-title {
@@ -138,6 +136,7 @@ a[href] .fi-item:hover {
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  max-width: 600px;
 }
 
 .fi-tag-row {
