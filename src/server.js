@@ -37,6 +37,16 @@ app.use(cors());
 app.use(express.json());
 app.use(securityHeaders);
 app.use(attachErrorLogger);
+// Serve index.html with line 22 stripped
+const fs = require('fs');
+app.get('/', (req, res) => {
+  const filePath = path.join(__dirname, '..', 'public', 'index.html');
+  const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+  lines.splice(21, 1);
+  res.setHeader('Content-Type', 'text/html');
+  res.send(lines.join('\n'));
+});
+// Still serve other static files (css, js, images)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ── API middleware ────────────────────────────────────────────────────────────
