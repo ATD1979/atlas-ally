@@ -99,7 +99,7 @@ function extractItem(item) {
   }
 
   return {
-    title: title.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim().slice(0, 200),
+    title: title.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim().slice(0, 500),
     description: String(description).replace(/<[^>]*>/g, '').trim().slice(0, 500),
     url: String(url).trim(),
     published_at: (() => { try { return new Date(published).toISOString(); } catch { return new Date().toISOString(); } })(),
