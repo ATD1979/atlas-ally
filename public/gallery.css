@@ -133,6 +133,9 @@ a[href] .fi-item:hover {
   color: #0f172a;
   line-height: 1.4;
   margin-bottom: 6px;
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .fi-tag-row {
