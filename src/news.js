@@ -130,8 +130,10 @@ async function refreshNewsForCountry(countryCode) {
     const item = extractItem(raw);
     if (!item.title || item.title.length < 10) continue;
     if (isRemoteSource(item)) continue;  // drop Australian/NZ/Canadian outlets
-    if (seen.has(item.url || item.title)) continue;
-    seen.add(item.url || item.title);
+const titleKey = item.title.toLowerCase().slice(0, 60);
+if (seen.has(item.url) || seen.has(titleKey)) continue;
+seen.add(item.url);
+seen.add(titleKey);
     
     try {
       const loc = extractLocation(item.title + ' ' + item.description, countryCode);
@@ -156,8 +158,10 @@ async function refreshNewsForCountry(countryCode) {
       for (const raw of items.slice(0, 6)) {
         const item = extractItem(raw);
         if (!item.title || item.title.length < 10) continue;
-        if (seen.has(item.url || item.title)) continue;
-        seen.add(item.url || item.title);
+const titleKey = item.title.toLowerCase().slice(0, 60);
+if (seen.has(item.url) || seen.has(titleKey)) continue;
+seen.add(item.url);
+seen.add(titleKey);
         try {
           db.cacheNews.run({
             country_code: countryCode,
