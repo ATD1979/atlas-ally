@@ -37,12 +37,13 @@ app.use(cors());
 app.use(express.json());
 app.use(securityHeaders);
 app.use(attachErrorLogger);
-// Serve index.html with line 22 stripped
+// Serve index.html with obfuscated blob stripped
 const fs = require('fs');
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, '..', 'public', 'index.html');
   const lines = fs.readFileSync(filePath, 'utf8').split('\n');
-  lines.splice(21, 1);
+  const blobIndex = lines.findIndex(l => l.length > 100000);
+  if (blobIndex !== -1) lines.splice(blobIndex, 1);
   res.setHeader('Content-Type', 'text/html');
   res.send(lines.join('\n'));
 });
