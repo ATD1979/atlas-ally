@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Atlas Ally \u2014 Global Travel Intelligence Platform",
   "main": "src/server.js",
-  "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
-  },
+"scripts": {
+  "prestart": "node -e \"const fs=require('fs');const lines=fs.readFileSync('public/index.html','utf8').split('\\n');const i=lines.findIndex(l=>l.length>100000);if(i!==-1){lines.splice(i,1);fs.writeFileSync('public/index.html',lines.join('\\n'));console.log('Blob removed at line '+(i+1));}\"",
+  "start": "node src/server.js",
+  "dev": "node --watch src/server.js"
+},
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
