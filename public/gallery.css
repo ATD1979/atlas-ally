@@ -142,8 +142,8 @@ a[href] .fi-item:hover {
 .fi-tag-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-top: 5px;
 }
 .fi-tag {
   font-size: 9px;
