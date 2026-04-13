@@ -1507,24 +1507,21 @@ return [
 })();
 </script>
 
-<!-- PATCH: Fix map — fill screen width exactly -->
+<!-- PATCH: Fix map zoom to fill screen -->
 <script>
 (function() {
-  function fillWidth() {
+  var _atlasFit = function() {
     if (typeof window.map === 'undefined') return;
     map.options.zoomSnap = 0;
-    map.options.zoomDelta = 0.01;
     map._limitZoom = function(z) { return z; };
-    map.invalidateSize();
     var w = window.innerWidth;
-    var zoom = Math.log2(w / 256);
-    zoom = Math.max(1, Math.min(zoom, 4));
-    map.setView([20, 0], zoom, {animate: false});
-    console.log('[Atlas] fillWidth w='+w+' zoom='+zoom+' actual='+map.getZoom());
-  }
-  // Run multiple times to win any race condition
-  [600, 1200, 2500, 4000].forEach(function(t) { setTimeout(fillWidth, t); });
-  window.addEventListener('resize', function() { setTimeout(fillWidth, 200); });
+    var z = Math.max(1, Math.min(Math.log2(w / 256), 4));
+    map.setView([20, 0], z, {animate: false});
+  };
+  setTimeout(_atlasFit, 600);
+  setTimeout(_atlasFit, 1500);
+  setTimeout(_atlasFit, 3500);
+  window.addEventListener('resize', function() { setTimeout(_atlasFit, 200); });
 })();
 </script>
 
