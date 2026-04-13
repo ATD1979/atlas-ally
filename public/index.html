@@ -1507,16 +1507,21 @@ return [
 })();
 </script>
 
-<!-- PATCH: Fix 1 — Stop map world repeat (noWrap) -->
+<!-- PATCH: Fix map — no repeat + fit world to screen -->
 <script>
 (function() {
-  function applyNoWrap() {
+  function fitWorld() {
     if (typeof window.map === 'undefined') return;
-    map.setMinZoom(2);
+    // Fit world to screen dynamically (works on any monitor width)
+    map.fitBounds([[-75, -180], [80, 180]], {padding: [0, 0], animate: false});
     map.setMaxBounds([[-90, -180], [90, 180]]);
+    // Prevent zooming out past world-fit level
+    var currentZoom = map.getZoom();
+    map.setMinZoom(currentZoom);
   }
-  setTimeout(applyNoWrap, 500);
-  setTimeout(applyNoWrap, 1500);
+  setTimeout(fitWorld, 500);
+  setTimeout(fitWorld, 1500);
+  window.addEventListener('resize', function() { setTimeout(fitWorld, 200); });
 })();
 </script>
 
