@@ -1684,7 +1684,8 @@ function handleFlameBtn(){
     clearInterval(_tempGpsInterval);
     document.getElementById('heatmap-toggle').style.background = 'rgba(255,255,255,0.97)';
     document.getElementById('heatmap-toggle').style.color = '';
-    if(typeof toggleHeatmap === 'function') toggleHeatmap();
+    if(tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
+    if(tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
   }
 }
 
