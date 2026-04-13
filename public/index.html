@@ -1514,6 +1514,9 @@ return [
     if (typeof window.map === 'undefined') return;
     var containerWidth = map.getContainer().offsetWidth || window.innerWidth;
     if (!containerWidth || containerWidth < 100) return;
+    // Enable fractional zoom so world can fill any screen width precisely
+    map.options.zoomSnap = 0;
+    map.options.zoomDelta = 0.1;
     var zoom = Math.log2(containerWidth / 256);
     zoom = Math.max(1, Math.min(zoom, 4)); // safety clamp
     map.setMinZoom(zoom);
