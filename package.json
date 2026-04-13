@@ -1,13 +1,13 @@
 {
   "name": "atlas-ally",
   "version": "1.0.0",
-  "description": "Atlas Ally \u2014 Global Travel Intelligence Platform",
+  "description": "Atlas Ally — Global Travel Intelligence Platform",
   "main": "src/server.js",
-"scripts": {
- "prestart": "node -e \"console.log('PRESTART RUNNING');const fs=require('fs');const lines=fs.readFileSync('public/index.html','utf8').split('\\n');const i=lines.findIndex(l=>l.length>100000);if(i!==-1){lines.splice(i,1);fs.writeFileSync('public/index.html',lines.join('\\n'));console.log('Blob removed at line '+(i+1));}else{console.log('No blob found - index.html is clean');}\""
-  "start": "node src/server.js",
-  "dev": "node --watch src/server.js"
-},
+  "scripts": {
+    "prestart": "node prestart.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.4.3",
