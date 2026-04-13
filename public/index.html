@@ -1518,16 +1518,16 @@ return [
   setTimeout(applyNoWrap, 500);
   setTimeout(applyNoWrap, 1500);
 })();
-1522  <!-- PATCH: Fix map background -->
-1523  <script>
-1524  (function() {
-1525    var wrap = document.getElementById('map-wrap');
-1526    if (wrap) wrap.style.background = '#b8d4e3';
-1527    var lc = document.querySelector('.leaflet-container');
-1528    if (lc) lc.style.background = '#b8d4e3';
-1529    setTimeout(function() {
-1530      var lc2 = document.querySelector('.leaflet-container');
-1531      if (lc2) lc2.style.background = '#b8d4e3';
-1532    }, 1000);
-1533  })();
-1534  </script></body>
+</script>
+
+<!-- PATCH: Fix map canvas background to match ocean -->
+<script>
+(function() {
+  function fixBg() {
+    var lc = document.querySelector('.leaflet-container');
+    if (lc) lc.style.background = '#b8d4e3';
+  }
+  setTimeout(fixBg, 300);
+  setTimeout(fixBg, 1200);
+})();
+</script></body>
