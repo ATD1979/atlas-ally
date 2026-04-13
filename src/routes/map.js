@@ -140,4 +140,21 @@ router.post('/safety-score', async (req, res) => {
   }
 });
 
+// — Weather point lookup —
+router.get('/weather/point', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    if (isNaN(lat) || isNaN(lng)) return res.json({ error: 'invalid coords' });
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m&timezone=auto`;
+    const r = await fetch(url, { timeout: 6000 });
+    if (!r.ok) return res.json({ error: 'weather fetch failed' });
+    const data = await r.json();
+    const temp = data?.current?.temperature_2m;
+    res.json({ temp, lat, lng });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
 module.exports = router;
