@@ -1537,7 +1537,7 @@ return [
   var _atlasFit = function() {
     if (typeof window.map === 'undefined') return;
     map.options.zoomSnap = 0;
-    map.options.worldCopyJump = true;
+    map.setMaxBounds(null);
     map._limitZoom = function(z) { return z; };
     var w = window.innerWidth;
     var z = Math.max(1, Math.log2(w / 256));
