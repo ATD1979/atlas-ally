@@ -1656,4 +1656,42 @@ document.getElementById('map').style.background = '#a8d0e0';
   setTimeout(waitForMap, 1000);
 })();
 </script>
+  <!-- PATCH: Flame button GPS temp + heatmap toggle -->
+<script>
+var _tempGpsActive = false;
+var _tempGpsInterval = null;
+
+function handleFlameBtn(){
+  if(!_tempGpsActive){
+    _tempGpsActive = true;
+    document.getElementById('heatmap-toggle').style.background = '#0E7490';
+    document.getElementById('heatmap-toggle').style.color = 'white';
+    function updateGpsTemp(){
+      navigator.geolocation.getCurrentPosition(function(pos){
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        fetch('/api/weather/point?lat='+lat+'&lng='+lng)
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if(d.temp !== undefined) showTempOverlay(lat, lng, d.temp);
+          }).catch(function(){});
+      });
+    }
+    updateGpsTemp();
+    _tempGpsInterval = setInterval(updateGpsTemp, 30000);
+  } else {
+    _tempGpsActive = false;
+    clearInterval(_tempGpsInterval);
+    document.getElementById('heatmap-toggle').style.background = 'rgba(255,255,255,0.97)';
+    document.getElementById('heatmap-toggle').style.color = '';
+    if(typeof toggleHeatmap === 'function') toggleHeatmap();
+  }
+}
+
+// Override flame button click
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('heatmap-toggle');
+  if(btn) btn.onclick = handleFlameBtn;
+});
+</script>
 </body>
