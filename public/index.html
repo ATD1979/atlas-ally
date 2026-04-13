@@ -1537,6 +1537,7 @@ return [
   var _atlasFit = function() {
     if (typeof window.map === 'undefined') return;
     map.options.zoomSnap = 0;
+    map.options.worldCopyJump = true;
     map._limitZoom = function(z) { return z; };
     var w = window.innerWidth;
     var z = Math.max(1, Math.log2(w / 256));
@@ -1597,7 +1598,8 @@ html, body, #app { width: 100% !important; height: 100% !important; }
 (function(){
   function patchMap(){
     if(typeof window.map==='undefined'||!window.map._loaded) return setTimeout(patchMap,500);
-    map.setMaxBounds([[-85,-180],[85,180]]);
+    map.options.worldCopyJump=true;
+    map.setMaxBounds([[-85,-3600],[85,3600]]);
     map.options.maxBoundsViscosity=1.0;
     map.invalidateSize({reset:true});
     map.eachLayer(function(l){
