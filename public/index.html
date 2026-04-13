@@ -1512,22 +1512,25 @@ return [
 (function() {
   function fillWidth() {
     if (typeof window.map === 'undefined') return;
-    // Patch Leaflet internals to allow fractional zoom
     map.options.zoomSnap = 0;
     map._limitZoom = function(zoom) { return zoom; };
     map.invalidateSize();
-    // Use window.innerWidth — most reliable measure of available space
     var w = window.innerWidth;
     if (!w || w < 100) return;
     var zoom = Math.log2(w / 256);
     zoom = Math.max(1, Math.min(zoom, 4));
-    map.setMinZoom(zoom);
+    // Override setView to re-apply after any app code resets it
     map.setView([20, 0], zoom, {animate: false});
-    map.setMaxBounds([[-85, -180], [85, 180]]);
+    // Re-apply after a short delay in case app resets zoom
+    setTimeout(function() {
+      if (typeof window.map === 'undefined') return;
+      map._limitZoom = function(z) { return z; };
+      map.setView([20, 0], zoom, {animate: false});
+    }, 500);
   }
-  setTimeout(fillWidth, 300);
-  setTimeout(fillWidth, 900);
+  setTimeout(fillWidth, 800);
   setTimeout(fillWidth, 2000);
+  setTimeout(fillWidth, 4000);
   window.addEventListener('resize', function() { setTimeout(fillWidth, 200); });
 })();
 </script>
