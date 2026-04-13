@@ -1594,6 +1594,8 @@ html, body, #app { width: 100% !important; height: 100% !important; }
   function patchMap(){
     if(typeof window.map==='undefined'||!window.map._loaded) return setTimeout(patchMap,500);
     map.options.worldCopyJump=true;
+    map.setMaxBounds([[-85,-Infinity],[85,Infinity]]);
+    map.options.maxBoundsViscosity=1.0;
     map.invalidateSize({reset:true});
     map.eachLayer(function(l){
       if(l instanceof L.TileLayer){
