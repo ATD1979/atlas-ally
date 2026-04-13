@@ -1516,9 +1516,10 @@ return [
     map.options.zoomSnap = 0;
     map._limitZoom = function(zoom) { return zoom; };
     map.invalidateSize();
-    var containerWidth = map.getContainer().offsetWidth || window.innerWidth;
-    if (!containerWidth || containerWidth < 100) return;
-    var zoom = Math.log2(containerWidth / 256);
+    // Use window.innerWidth — most reliable measure of available space
+    var w = window.innerWidth;
+    if (!w || w < 100) return;
+    var zoom = Math.log2(w / 256);
     zoom = Math.max(1, Math.min(zoom, 4));
     map.setMinZoom(zoom);
     map.setView([20, 0], zoom, {animate: false});
