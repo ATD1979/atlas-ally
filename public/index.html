@@ -1513,7 +1513,7 @@ return [
   function fitWorld() {
     if (typeof window.map === 'undefined') return;
     // Fit world to screen dynamically (works on any monitor width)
-    map.fitBounds([[-75, -180], [80, 180]], {padding: [0, 0], animate: false});
+    map.fitBounds([[-60, -170], [75, 170]], {padding: [0, 0], animate: false});
     map.setMaxBounds([[-90, -180], [90, 180]]);
     // Prevent zooming out past world-fit level
     var currentZoom = map.getZoom();
