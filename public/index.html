@@ -1515,7 +1515,7 @@ return [
     map.options.zoomSnap = 0;
     map._limitZoom = function(z) { return z; };
     var w = window.innerWidth;
-    var z = Math.max(1, Math.min(Math.log2(w / 256), 4));
+    var z = Math.max(1, Math.log2(w / 256));
     map.setView([20, 0], z, {animate: false});
   };
   setTimeout(_atlasFit, 600);
