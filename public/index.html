@@ -1534,6 +1534,39 @@ return [
   setTimeout(fixBg, 300);
   setTimeout(fixBg, 1200);
 })();
+</script>
+<!-- PATCH: Force map to fill viewport -->
+<style>
+html, body, #app { width: 100% !important; height: 100% !important; }
+#map-wrap { 
+  position: fixed !important;
+  top: 56px !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 62px !important;
+  width: 100% !important;
+  height: auto !important;
+}
+#map { 
+  width: 100% !important; 
+  height: 100% !important; 
+}
+</style>
+<script>
+(function(){
+  function fixSize(){
+    var mw = document.getElementById('map-wrap');
+    var m = document.getElementById('map');
+    if(!mw || !m) return setTimeout(fixSize, 300);
+    if(typeof window.map !== 'undefined'){
+      window.map.invalidateSize({reset:true});
+    }
+  }
+  setTimeout(fixSize, 800);
+  setTimeout(fixSize, 2000);
+})();
+</script>
+<!-- PATCH: Fix map float and pixelation -->
 <script>
 (function(){
   function patchMap(){
@@ -1553,3 +1586,4 @@ return [
   setTimeout(patchMap,3000);
 })();
 </script>
+</body>
