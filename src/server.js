@@ -158,6 +158,11 @@ app.get('/unsubscribe', (req, res) => {
   res.send('<html><body style="font-family:sans-serif;max-width:400px;margin:40px auto;text-align:center"><h2>Unsubscribed</h2><p>You have been removed from Atlas Ally alerts.</p></body></html>');
 });
 
+// Static files
+app.use(express.static(path.join(__dirname, '..', 'public')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'landing.html')));
+
 // Legal pages
 app.get('/admin',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
 app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
