@@ -150,7 +150,7 @@ router.get('/weather/point', async (req, res) => {
     const r = await fetch(url, { timeout: 6000 });
     if (!r.ok) return res.json({ error: 'weather fetch failed' });
     const data = await r.json();
-    const temp = data?.current?.temperature_2m;
+    const temp = Math.round(data?.current?.temperature_2m);
     res.json({ temp, lat, lng });
   } catch(e) {
     res.json({ error: e.message });
