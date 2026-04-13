@@ -1507,21 +1507,21 @@ return [
 })();
 </script>
 
-<!-- PATCH: Fix map — no repeat + fit world to screen -->
+<!-- PATCH: Fix map — fill screen width exactly -->
 <script>
 (function() {
-  function fitWorld() {
+  function fillWidth() {
     if (typeof window.map === 'undefined') return;
-    // Fit world to screen dynamically (works on any monitor width)
-    map.fitBounds([[-60, -170], [75, 170]], {padding: [0, 0], animate: false});
-    map.setMaxBounds([[-90, -180], [90, 180]]);
-    // Prevent zooming out past world-fit level
-    var currentZoom = map.getZoom();
-    map.setMinZoom(currentZoom);
+    // Calculate exact zoom needed so world fills container width
+    var containerWidth = map.getContainer().offsetWidth;
+    var zoom = Math.log2(containerWidth / 256);
+    map.setMinZoom(zoom);
+    map.setView([20, 0], zoom, {animate: false});
+    map.setMaxBounds([[-85, -180], [85, 180]]);
   }
-  setTimeout(fitWorld, 500);
-  setTimeout(fitWorld, 1500);
-  window.addEventListener('resize', function() { setTimeout(fitWorld, 200); });
+  setTimeout(fillWidth, 500);
+  setTimeout(fillWidth, 1500);
+  window.addEventListener('resize', function() { setTimeout(fillWidth, 200); });
 })();
 </script>
 
