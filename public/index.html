@@ -1518,4 +1518,12 @@ return [
   setTimeout(applyNoWrap, 500);
   setTimeout(applyNoWrap, 1500);
 })();
+</script>
+
+<!-- PATCH: Fix map background -->
+<script>
+(function() {
+  var wrap = document.getElementById('map-wrap');
+  if (wrap) wrap.style.background = '#b8d4e3';
+})();
 </script></body>
