@@ -1601,4 +1601,59 @@ document.getElementById('map').style.background = '#a8d0e0';
   setTimeout(patchMap,3000);
 })();
 </script>
+<!-- PATCH: Temperature gradient overlay -->
+<script>
+(function(){
+  var tempCircle = null;
+  var tempLabel = null;
+
+  function getColor(temp){
+    if(temp <= 0) return '#3B9FE8';
+    if(temp <= 10) return '#74C0F5';
+    if(temp <= 20) return '#90D4A0';
+    if(temp <= 30) return '#F5C842';
+    if(temp <= 40) return '#F58C2A';
+    return '#E83B3B';
+  }
+
+  function showTempOverlay(lat, lng, temp){
+    if(typeof window.map === 'undefined') return;
+    if(tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
+    if(tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
+    var color = getColor(temp);
+    tempCircle = L.circle([lat, lng], {
+      radius: 500000,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.15,
+      weight: 2,
+      opacity: 0.6
+    }).addTo(map);
+    tempLabel = L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="background:'+color+';color:#fff;font-family:monospace;font-size:13px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">'+Math.round(temp)+'°C</div>',
+        iconAnchor: [30, 0]
+      })
+    }).addTo(map);
+  }
+
+  function waitForMap(){
+    if(typeof window.map === 'undefined') return setTimeout(waitForMap, 500);
+    map.on('click', function(e){
+      var lat = e.latlng.lat;
+      var lng = e.latlng.lng;
+      fetch('/api/weather/point?lat='+lat+'&lng='+lng)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var temp = d && d.temp !== undefined ? d.temp : d && d.temperature;
+          if(temp === undefined || temp === null) return;
+          showTempOverlay(lat, lng, temp);
+        })
+        .catch(function(){});
+    });
+  }
+  setTimeout(waitForMap, 1000);
+})();
+</script>
 </body>
