@@ -1514,7 +1514,7 @@ return [
     if (typeof window._map === 'undefined' && typeof window.map === 'undefined') return;
     var m = window._map || window.map;
     m.eachLayer(function(layer) {
-      if (layer.options && layer.options.hasOwnProperty('tileSize')) {
+      if (layer.options && layer.options.hasOwnProperty('attribution')) {
         layer.options.noWrap = true;
         layer.redraw();
       }
