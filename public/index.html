@@ -1534,4 +1534,22 @@ return [
   setTimeout(fixBg, 300);
   setTimeout(fixBg, 1200);
 })();
-</script></body>
+<script>
+(function(){
+  function patchMap(){
+    if(typeof window.map==='undefined'||!window.map._loaded) return setTimeout(patchMap,500);
+    map.setMaxBounds([[-85,-180],[85,180]]);
+    map.options.maxBoundsViscosity=1.0;
+    map.invalidateSize({reset:true});
+    map.eachLayer(function(l){
+      if(l instanceof L.TileLayer){
+        l.options.maxNativeZoom=19;
+        l.options.detectRetina=true;
+        l.redraw();
+      }
+    });
+  }
+  setTimeout(patchMap,1000);
+  setTimeout(patchMap,3000);
+})();
+</script>
