@@ -157,6 +157,7 @@
   window.setActiveCountry = window.setActiveCountry || setActiveCountry;
 
   window.switchFeedTab = window.switchFeedTab || function(tab) { switchFeedTab(tab); };
+  window.refreshFeedPanel = refreshFeedPanel; // CRITICAL: expose so nav.js can call it
 
   document.addEventListener('DOMContentLoaded', function() {
     if (typeof switchFeedTab === 'function') switchFeedTab('news');
@@ -359,6 +360,13 @@
 
     window.loadNewsWithGPS = window.loadNewsWithGPS || loadNewsWithGPS;
   })();
+
+  // Direct call helper — nav.js can also call this
+  window.loadFeedNews = function() {
+    var country = window.activeCountry;
+    if (!country) return;
+    if (typeof window.loadNewsWithGPS === 'function') window.loadNewsWithGPS(country);
+  };
 })();
 
 // ── Missing global functions restored ──

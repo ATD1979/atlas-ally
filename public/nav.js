@@ -76,8 +76,14 @@
         hideMap();
         var map = { feed:'feed-panel', pack:'pack-panel', countries:'countries-panel', account:'account-panel' };
         if (map[name]) showPanel(map[name]);
-        if (name === 'feed'      && typeof window.refreshFeedPanel === 'function') setTimeout(window.refreshFeedPanel, 100);
-        if (name === 'countries' && typeof window.loadCountries    === 'function') setTimeout(window.loadCountries, 100);
+        if (name === 'feed') {
+          if (typeof window.refreshFeedPanel === 'function') setTimeout(window.refreshFeedPanel, 100);
+          // Belt-and-suspenders: also directly trigger news load
+          setTimeout(function() {
+            if (typeof window.loadFeedNews === 'function') window.loadFeedNews();
+          }, 300);
+        }
+        if (name === 'countries' && typeof window.loadCountries === 'function') setTimeout(window.loadCountries, 100);
       }
     }
 
