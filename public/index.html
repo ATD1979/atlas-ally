@@ -659,48 +659,62 @@
 <script src="/nav.js"></script>
 <script src="/map-patches.js"></script>
 
+
 <script>
-// Atlas Ally — universal button wiring (click + touchend fallback)
+// Atlas Ally — Android-compatible button wiring + error diagnostics
 (function(){
-  function wire(el, fn) {
-    if (!el) return;
-    el.addEventListener('click', fn);
-    el.addEventListener('touchend', function(e){ e.preventDefault(); fn(); });
+  // Surface JS errors as toasts so we can see them on mobile
+  window.addEventListener('error', function(e) {
+    console.error('[Atlas] JS Error:', e.message, 'in', e.filename, 'line', e.lineno);
+    if (window.toast) window.toast('JS Error: ' + (e.message||'').slice(0,60), 'err');
+  });
+
+  // Ensure critical functions always exist (fallbacks if app.js had an error)
+  window.openReport     = window.openReport     || function(){ var s=document.getElementById('rsheet'); if(s) s.classList.add('open'); };
+  window.openCheckin    = window.openCheckin    || function(){ var s=document.getElementById('checkin-sheet'); if(s) s.classList.add('open'); };
+  window.openRouteSheet = window.openRouteSheet || function(){ var s=document.getElementById('route-sheet'); if(s) s.classList.add('open'); };
+  window.toggleJourney  = window.toggleJourney  || function(){ var b=document.getElementById('journey-toggle'); if(b) b.textContent=b.textContent==='Start'?'Stop':'Start'; };
+  window.locateUser     = window.locateUser     || function(){ navigator.geolocation && navigator.geolocation.getCurrentPosition(function(p){ window.map && window.map.setView([p.coords.latitude,p.coords.longitude],12); }); };
+  window.toggleCrimeLayer = window.toggleCrimeLayer || function(){ var b=document.getElementById('crime-toggle'); if(b) b.style.opacity=b.style.opacity==='0.4'?'1':'0.4'; };
+  window.toggleHeatmap  = window.toggleHeatmap  || function(){ if(window.handleFlameBtn) window.handleFlameBtn(); };
+
+  function runOnclick(el) {
+    var oc = el && el.getAttribute('onclick');
+    if (!oc) return;
+    try { (new Function(oc))(); }
+    catch(err) {
+      console.error('[Atlas] onclick error on', el.id||el.className, ':', err.message);
+      if (window.toast) window.toast('Error: ' + err.message.slice(0,50), 'err');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Map overlay buttons
-    wire(document.getElementById('heatmap-toggle'), function(){ if(window.handleFlameBtn) window.handleFlameBtn(); });
-    wire(document.getElementById('crime-toggle'),   function(){ if(window.toggleCrimeLayer) window.toggleCrimeLayer(); });
-    wire(document.getElementById('filter-72h'),     function(){ if(window.toggle72h) window.toggle72h(); });
-    wire(document.querySelector('.map-locate'),     function(){ if(window.locateUser) window.locateUser(); });
-    wire(document.querySelector('.map-badge'),      function(){ if(window.showPicker) window.showPicker(); });
+    // Wire map overlay buttons explicitly (Android pointer-events fix)
+    var mapBtns = [
+      { id: 'heatmap-toggle', fn: function(){ window.toggleHeatmap && window.toggleHeatmap(); } },
+      { id: 'crime-toggle',   fn: function(){ window.toggleCrimeLayer && window.toggleCrimeLayer(); } },
+      { id: 'filter-72h',     fn: function(){ window.toggle72h && window.toggle72h(); } }
+    ];
+    mapBtns.forEach(function(cfg){
+      var el = document.getElementById(cfg.id);
+      if (el) el.addEventListener('click', function(e){ e.stopPropagation(); cfg.fn(); });
+    });
+    var locateEl = document.querySelector('.map-locate');
+    if (locateEl) locateEl.addEventListener('click', function(e){ e.stopPropagation(); window.locateUser && window.locateUser(); });
 
-    // Panel close buttons — delegate to all .pclose buttons
-    document.querySelectorAll('.pclose').forEach(function(btn) {
-      btn.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        var oc = btn.getAttribute('onclick');
-        if (oc) { try { (new Function(oc))(); } catch(err){} }
-      });
+    // Wire nav items (click listener — works on Android without any hacks)
+    document.querySelectorAll('.nav-item, .nav-action-btn').forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(el); });
     });
 
-    // Nav panel items — touchend fallback
-    document.querySelectorAll('.nav-item, .nav-action-btn').forEach(function(el) {
-      el.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        var oc = el.getAttribute('onclick');
-        if (oc) { try { (new Function(oc))(); } catch(err){} }
-      });
+    // Wire panel close buttons
+    document.querySelectorAll('.pclose').forEach(function(btn){
+      btn.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(btn); });
     });
 
-    // Feed tab buttons
-    document.querySelectorAll('.ftab').forEach(function(btn) {
-      btn.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        var oc = btn.getAttribute('onclick');
-        if (oc) { try { (new Function(oc))(); } catch(err){} }
-      });
+    // Wire feed sub-tabs
+    document.querySelectorAll('.ftab').forEach(function(btn){
+      btn.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(btn); });
     });
   });
 })();

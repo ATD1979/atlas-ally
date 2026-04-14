@@ -488,3 +488,11 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 
 #nav-backdrop{position:fixed;inset:0;z-index:99997;background:rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity .3s;}
 #app.nav-open #nav-backdrop{opacity:1;pointer-events:auto;}
+
+/* ── Android touch fix: prevent gesture detection eating clicks ── */
+.nav-item, .nav-action-btn, .main-tab, .map-locate,
+#heatmap-toggle, #crime-toggle, #filter-72h, .map-badge,
+.pclose, .ftab, .feed-tab, .nav-close-btn,
+button, [onclick] {
+  touch-action: manipulation;
+}
