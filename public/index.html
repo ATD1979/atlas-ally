@@ -742,6 +742,16 @@
     }
   }
 
+  window.drawerNav = function(section, btn) {
+    if (!btn) {
+      btn = document.querySelector('.main-tab[onclick*="drawerNav(\'" + section + "\')"]');
+    }
+    if (!btn) {
+      btn = tabs[0];
+    }
+    activateTab(btn, section || 'map');
+  };
+
   tabs.forEach(function(btn){
     btn.addEventListener('click', function(){
       var m = (btn.getAttribute('onclick')||'').match(/drawerNav\('([^']+)'/);
