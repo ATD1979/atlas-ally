@@ -37,10 +37,10 @@
       if (idx >= 0 && tabs[idx]) activateTab(tabs[idx]);
 
       if (tabName === 'map') {
-        if (mapWrap) mapWrap.style.display = 'block';
-        if (drawer)  drawer.style.display  = 'none';
+        if (mapWrap) mapWrap.classList.remove('map-hidden');
+        if (drawer)  drawer.style.display = 'none';
       } else {
-        if (mapWrap) mapWrap.style.display = 'none';
+        if (mapWrap) mapWrap.classList.add('map-hidden');
         if (drawer) {
           drawer.style.display = 'flex';
           drawer.style.flexDirection = 'column';

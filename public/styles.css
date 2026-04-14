@@ -484,3 +484,6 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 [dir="rtl"] #bnav,.panel-body,.lsbody{direction:rtl;}
 [dir="rtl"] .fab-group{right:auto;left:10px;}
 [dir="rtl"] .map-badge{left:auto;right:10px;}
+
+#map-wrap.map-hidden { z-index: -1 !important; pointer-events: none !important; }
+.panel.open { z-index: 99998 !important; transform: translateY(0) !important; display:flex !important; }
