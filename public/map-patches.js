@@ -2,10 +2,7 @@ window.map = L.map('map', {
   center: [20, 10],
   zoom: 2,
   zoomControl: false,
-  attributionControl: false,
-  worldCopyJump: false,
-  maxBounds: [[-90, -180], [90, 180]],
-  maxBoundsViscosity: 1.0
+  attributionControl: false
 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
