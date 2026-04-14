@@ -1,6 +1,6 @@
-﻿<!--
-  Atlas Ally â€” Global Travel Safety Intelligence
-  Copyright Â© 2026 Atlas Ally LLC. All rights reserved.
+<!--
+  Atlas Ally — Global Travel Safety Intelligence
+  Copyright © 2026 Atlas Ally LLC. All rights reserved.
   
   This software and its source code are proprietary and confidential.
   Unauthorized copying, modification, distribution, or use of this
@@ -25,7 +25,7 @@
 <meta name="apple-mobile-web-app-title" content="Atlas Ally">
 <meta name="theme-color" content="#0E7490">
 <link rel="manifest" href="/manifest.json">
-<title>Atlas Ally â€” Global Travel Intelligence</title>
+<title>Atlas Ally — Global Travel Intelligence</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="/gallery.css"/>
@@ -36,7 +36,7 @@
 </head>
 <body>
 <div id="app">
-  <!-- â”€â”€ New light header â”€â”€ -->
+  <!-- ── New light header ── -->
   <div id="hdr" style="background:#0E7490;border-bottom:none;box-shadow:0 2px 12px rgba(14,116,144,0.3);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;">
     <div style="display:flex;align-items:center;gap:10px;">
       <button class="hamburger-btn" id="hamburger" onclick="toggleNav()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);width:34px;height:34px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;">
@@ -69,16 +69,16 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="score-pill" id="score-pill" onclick="openCheckin()" style="display:none;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:100px;padding:5px 10px;font-size:11px;color:white;cursor:pointer;">
-        <span id="score-emoji">ðŸŸ¢</span>
-        <span class="score-num" id="score-num" style="font-size:14px;font-weight:700;">â€”</span>
+        <span id="score-emoji">🟢</span>
+        <span class="score-num" id="score-num" style="font-size:14px;font-weight:700;">—</span>
         <span style="font-size:9px;opacity:0.7;">SAFETY</span>
       </div>
       <div onclick="showPicker()" style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;color:white;">
-        <span id="hdr-flag">ðŸŒ</span>
+        <span id="hdr-flag">🌍</span>
         <span id="hdr-country" style="color:white;">Select</span>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;" onclick="openCheckin()">ðŸ””</div>
+      <div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;" onclick="openCheckin()">🔔</div>
     </div>
   </div>
 
@@ -86,7 +86,7 @@
     <div id="map"></div>
     <div class="map-scan"></div>
     <div class="map-badge" id="map-badge" onclick="openCountryDetail(activeCountry)">
-      <div class="mb-flag" id="badge-flag">ðŸŒ</div>
+      <div class="mb-flag" id="badge-flag">🌍</div>
       <div>
         <div class="mb-name" id="badge-name">Select country</div>
         <div class="mb-adv" id="badge-adv"></div>
@@ -95,22 +95,22 @@
     <div class="map-locate" onclick="locateUser()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
     </div>
-    <div id="filter-72h" onclick="toggle72h()">72h â±</div>
-    <div id="crime-toggle" onclick="toggleCrimeLayer()" title="Crime statistics layer">ðŸ”´</div>
-    <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Toggle crime/risk heatmap" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(255,255,255,0.95);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">ðŸ”¥</div>
+    <div id="filter-72h" onclick="toggle72h()">72h ⏱</div>
+    <div id="crime-toggle" onclick="toggleCrimeLayer()" title="Crime statistics layer">🔴</div>
+    <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Toggle crime/risk heatmap" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(255,255,255,0.95);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">🔥</div>
     <div class="score-overlay" id="score-overlay">
       <div class="so-label">Safety Score</div>
-      <div class="so-score" id="so-score" style="color:var(--safe)">â€”</div>
-      <div class="so-text" id="so-text" style="color:var(--safe)">Loadingâ€¦</div>
+      <div class="so-score" id="so-score" style="color:var(--safe)">—</div>
+      <div class="so-text" id="so-text" style="color:var(--safe)">Loading…</div>
       <div class="so-update" id="so-update"></div>
     </div>
     <div class="fab-group">
       <div style="position:relative;">
         <div class="fab-ring"></div>
-        <button class="fab-btn fab-report" onclick="openReport()" title="Report incident">âš ï¸</button>
+        <button class="fab-btn fab-report" onclick="openReport()" title="Report incident">⚠️</button>
       </div>
-      <button class="fab-btn fab-safe" onclick="openCheckin()" title="I'm safe check-in">âœ…</button>
-      <button class="fab-btn" style="background:rgba(37,99,235,0.15);border:2px solid rgba(37,99,235,0.45);" onclick="openRouteSheet()" title="Safe route">ðŸ—ºï¸</button>
+      <button class="fab-btn fab-safe" onclick="openCheckin()" title="I'm safe check-in">✅</button>
+      <button class="fab-btn" style="background:rgba(37,99,235,0.15);border:2px solid rgba(37,99,235,0.45);" onclick="openRouteSheet()" title="Safe route">🗺️</button>
     </div>
   </div>
 
@@ -119,25 +119,25 @@
     
     <div class="drawer-expanded" id="drawer-expanded" style="display:flex;flex-direction:column;flex:1;overflow-y:auto;max-height:none;">
       <div class="score-card">
-        <div class="score-card-left"><div class="score-num-big" id="score-big">â€”</div><div class="score-label-big" id="score-label-big">Safety Score</div><div class="score-factors-text" id="score-factors">Enable GPS for live scoring</div></div>
+        <div class="score-card-left"><div class="score-num-big" id="score-big">—</div><div class="score-label-big" id="score-label-big">Safety Score</div><div class="score-factors-text" id="score-factors">Enable GPS for live scoring</div></div>
         <div class="score-donut-wrap">
           <svg width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/><circle id="score-arc" cx="36" cy="36" r="28" fill="none" stroke="var(--safe)" stroke-width="6" stroke-dasharray="176" stroke-dashoffset="176" stroke-linecap="round" transform="rotate(-90 36 36)" style="transition:all 1s ease"/></svg>
-          <div class="score-donut-num" id="score-ring-num">â€”</div>
+          <div class="score-donut-num" id="score-ring-num">—</div>
         </div>
       </div>
-      <div class="journey-card"><div class="journey-card-info"><div class="journey-card-title" id="journey-title">ðŸ§­ Journey Mode</div><div class="journey-card-sub" id="journey-sub">Tracks location Â· alerts contacts on danger zones</div></div><button class="journey-toggle-btn" id="journey-toggle" onclick="toggleJourney()">Start</button></div>
+      <div class="journey-card"><div class="journey-card-info"><div class="journey-card-title" id="journey-title">🧭 Journey Mode</div><div class="journey-card-sub" id="journey-sub">Tracks location · alerts contacts on danger zones</div></div><button class="journey-toggle-btn" id="journey-toggle" onclick="toggleJourney()">Start</button></div>
       <div class="quick-row">
-        <button class="qbtn" onclick="openCheckin()"><span class="qico">âœ…</span><span class="qlbl">I'm Safe</span></button>
-        <button class="qbtn" onclick="openReport()"><span class="qico">âš ï¸</span><span class="qlbl">Report</span></button>
-        <button class="qbtn" onclick="openRouteSheet()"><span class="qico">ðŸ—ºï¸</span><span class="qlbl">Route</span></button>
-        <button class="qbtn" onclick="toggleHeatmap()"><span class="qico">ðŸ”¥</span><span class="qlbl">Risk Map</span></button>
-        <button class="qbtn" onclick="locateUser()"><span class="qico">ðŸ“</span><span class="qlbl">Find Me</span></button>
+        <button class="qbtn" onclick="openCheckin()"><span class="qico">✅</span><span class="qlbl">I'm Safe</span></button>
+        <button class="qbtn" onclick="openReport()"><span class="qico">⚠️</span><span class="qlbl">Report</span></button>
+        <button class="qbtn" onclick="openRouteSheet()"><span class="qico">🗺️</span><span class="qlbl">Route</span></button>
+        <button class="qbtn" onclick="toggleHeatmap()"><span class="qico">🔥</span><span class="qlbl">Risk Map</span></button>
+        <button class="qbtn" onclick="locateUser()"><span class="qico">📍</span><span class="qlbl">Find Me</span></button>
       </div>
       <div class="nearby-section"><div class="nearby-title">Nearby alerts</div><div id="nearby-alerts"><div class="no-nearby">No active alerts in your area</div></div></div>
       
     </div>
   </div>
-  <!-- â”€â”€ Permanent bottom tab bar â”€â”€ -->
+  <!-- ── Permanent bottom tab bar ── -->
   <nav id="main-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;border-top:1px solid #E5EAEF;display:flex;justify-content:space-around;padding:6px 0 max(10px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,0.06);">
     <button class="main-tab active" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon on"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></div>
@@ -165,63 +165,63 @@
 <!-- Left nav panel -->
 <div id="nav-panel">
   <div class="nav-panel-hdr" style="background:var(--teal);border-color:rgba(255,255,255,0.15);">
-    <div class="nav-panel-logo">ðŸŒ</div>
+    <div class="nav-panel-logo">🌍</div>
     <div>
       <div class="nav-panel-title" style="color:white;">Atlas Ally</div>
       <div class="nav-panel-sub" style="color:rgba(255,255,255,0.65);">Global Travel Intelligence</div>
     </div>
-    <button class="nav-close-btn" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closeNav()">âœ•</button>
+    <button class="nav-close-btn" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closeNav()">✕</button>
   </div>
   <div class="nav-body">
     <div class="nav-section-label">Quick Actions</div>
     <div class="nav-item" onclick="toggleJourney();closeNav()">
-      <div class="nav-item-icon">ðŸ§­</div>
+      <div class="nav-item-icon">🧭</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Journey Mode</div>
         <div class="nav-item-desc">Track your route and alert contacts in danger zones</div>
       </div>
-      <div class="nav-item-arrow">â€º</div>
+      <div class="nav-item-arrow">›</div>
     </div>
     <div class="nav-item" onclick="openReport();closeNav()">
-      <div class="nav-item-icon">âš ï¸</div>
+      <div class="nav-item-icon">⚠️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Report Incident</div>
         <div class="nav-item-desc">Submit an alert from anywhere</div>
       </div>
-      <div class="nav-item-arrow">â€º</div>
+      <div class="nav-item-arrow">›</div>
     </div>
     <div class="nav-item" onclick="openCheckin();closeNav()">
-      <div class="nav-item-icon">âœ…</div>
+      <div class="nav-item-icon">✅</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Safe Check-in</div>
         <div class="nav-item-desc">Tell your circle you're safe</div>
       </div>
-      <div class="nav-item-arrow">â€º</div>
+      <div class="nav-item-arrow">›</div>
     </div>
     <div class="nav-item" onclick="openRouteSheet();closeNav()">
-      <div class="nav-item-icon">ðŸ—ºï¸</div>
+      <div class="nav-item-icon">🗺️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Route Planner</div>
         <div class="nav-item-desc">Find safer routes on the map</div>
       </div>
-      <div class="nav-item-arrow">â€º</div>
+      <div class="nav-item-arrow">›</div>
     </div>
     <div class="nav-item" onclick="openNavSection('account-panel');closeNav()">
-      <div class="nav-item-icon">âš™ï¸</div>
+      <div class="nav-item-icon">⚙️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">App Settings</div>
         <div class="nav-item-desc">Manage your account and offline maps</div>
       </div>
-      <div class="nav-item-arrow">â€º</div>
+      <div class="nav-item-arrow">›</div>
     </div>
   </div>
   <div class="nav-actions">
     <button class="nav-action-btn nav-action-safe" onclick="openCheckin();closeNav()">
-      <span class="nav-action-icon">âœ…</span>
+      <span class="nav-action-icon">✅</span>
       <div><div class="nav-action-label" style="color:#4ade80;">I'm Safe</div><div class="nav-action-sub" style="color:#4ade80;">Notify emergency contacts</div></div>
     </button>
     <button class="nav-action-btn nav-action-report" onclick="openReport();closeNav()">
-      <span class="nav-action-icon">âš ï¸</span>
+      <span class="nav-action-icon">⚠️</span>
       <div><div class="nav-action-label" style="color:#f87171;">Report Incident</div><div class="nav-action-sub" style="color:#f87171;">Post alert to the network</div></div>
     </button>
   </div>
@@ -233,17 +233,17 @@
 <!-- Auth overlay -->
 <div id="auth-overlay">
   <div class="auth-card" style="max-height:90vh;overflow-y:auto;">
-    <div class="auth-logo">ðŸŒ</div>
+    <div class="auth-logo">🌍</div>
     <div class="auth-title">Atlas Ally</div>
     <div class="auth-sub">Global travel safety intelligence. Sign in with your WhatsApp number.</div>
-    <div class="auth-trial-badge">ðŸ†“ 7-day free trial Â· No credit card needed</div>
+    <div class="auth-trial-badge">🆓 7-day free trial · No credit card needed</div>
 
     <!-- Step 1: Phone -->
     <div id="auth-step-phone">
       <div class="auth-section-label">Your WhatsApp number</div>
       <input class="auth-input" id="auth-phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel">
-      <div id="auth-returning" style="display:none;font-family:var(--mono);font-size:10px;color:var(--brand2);margin:-4px 0 8px;cursor:pointer;" onclick="useReturningNumber()">â†© Use last number</div>
-      <button class="auth-btn" id="auth-otp-btn" onclick="sendOTP()">Send verification code â†’</button>
+      <div id="auth-returning" style="display:none;font-family:var(--mono);font-size:10px;color:var(--brand2);margin:-4px 0 8px;cursor:pointer;" onclick="useReturningNumber()">↩ Use last number</div>
+      <button class="auth-btn" id="auth-otp-btn" onclick="sendOTP()">Send verification code →</button>
       <div class="auth-divider">or</div>
       <button class="auth-btn secondary" onclick="authSkip()">Continue as guest</button>
     </div>
@@ -253,8 +253,8 @@
       <div class="auth-section-label">Enter the 6-digit code sent to</div>
       <div id="auth-otp-display" style="font-family:var(--mono);font-size:13px;color:var(--brand2);margin-bottom:12px;"></div>
       <input class="auth-input" id="auth-code" type="number" placeholder="000000" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:.3em;">
-      <button class="auth-btn" id="auth-verify-btn" onclick="verifyOTP()">Verify â†’</button>
-      <button class="auth-btn secondary" onclick="document.getElementById('auth-step-otp').style.display='none';document.getElementById('auth-step-phone').style.display='block';">â† Back</button>
+      <button class="auth-btn" id="auth-verify-btn" onclick="verifyOTP()">Verify →</button>
+      <button class="auth-btn secondary" onclick="document.getElementById('auth-step-otp').style.display='none';document.getElementById('auth-step-phone').style.display='block';">← Back</button>
     </div>
 
     <!-- Step 3: Signup -->
@@ -299,7 +299,7 @@
         </label>
       </div>
 
-      <button class="auth-btn" id="signup-btn" onclick="submitSignup()">Create Account ðŸš€</button>
+      <button class="auth-btn" id="signup-btn" onclick="submitSignup()">Create Account 🚀</button>
       <button class="auth-btn secondary" onclick="authSkip()">Skip for now</button>
     </div>
   </div>
@@ -307,22 +307,22 @@
 
 <!-- Quick incident picker (long press) -->
 <div id="quick-incident">
-  <button class="qi-close" onclick="closeQuickIncident()">âœ•</button>
+  <button class="qi-close" onclick="closeQuickIncident()">✕</button>
   <div class="qi-title">Report incident</div>
   <div class="qi-coords" id="qi-coords"></div>
   <div class="qi-types">
-    <div class="qi-type" onclick="selectQuickIncident('siren')"><div class="qi-type-icon">ðŸ”´</div><div class="qi-type-label">Siren</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('gunfire')"><div class="qi-type-icon">ðŸ”«</div><div class="qi-type-label">Gunfire</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('missile')"><div class="qi-type-icon">ðŸš€</div><div class="qi-type-label">Missile</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('drone')"><div class="qi-type-icon">ðŸ›¸</div><div class="qi-type-label">Drone</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('strike')"><div class="qi-type-icon">ðŸ’¥</div><div class="qi-type-label">Strike</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('troop')"><div class="qi-type-icon">ðŸª–</div><div class="qi-type-label">Troops</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('checkpoint')"><div class="qi-type-icon">ðŸš§</div><div class="qi-type-label">Checkpoint</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('chemical')"><div class="qi-type-icon">â˜£ï¸</div><div class="qi-type-label">Chemical</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('health')"><div class="qi-type-icon">ðŸ¥</div><div class="qi-type-label">Health</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('weather')"><div class="qi-type-icon">ðŸŒªï¸</div><div class="qi-type-label">Weather</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('news')"><div class="qi-type-icon">ðŸ“°</div><div class="qi-type-label">News</div></div>
-    <div class="qi-type" onclick="selectQuickIncident('clear')"><div class="qi-type-icon">âœ…</div><div class="qi-type-label">All Clear</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('siren')"><div class="qi-type-icon">🔴</div><div class="qi-type-label">Siren</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('gunfire')"><div class="qi-type-icon">🔫</div><div class="qi-type-label">Gunfire</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('missile')"><div class="qi-type-icon">🚀</div><div class="qi-type-label">Missile</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('drone')"><div class="qi-type-icon">🛸</div><div class="qi-type-label">Drone</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('strike')"><div class="qi-type-icon">💥</div><div class="qi-type-label">Strike</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('troop')"><div class="qi-type-icon">🪖</div><div class="qi-type-label">Troops</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('checkpoint')"><div class="qi-type-icon">🚧</div><div class="qi-type-label">Checkpoint</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('chemical')"><div class="qi-type-icon">☣️</div><div class="qi-type-label">Chemical</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('health')"><div class="qi-type-icon">🏥</div><div class="qi-type-label">Health</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('weather')"><div class="qi-type-icon">🌪️</div><div class="qi-type-label">Weather</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('news')"><div class="qi-type-icon">📰</div><div class="qi-type-label">News</div></div>
+    <div class="qi-type" onclick="selectQuickIncident('clear')"><div class="qi-type-icon">✅</div><div class="qi-type-label">All Clear</div></div>
   </div>
 </div>
 
@@ -337,52 +337,52 @@
 
     <!-- Step 1: Welcome + Country -->
     <div class="ob-step active" id="ob-step-0">
-      <div class="ob-icon">ðŸŒ</div>
+      <div class="ob-icon">🌍</div>
       <div class="ob-title">Welcome to Atlas Ally</div>
       <div class="ob-sub">Real-time safety alerts, travel advisories and geofencing for anywhere in the world. Pick your first country:</div>
       <div class="ob-country-scroll" id="ob-countries"></div>
-      <button class="ob-btn" id="ob-next-0" onclick="obNext(1)" disabled>Choose a country â†’</button>
+      <button class="ob-btn" id="ob-next-0" onclick="obNext(1)" disabled>Choose a country →</button>
       <button class="ob-skip" onclick="obSkip()">Skip setup</button>
     </div>
 
     <!-- Step 2: Plan -->
     <div class="ob-step" id="ob-step-1">
-      <div class="ob-icon">â­</div>
+      <div class="ob-icon">⭐</div>
       <div class="ob-title">Choose your plan</div>
       <div class="ob-sub">Start free for 7 days. No credit card needed.</div>
       <div class="ob-plans">
         <div class="ob-plan sel" id="ob-plan-trial" onclick="selectPlan('trial',this)">
-          <div class="ob-plan-icon">ðŸ†“</div>
+          <div class="ob-plan-icon">🆓</div>
           <div class="ob-plan-name">Trial</div>
           <div class="ob-plan-price">Free</div>
           <div class="ob-plan-desc">7 days full access</div>
         </div>
         <div class="ob-plan" id="ob-plan-traveler" onclick="selectPlan('traveler',this)">
-          <div class="ob-plan-icon">âœˆï¸</div>
+          <div class="ob-plan-icon">✈️</div>
           <div class="ob-plan-name">Traveler</div>
           <div class="ob-plan-price">$3/mo</div>
           <div class="ob-plan-desc">+$1 per extra country</div>
         </div>
         <div class="ob-plan" id="ob-plan-family" onclick="selectPlan('family',this)">
-          <div class="ob-plan-icon">ðŸ‘¨â€ðŸ‘©â€ðŸ‘§</div>
+          <div class="ob-plan-icon">👨‍👩‍👧</div>
           <div class="ob-plan-name">Family</div>
           <div class="ob-plan-price">$8/mo</div>
           <div class="ob-plan-desc">1 acct + 3 contacts</div>
         </div>
       </div>
-      <button class="ob-btn" onclick="obNext(2)">Continue â†’</button>
-      <button class="ob-skip" onclick="obBack(0)">â† Back</button>
+      <button class="ob-btn" onclick="obNext(2)">Continue →</button>
+      <button class="ob-skip" onclick="obBack(0)">← Back</button>
     </div>
 
     <!-- Step 3: WhatsApp -->
     <div class="ob-step" id="ob-step-2">
-      <div class="ob-icon">ðŸ“²</div>
+      <div class="ob-icon">📲</div>
       <div class="ob-title">Activate alerts</div>
       <div class="ob-sub">Enter your WhatsApp number to receive real-time safety alerts. You can skip this and add it later.</div>
       <input class="ob-input" type="tel" id="ob-phone" placeholder="+1 XXX XXX XXXX">
       <input class="ob-input" type="text" id="ob-name" placeholder="Your name (optional)">
-      <button class="ob-btn" onclick="obFinish()">Get Started ðŸš€</button>
-      <button class="ob-skip" onclick="obBack(1)">â† Back</button>
+      <button class="ob-btn" onclick="obFinish()">Get Started 🚀</button>
+      <button class="ob-skip" onclick="obBack(1)">← Back</button>
     </div>
   </div>
 </div>
@@ -394,19 +394,19 @@
       <div class="cptitle">Choose Countries</div>
       <button onclick="hidePicker()" style="background:none;border:1px solid var(--lb);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;color:var(--lm);">Done</button>
     </div>
-    <div class="cpsub">Free trial: up to 3 Â· Premium: $3 first + $1 each additional</div>
-    <input class="cpsearch" id="cpsearch" placeholder="Search countriesâ€¦" oninput="filterCountries(this.value)">
+    <div class="cpsub">Free trial: up to 3 · Premium: $3 first + $1 each additional</div>
+    <input class="cpsearch" id="cpsearch" placeholder="Search countries…" oninput="filterCountries(this.value)">
   </div>
   <div class="cplist" id="cplist"></div>
   <div class="cpfoot">
-    <button class="cpconfirm" id="cpconfirm" onclick="confirmCountries()">View Selected â†’</button>
+    <button class="cpconfirm" id="cpconfirm" onclick="confirmCountries()">View Selected →</button>
   </div>
 </div>
 
 <!-- Country detail -->
 <div id="cdetail" class="lsheet">
   <div class="lshdr">
-    <button class="lsback" onclick="closeSheet('cdetail')">â€¹</button>
+    <button class="lsback" onclick="closeSheet('cdetail')">‹</button>
     <span class="lstitle" id="cd-title">Country</span>
   </div>
   <div class="lsbody" id="cd-body"></div>
@@ -418,16 +418,16 @@
 <div id="feed-panel" class="panel">
   <div class="phdr" style="background:var(--teal);border-color:transparent;">
     <div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">Live Feed</div>
-    <button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('feed-panel')">âœ•</button>
+    <button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('feed-panel')">✕</button>
   </div>
   <div class="feed-tabs">
-    <button class="ftab active" id="tab-news" onclick="switchFeedTab('news')">ðŸ“° News</button>
-    <button class="ftab" id="tab-events" onclick="switchFeedTab('events')">âš ï¸ Incidents</button>
-    <button class="ftab" id="tab-crime" onclick="switchFeedTab('crime')">ðŸ”´ Crime</button>
+    <button class="ftab active" id="tab-news" onclick="switchFeedTab('news')">📰 News</button>
+    <button class="ftab" id="tab-events" onclick="switchFeedTab('events')">⚠️ Incidents</button>
+    <button class="ftab" id="tab-crime" onclick="switchFeedTab('crime')">🔴 Crime</button>
   </div>
   <div class="feed-meta">
-    <span id="feed-context">ðŸŒ Global</span>
-    <span class="feed-meta-live">â— LIVE</span>
+    <span id="feed-context">🌍 Global</span>
+    <span class="feed-meta-live">● LIVE</span>
   </div>
   <div class="pbody" style="flex:1;overflow-y:auto;padding:0;">
     <div class="feed-tab-pane active" id="pane-news"><div id="feed-news-body" style="padding-bottom:20px;"></div></div>
@@ -437,9 +437,9 @@
 </div>
 <!-- Pack Assistant Panel -->
 <div id="pack-panel" class="panel">
-  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">Pack Assistant</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('pack-panel')">âœ•</button></div>
+  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">Pack Assistant</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('pack-panel')">✕</button></div>
   <div class="pbody" style="padding:18px;">
-    <div style="font-size:20px;font-weight:800;line-height:1.2;">ðŸŽ’ Pack Assistant</div>
+    <div style="font-size:20px;font-weight:800;line-height:1.2;">🎒 Pack Assistant</div>
     <div style="margin-top:10px;font-size:14px;color:var(--dm);line-height:1.6;">AI-powered packing lists coming soon. For now, use this quick starter guide to prepare for your trip.</div>
     <div style="margin-top:20px;display:grid;gap:12px;">
       <div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.08);">Passport, travel documents, visas</div>
@@ -453,12 +453,12 @@
 
 <!-- Countries Panel -->
 <div id="countries-panel" class="panel">
-  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">World Browser</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('countries-panel')">âœ•</button></div>
+  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">World Browser</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('countries-panel')">✕</button></div>
   <div class="pbody">
     <div style="padding:16px;">
       <div style="font-size:17px;font-weight:800;">Country Browser</div>
       <div style="margin-top:8px;font-size:13px;color:var(--dm);line-height:1.6;">Search all countries, compare safety scores, and pin the places you're watching.</div>
-      <input id="world-search" placeholder="Search countriesâ€¦" oninput="filterCountries(this.value)" style="width:100%;margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--bg);font-size:14px;color:var(--text);outline:none;" autocomplete="off">
+      <input id="world-search" placeholder="Search countries…" oninput="filterCountries(this.value)" style="width:100%;margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--bg);font-size:14px;color:var(--text);outline:none;" autocomplete="off">
     </div>
     <div id="pinned-countries" style="padding:0 16px 12px;display:grid;gap:10px;"></div>
     <div id="country-browser" style="padding:0 16px 12px;display:grid;gap:12px;"></div>
@@ -470,20 +470,20 @@
 
 <!-- Account Panel -->
 <div id="account-panel" class="panel">
-  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">My Account</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('account-panel')">âœ•</button></div>
+  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">My Account</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('account-panel')">✕</button></div>
   <div class="pbody">
     <div class="acc-section">
-      <div class="acc-reg-ok" id="acc-ok">âœ… Registered â€” <span id="acc-display"></span></div>
+      <div class="acc-reg-ok" id="acc-ok">✅ Registered — <span id="acc-display"></span></div>
       <div class="trial-card">
         <div class="trial-days" id="trial-days">7</div>
         <div class="trial-lbl">Days free trial remaining</div>
         <div style="font-size:12px;color:var(--dm);margin-top:6px;">Full access. No credit card needed.</div>
       </div>
       <div class="prem-card">
-        <div class="prem-title">â­ Atlas Ally Premium</div>
+        <div class="prem-title">⭐ Atlas Ally Premium</div>
         <div style="font-size:13px;color:var(--dm);line-height:1.5;margin-bottom:10px;">Monitor multiple countries, geofencing alerts, family plan, offline briefs.</div>
-        <div class="prem-price">From <strong>$3</strong>/month Â· +$1 per country Â· Family: <strong>$8</strong>/month</div>
-        <button class="prem-btn" onclick="window.open('/landing','_blank')">Upgrade to Premium â†’</button>
+        <div class="prem-price">From <strong>$3</strong>/month · +$1 per country · Family: <strong>$8</strong>/month</div>
+        <button class="prem-btn" onclick="window.open('/landing','_blank')">Upgrade to Premium →</button>
       </div>
       <div class="sec-title">WhatsApp number</div>
       <div class="fl">Your WhatsApp</div>
@@ -509,23 +509,23 @@
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--db);">
         <div class="sec-title">Legal</div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-          <a href="/privacy" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">ðŸ“„ Privacy Policy â†—</a>
-          <a href="/terms" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">ðŸ“„ Terms of Service â†—</a>
+          <a href="/privacy" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">📄 Privacy Policy ↗</a>
+          <a href="/terms" target="_blank" style="font-family:var(--mono);font-size:11px;color:var(--brand2);text-decoration:none;">📄 Terms of Service ↗</a>
         </div>
       </div>
 
-      <!-- Admin panel link â€” shown only for admin users -->
+      <!-- Admin panel link — shown only for admin users -->
       <div id="admin-panel-link" style="display:none;margin-top:16px;padding:14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.25);border-radius:10px;">
         <div style="font-family:var(--mono);font-size:10px;color:var(--brand2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Admin Access</div>
         <div style="font-size:12px;color:var(--dm);margin-bottom:10px;line-height:1.5;">You have admin privileges. Open the admin panel to manage events, users, and alerts.</div>
-        <button onclick="window.open('/admin','_blank')" style="width:100%;background:var(--brand);color:white;border:none;border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:700;cursor:pointer;">ðŸ›¡ï¸ Open Admin Panel â†’</button>
+        <button onclick="window.open('/admin','_blank')" style="width:100%;background:var(--brand);color:white;border:none;border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:700;cursor:pointer;">🛡️ Open Admin Panel →</button>
       </div>
 
       <!-- Delete account -->
       <div id="delete-account-section" style="display:none;margin-top:8px;padding-top:16px;border-top:1px solid var(--db);">
         <div class="sec-title" style="color:var(--danger);">Danger Zone</div>
         <p style="font-size:12px;color:var(--dm);line-height:1.5;margin-bottom:10px;">Permanently delete your account and all associated data. This cannot be undone. Your subscription will be cancelled immediately with no refund.</p>
-        <button onclick="confirmDeleteAccount()" style="width:100%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--danger);border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:600;cursor:pointer;">ðŸ—‘ï¸ Delete My Account</button>
+        <button onclick="confirmDeleteAccount()" style="width:100%;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);color:var(--danger);border-radius:8px;padding:11px;font-family:var(--display);font-size:13px;font-weight:600;cursor:pointer;">🗑️ Delete My Account</button>
       </div>
     </div>
   </div>
@@ -539,31 +539,31 @@
   <div class="steps"><div class="sdot active" id="sd1">1</div><div class="sline" id="sl1"></div><div class="sdot" id="sd2">2</div><div class="sline" id="sl2"></div><div class="sdot" id="sd3">3</div></div>
   <div id="stype">
     <div class="igrid">
-      <div class="ibtn" onclick="pick(this,'siren','ðŸ”´','Air Siren','warn')"><div class="iico">ðŸ”´</div><div class="ilbl">Air Siren</div><div class="isub">Active alarm</div></div>
-      <div class="ibtn" onclick="pick(this,'drone','ðŸ›¸','Drone/UAV','danger')"><div class="iico">ðŸ›¸</div><div class="ilbl">Drone/UAV</div><div class="isub">Overhead</div></div>
-      <div class="ibtn" onclick="pick(this,'missile','ðŸš€','Missile','danger')"><div class="iico">ðŸš€</div><div class="ilbl">Missile</div><div class="isub">Launch/impact</div></div>
-      <div class="ibtn" onclick="pick(this,'troop','ðŸª–','Troops','warn')"><div class="iico">ðŸª–</div><div class="ilbl">Troops</div><div class="isub">Movement</div></div>
-      <div class="ibtn" onclick="pick(this,'strike','ðŸ’¥','Explosion','danger')"><div class="iico">ðŸ’¥</div><div class="ilbl">Explosion</div><div class="isub">Blast/strike</div></div>
-      <div class="ibtn" onclick="pick(this,'gunfire','ðŸ”«','Gunfire','danger')"><div class="iico">ðŸ”«</div><div class="ilbl">Gunfire</div><div class="isub">Small arms</div></div>
-      <div class="ibtn" onclick="pick(this,'weather','ðŸŒªï¸','Weather','warn')"><div class="iico">ðŸŒªï¸</div><div class="ilbl">Weather</div><div class="isub">Severe event</div></div>
-      <div class="ibtn" onclick="pick(this,'health','ðŸ¥','Health Alert','info')"><div class="iico">ðŸ¥</div><div class="ilbl">Health</div><div class="isub">Medical alert</div></div>
-      <div class="ibtn" onclick="pick(this,'checkpoint','ðŸš§','Checkpoint','info')"><div class="iico">ðŸš§</div><div class="ilbl">Checkpoint</div><div class="isub">Road blocked</div></div>
-      <div class="ibtn" onclick="pick(this,'chemical','â˜£ï¸','Chemical','danger')"><div class="iico">â˜£ï¸</div><div class="ilbl">Chemical</div><div class="isub">Hazard</div></div>
-      <div class="ibtn" onclick="pick(this,'news','ðŸ“°','News Alert','info')"><div class="iico">ðŸ“°</div><div class="ilbl">News</div><div class="isub">Development</div></div>
-      <div class="ibtn" onclick="pick(this,'clear','âœ…','All Clear','safe')"><div class="iico">âœ…</div><div class="ilbl">All Clear</div><div class="isub">Area safe</div></div>
+      <div class="ibtn" onclick="pick(this,'siren','🔴','Air Siren','warn')"><div class="iico">🔴</div><div class="ilbl">Air Siren</div><div class="isub">Active alarm</div></div>
+      <div class="ibtn" onclick="pick(this,'drone','🛸','Drone/UAV','danger')"><div class="iico">🛸</div><div class="ilbl">Drone/UAV</div><div class="isub">Overhead</div></div>
+      <div class="ibtn" onclick="pick(this,'missile','🚀','Missile','danger')"><div class="iico">🚀</div><div class="ilbl">Missile</div><div class="isub">Launch/impact</div></div>
+      <div class="ibtn" onclick="pick(this,'troop','🪖','Troops','warn')"><div class="iico">🪖</div><div class="ilbl">Troops</div><div class="isub">Movement</div></div>
+      <div class="ibtn" onclick="pick(this,'strike','💥','Explosion','danger')"><div class="iico">💥</div><div class="ilbl">Explosion</div><div class="isub">Blast/strike</div></div>
+      <div class="ibtn" onclick="pick(this,'gunfire','🔫','Gunfire','danger')"><div class="iico">🔫</div><div class="ilbl">Gunfire</div><div class="isub">Small arms</div></div>
+      <div class="ibtn" onclick="pick(this,'weather','🌪️','Weather','warn')"><div class="iico">🌪️</div><div class="ilbl">Weather</div><div class="isub">Severe event</div></div>
+      <div class="ibtn" onclick="pick(this,'health','🏥','Health Alert','info')"><div class="iico">🏥</div><div class="ilbl">Health</div><div class="isub">Medical alert</div></div>
+      <div class="ibtn" onclick="pick(this,'checkpoint','🚧','Checkpoint','info')"><div class="iico">🚧</div><div class="ilbl">Checkpoint</div><div class="isub">Road blocked</div></div>
+      <div class="ibtn" onclick="pick(this,'chemical','☣️','Chemical','danger')"><div class="iico">☣️</div><div class="ilbl">Chemical</div><div class="isub">Hazard</div></div>
+      <div class="ibtn" onclick="pick(this,'news','📰','News Alert','info')"><div class="iico">📰</div><div class="ilbl">News</div><div class="isub">Development</div></div>
+      <div class="ibtn" onclick="pick(this,'clear','✅','All Clear','safe')"><div class="iico">✅</div><div class="ilbl">All Clear</div><div class="isub">Area safe</div></div>
     </div>
   </div>
   <div id="sloc">
     <div class="loc-hint"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Tap city or use GPS to pin exact location</div>
     <div class="citygrid" id="city-grid"></div>
-    <button class="gpsbtn" id="gpsbtn" onclick="useGPS()">ðŸ“¡ Use exact GPS location</button>
-    <button class="nxtbtn" id="nxtbtn" onclick="goConfirm()" disabled>Confirm Location â†’</button>
+    <button class="gpsbtn" id="gpsbtn" onclick="useGPS()">📡 Use exact GPS location</button>
+    <button class="nxtbtn" id="nxtbtn" onclick="goConfirm()" disabled>Confirm Location →</button>
   </div>
   <div id="sconfirm">
-    <div class="csumm"><div class="cico" id="cico">ðŸ’¥</div><div><div class="ctype" id="ctype">INCIDENT</div><div class="cloc" id="cloc">ðŸ“ Location</div></div></div>
-    <textarea class="nota" id="rnotes" placeholder="Optional: direction, count, altitude, detailsâ€¦"></textarea>
+    <div class="csumm"><div class="cico" id="cico">💥</div><div><div class="ctype" id="ctype">INCIDENT</div><div class="cloc" id="cloc">📍 Location</div></div></div>
+    <textarea class="nota" id="rnotes" placeholder="Optional: direction, count, altitude, details…"></textarea>
     <button class="sndbtn" id="sndbtn" onclick="submitReport()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>SEND ALERT</button>
-    <button class="backbtn" onclick="goBack()">â† back</button>
+    <button class="backbtn" onclick="goBack()">← back</button>
   </div>
 </div>
 
@@ -571,14 +571,14 @@
 <div id="checkin-sheet">
   <div class="rh"></div>
   <div class="ci-score">
-    <div class="ci-score-num" id="ci-num" style="color:var(--safe)">â€”</div>
+    <div class="ci-score-num" id="ci-num" style="color:var(--safe)">—</div>
     <div class="ci-score-label" id="ci-label" style="color:var(--safe)">SAFETY SCORE</div>
-    <div class="ci-score-sub" id="ci-sub">Getting your locationâ€¦</div>
+    <div class="ci-score-sub" id="ci-sub">Getting your location…</div>
   </div>
   <div class="ci-factors" id="ci-factors"></div>
   <input class="msg-input" id="ci-msg" placeholder="Optional message to your contacts (e.g. 'At the hotel, all good')">
   <button class="safe-send-btn" id="ci-send" onclick="sendCheckin()">
-    âœ… I'M SAFE â€” NOTIFY CONTACTS
+    ✅ I'M SAFE — NOTIFY CONTACTS
   </button>
 </div>
 
@@ -591,15 +591,15 @@
     <div class="fl">From (start point)</div>
     <input class="route-input" id="route-from" placeholder="e.g. Amman city center, or use GPS">
     <div class="fl">To (destination)</div>
-    <input class="route-input" id="route-to" placeholder="e.g. Zarqa, Aqaba, airportâ€¦">
+    <input class="route-input" id="route-to" placeholder="e.g. Zarqa, Aqaba, airport…">
     <div style="font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dm);margin-bottom:10px;">Open in:</div>
     <a class="route-opt" id="osm-link" href="#" target="_blank" onclick="buildOSMRoute()">
-      <div class="route-opt-icon">ðŸ—ºï¸</div>
-      <div><div class="route-opt-title">OpenStreetMap</div><div class="route-opt-sub">Free Â· Works offline Â· No account needed</div></div>
+      <div class="route-opt-icon">🗺️</div>
+      <div><div class="route-opt-title">OpenStreetMap</div><div class="route-opt-sub">Free · Works offline · No account needed</div></div>
     </a>
     <a class="route-opt" id="gmaps-link" href="#" target="_blank" onclick="buildGMapsRoute()">
-      <div class="route-opt-icon">ðŸ“</div>
-      <div><div class="route-opt-title">Google Maps</div><div class="route-opt-sub">Real-time traffic Â· Turn-by-turn navigation</div></div>
+      <div class="route-opt-icon">📍</div>
+      <div><div class="route-opt-title">Google Maps</div><div class="route-opt-sub">Real-time traffic · Turn-by-turn navigation</div></div>
     </a>
     <button onclick="closeSheet('route-sheet')" style="width:100%;background:none;border:none;color:var(--dm);font-family:var(--mono);font-size:11px;padding:10px;cursor:pointer;margin-top:6px;">Cancel</button>
   </div>
@@ -612,18 +612,18 @@
 <div id="feedback-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.85);overflow-y:auto;padding:20px;">
   <div style="background:var(--dk2);border:1px solid var(--db2);border-radius:18px;max-width:400px;margin:0 auto;padding:24px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <div style="font-family:var(--display);font-size:18px;font-weight:800;color:var(--dt);">ðŸ“‹ Share Your Feedback</div>
-      <button onclick="closeFeedback()" style="background:none;border:1px solid var(--db2);border-radius:6px;color:var(--dm);padding:4px 8px;cursor:pointer;">âœ•</button>
+      <div style="font-family:var(--display);font-size:18px;font-weight:800;color:var(--dt);">📋 Share Your Feedback</div>
+      <button onclick="closeFeedback()" style="background:none;border:1px solid var(--db2);border-radius:6px;color:var(--dm);padding:4px 8px;cursor:pointer;">✕</button>
     </div>
     <div style="font-size:13px;color:var(--dm);margin-bottom:16px;">Help us improve Atlas Ally. This takes about 2 minutes.</div>
 
     <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:8px;">Overall Rating</div>
     <div id="rating-stars" style="display:flex;gap:6px;margin-bottom:16px;">
-      <button onclick="setRating(1)" id="star-1" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">â­</button>
-      <button onclick="setRating(2)" id="star-2" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">â­</button>
-      <button onclick="setRating(3)" id="star-3" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">â­</button>
-      <button onclick="setRating(4)" id="star-4" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">â­</button>
-      <button onclick="setRating(5)" id="star-5" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">â­</button>
+      <button onclick="setRating(1)" id="star-1" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(2)" id="star-2" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(3)" id="star-3" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(4)" id="star-4" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
+      <button onclick="setRating(5)" id="star-5" style="font-size:32px;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:all .2s;">⭐</button>
     </div>
 
     <div style="font-family:var(--mono);font-size:10px;color:var(--dm);text-transform:uppercase;margin-bottom:6px;">What do you like?</div>
@@ -652,7 +652,7 @@
       </div>
     </div>
 
-    <button onclick="submitFeedback()" style="width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;">Submit Feedback ðŸš€</button>
+    <button onclick="submitFeedback()" style="width:100%;background:var(--brand);color:white;border:none;border-radius:10px;padding:13px;font-family:var(--display);font-size:15px;font-weight:700;cursor:pointer;">Submit Feedback 🚀</button>
   </div>
 </div>
 <script src="/app.js"></script>
