@@ -33,6 +33,12 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
+<style>
+/* Panel z-index fix — panels cover full screen, tab bar floats above */
+#main-tab-bar { z-index: 300000 !important; pointer-events: all !important; }
+#main-tab-bar * { pointer-events: all !important; }
+#hdr { z-index: 100 !important; } /* header sits behind panels */
+</style>
 </head>
 <body>
 <div id="app">
