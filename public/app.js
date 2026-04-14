@@ -51,7 +51,13 @@
       else if (loc) ctx.textContent = 'Current location: ' + loc.lat.toFixed(2) + ', ' + loc.lng.toFixed(2);
       else ctx.textContent = 'No location or country selected yet.';
     }
-    if (newsBody) newsBody.innerHTML = makeFeedCard('News', country ? 'Latest safety news around ' + country + '.' : 'Select a country or drop a pin to see location-based news.');
+    if (newsBody) {
+      if (country) {
+        newsBody.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px;">⏳ Loading news for ' + country + '...</div>';
+      } else {
+        newsBody.innerHTML = '<div style="padding:32px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">🌍</div><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;">Select a Country</div><div style="font-size:13px;color:var(--muted);">Tap the flag in the header to choose a country and see live news.</div></div>';
+      }
+    }
     if (eventsBody) eventsBody.innerHTML = makeFeedCard('Danger Alerts', 'Recent threats and incidents within a 300 km radius of your current pin or GPS position.');
     if (crimeBody) crimeBody.innerHTML = makeFeedCard('Crime Stats', 'Local crime and safety trends based on nearby data and historical patterns.');
     if (country) {
@@ -274,13 +280,16 @@
       var lat = (typeof currentLat !== 'undefined') ? currentLat : null;
       var lng = (typeof currentLng !== 'undefined') ? currentLng : null;
       if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
+      var container = document.querySelector('#feed-news-body, #news-list, .news-list, #feed-body');
+      if (container) container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">⏳ Loading news for ' + countryCode + '...</div>';
       try {
         var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
-        var container = document.querySelector('#feed-news-body, #news-list, .news-list, [data-tab="news"] .feed-list, #feed-body');
+        if (!container) container = document.querySelector('#feed-news-body');
         if (!container) return;
         if (!data || !data.length) {
-          container.innerHTML = '<p style="text-align:center;color:#888;padding:24px;font-size:13px">No news within 150 km</p>';
+          container.innerHTML = '<div style="padding:32px;text-align:center;"><div style="font-size:32px;margin-bottom:12px;">📡</div><div style="color:var(--muted);font-size:13px;">No news found for ' + countryCode + '.<br>Try selecting another country.</div></div>';
           return;
         }
         container.innerHTML = data.map(function(article) {
@@ -320,6 +329,8 @@
         }).join('');
       } catch (e) {
         console.warn('Atlas GPS news load failed:', e);
+        var c = document.querySelector('#feed-news-body');
+        if (c) c.innerHTML = '<div style="padding:24px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">⚠️</div><div style="color:var(--muted);font-size:13px;">Could not load news.<br><small style="color:var(--red);">' + e.message + '</small></div><button onclick="if(window.loadNewsWithGPS&&window.activeCountry)window.loadNewsWithGPS(window.activeCountry);" style="margin-top:12px;padding:8px 16px;background:var(--teal);color:white;border:none;border-radius:8px;font-size:13px;cursor:pointer;">Retry</button></div>';
       }
     }
 

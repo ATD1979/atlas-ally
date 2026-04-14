@@ -173,7 +173,7 @@
   </div>
   <div class="nav-body">
     <div class="nav-section-label">Quick Actions</div>
-    <button class="nav-item" onclick="toggleJourney();closeNav()" type="button">
+    <button class="nav-item" onclick="if(window.toast)toast('🧭 Journey Mode activated','ok');switchTab('map');closeNav();" type="button">
       <div class="nav-item-icon">🧭</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Journey Mode</div>
@@ -181,7 +181,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="openReport();closeNav()" type="button">
+    <button class="nav-item" onclick="switchTab('feed');closeNav();if(window.toast)toast('📋 Feed opened','ok');" type="button">
       <div class="nav-item-icon">⚠️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Report Incident</div>
@@ -189,7 +189,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="openCheckin();closeNav()" type="button">
+    <button class="nav-item" onclick="switchTab('account');closeNav();if(window.toast)toast('✅ Account opened','ok');" type="button">
       <div class="nav-item-icon">✅</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Safe Check-in</div>
@@ -197,7 +197,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="openRouteSheet();closeNav()" type="button">
+    <button class="nav-item" onclick="switchTab('map');closeNav();if(window.toast)toast('🗺️ Use the map to plan your route','ok');" type="button">
       <div class="nav-item-icon">🗺️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Route Planner</div>
@@ -205,7 +205,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="openNavSection('account-panel');closeNav()" type="button">
+    <button class="nav-item" onclick="switchTab('account');closeNav();" type="button">
       <div class="nav-item-icon">⚙️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">App Settings</div>
@@ -215,11 +215,11 @@
     </button>
   </div>
   <div class="nav-actions">
-    <button class="nav-action-btn nav-action-safe" onclick="openCheckin();closeNav()">
+    <button class="nav-action-btn nav-action-safe" onclick="switchTab('account');closeNav();">
       <span class="nav-action-icon">✅</span>
       <div><div class="nav-action-label" style="color:#4ade80;">I'm Safe</div><div class="nav-action-sub" style="color:#4ade80;">Notify emergency contacts</div></div>
     </button>
-    <button class="nav-action-btn nav-action-report" onclick="openReport();closeNav()">
+    <button class="nav-action-btn nav-action-report" onclick="switchTab('feed');closeNav();">
       <span class="nav-action-icon">⚠️</span>
       <div><div class="nav-action-label" style="color:#f87171;">Report Incident</div><div class="nav-action-sub" style="color:#f87171;">Post alert to the network</div></div>
     </button>
