@@ -842,6 +842,8 @@
         setActiveCountry(code, { lat: country.center[0], lng: country.center[1] });
       } else {
         setActiveCountry(code, window.activeCountryPos || getFeedLocation());
+      }
+    }
   }
 
   function filterCountries(query) {
@@ -1000,7 +1002,7 @@
     return code;
   };
 
-  window.pinnedCountries = window.pinnedCountries || JSON.parse(localStorage.getItem('atlas_pinned_countries') || '[]');
+  window.pinnedCountries = window.pinnedCountries || JSON.parse(localStorage.getItem('atlas_pinned_countries')) || [];
   document.addEventListener('DOMContentLoaded', function() {
     if (typeof loadCountries === 'function') loadCountries();
     if (typeof switchFeedTab === 'function') switchFeedTab('news');
