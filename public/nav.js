@@ -46,7 +46,7 @@
     /* ── Map show/hide ── */
     function hideMap() {
       if (mapWrap) {
-        mapWrap.style.cssText = mapWrap.style.cssText.replace(/visibility:[^;]*/g,'');
+        mapWrap.classList.add('map-hidden');
         mapWrap.style.visibility = 'hidden';
         mapWrap.style.pointerEvents = 'none';
       }
@@ -54,6 +54,7 @@
 
     function showMap() {
       if (mapWrap) {
+        mapWrap.classList.remove('map-hidden');
         mapWrap.style.visibility = 'visible';
         mapWrap.style.pointerEvents = '';
       }
