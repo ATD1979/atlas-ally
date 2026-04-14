@@ -55,6 +55,11 @@
     if (eventsBody) eventsBody.innerHTML = makeFeedCard('Danger Alerts', 'Recent threats and incidents within a 300 km radius of your current pin or GPS position.');
     if (crimeBody) crimeBody.innerHTML = makeFeedCard('Crime Stats', 'Local crime and safety trends based on nearby data and historical patterns.');
     if (country) {
+      // Fetch news articles
+      if (newsBody) newsBody.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted);font-size:13px;">Loading news...</div>';
+      if (typeof window.loadNewsWithGPS === 'function') {
+        setTimeout(function() { window.loadNewsWithGPS(country); }, 50);
+      }
       fetch('/api/events?country_code=' + country).then(function(r){ return r.json(); }).then(function(events){
         if (!events || !events.length) {
           if (eventsBody) eventsBody.innerHTML = '<div style="padding:18px;color:var(--muted);text-align:center;">No recent alerts for this country.</div>';
@@ -272,7 +277,7 @@
       try {
         var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
         var data = await res.json();
-        var container = document.querySelector('#news-list, .news-list, [data-tab="news"] .feed-list, #feed-body');
+        var container = document.querySelector('#feed-news-body, #news-list, .news-list, [data-tab="news"] .feed-list, #feed-body');
         if (!container) return;
         if (!data || !data.length) {
           container.innerHTML = '<p style="text-align:center;color:#888;padding:24px;font-size:13px">No news within 150 km</p>';

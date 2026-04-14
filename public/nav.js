@@ -29,31 +29,18 @@
         var p = document.getElementById(id);
         if (!p) return;
         p.classList.remove('open');
-        p.style.cssText = 'position:fixed;inset:0;z-index:9000;display:none;transform:translateY(100%);pointer-events:none;';
+        p.style.cssText = ''; // Clear any lingering inline styles — CSS handles hidden state
       });
     }
 
-    /* ── Show one panel — single cssText to override everything ── */
+    /* ── Show one panel — class only, no inline styles ── */
+    /* NOTE: !important in style.cssText is silently stripped by browsers and doesn't work.
+       The fix is to drive everything through .panel.open in styles.css which CAN use !important. */
     function showPanel(id) {
       hideAllPanels();
       var p = document.getElementById(id);
       if (!p) { console.warn('Panel not found:', id); return; }
       p.classList.add('open');
-      p.style.cssText = [
-        'position:fixed',
-        'top:0',
-        'left:0',
-        'right:0',
-        'bottom:0',
-        'z-index:99998',
-        'display:flex',
-        'flex-direction:column',
-        'background:#F8FAFB',
-        'transform:translateY(0)',
-        'pointer-events:all',
-        'overflow:hidden',
-        'visibility:visible'
-      ].join('!important;') + '!important;';
     }
 
     /* ── Map show/hide ── */
@@ -124,7 +111,7 @@
     window.openPanel = showPanel;
     window.closePanel = function(id) {
       var p = document.getElementById(id);
-      if (p) { p.classList.remove('open'); p.style.cssText = 'display:none;'; }
+      if (p) { p.classList.remove('open'); p.style.cssText = ''; }
     };
     window.closeAllPanels = hideAllPanels;
     window.toggleNav  = function() { if (navPanel) navPanel.classList.toggle('open'); };
@@ -154,7 +141,14 @@
       console.log('tabs found:', tabs.length);
       PANEL_IDS.forEach(function(id){
         var p = document.getElementById(id);
-        console.log(id, p ? p.style.cssText : 'NOT FOUND');
+        if (!p) { console.log(id, 'NOT FOUND'); return; }
+        var cs = window.getComputedStyle(p);
+        console.log(id,
+          '| class:', p.className,
+          '| computed display:', cs.display,
+          '| computed transform:', cs.transform,
+          '| computed visibility:', cs.visibility
+        );
       });
     };
 
