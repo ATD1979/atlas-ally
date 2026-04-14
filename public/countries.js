@@ -113,9 +113,34 @@
   });
 
   document.addEventListener('click', function(e) {
+    // Handle country card selection in picker
     var card = e.target.closest('[data-code], .ccard, .country-card, .cpcard');
     if (!card) return;
     var code = card.dataset.code || card.getAttribute('data-code');
-    if (code && typeof setActiveCountry === 'function') setActiveCountry(code);
+    if (!code) return;
+
+    // Find country data for coordinates
+    var country = (window.allCountries || []).find(function(c){ return c.code === code; });
+
+    // Set active country with coordinates if available
+    if (typeof window.setActiveCountry === 'function') {
+      if (country && Array.isArray(country.center) && country.center.length === 2) {
+        window.setActiveCountry(code, { lat: country.center[0], lng: country.center[1] });
+      } else {
+        window.setActiveCountry(code);
+      }
+    }
+
+    // Close the picker
+    if (typeof window.hidePicker === 'function') window.hidePicker();
+
+    // Switch back to map tab to show the pin
+    if (typeof window.switchTab === 'function') window.switchTab('map');
+
+    // Show toast
+    if (typeof window.toast === 'function') {
+      var name = country ? country.name : code;
+      window.toast('📍 ' + name, 'ok');
+    }
   });
 })();
