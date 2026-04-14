@@ -15,11 +15,11 @@
     p.style.setProperty('display',        'flex',    'important');
     p.style.setProperty('flex-direction', 'column',  'important');
     p.style.setProperty('position',       'fixed',   'important');
-    p.style.setProperty('top',            '56px',    'important');
+    p.style.setProperty('top',            '0',       'important');
     p.style.setProperty('left',           '0',       'important');
     p.style.setProperty('right',          '0',       'important');
-    p.style.setProperty('bottom',         '62px',    'important');
-    p.style.setProperty('z-index',        '5000',    'important');
+    p.style.setProperty('bottom',         '0',       'important');
+    p.style.setProperty('z-index',        '200000',  'important');
     p.style.setProperty('background',     '#F8FAFB', 'important');
     p.style.setProperty('overflow',       'hidden',  'important');
     p.style.setProperty('pointer-events', 'all',     'important');
