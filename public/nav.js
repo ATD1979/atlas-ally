@@ -26,6 +26,34 @@
     p.style.setProperty('visibility',     'visible', 'important');
     p.style.setProperty('transform',      'none',    'important');
     p.style.setProperty('opacity',        '1',       'important');
+
+    // Force panel children visible — CSS may be hiding them
+    var phdr = p.querySelector('.phdr');
+    if (phdr) {
+      phdr.style.setProperty('display',          'flex',    'important');
+      phdr.style.setProperty('height',           '50px',    'important');
+      phdr.style.setProperty('min-height',       '50px',    'important');
+      phdr.style.setProperty('background',       '#0E7490', 'important');
+      phdr.style.setProperty('flex-shrink',      '0',       'important');
+      phdr.style.setProperty('align-items',      'center',  'important');
+      phdr.style.setProperty('justify-content',  'space-between', 'important');
+      phdr.style.setProperty('padding',          '0 14px',  'important');
+      phdr.style.setProperty('visibility',       'visible', 'important');
+    }
+    // Force all direct children visible
+    Array.from(p.children).forEach(function(child) {
+      child.style.setProperty('visibility', 'visible', 'important');
+      if (getComputedStyle(child).display === 'none') {
+        child.style.setProperty('display', 'block', 'important');
+      }
+    });
+    var pbody = p.querySelector('.pbody');
+    if (pbody) {
+      pbody.style.setProperty('display',    'block',   'important');
+      pbody.style.setProperty('flex',       '1',       'important');
+      pbody.style.setProperty('overflow-y', 'auto',    'important');
+      pbody.style.setProperty('visibility', 'visible', 'important');
+    }
   }
 
   function hideAllPanels() {
