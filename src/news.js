@@ -18,27 +18,69 @@ function googleNewsUrl(query, lang = 'en', country = 'US') {
 }
 
 // Country code → Google News language/region config
+// Expanded to cover all major countries worldwide
 const GOOGLE_NEWS_CONFIG = {
+  // Middle East & North Africa
   JO: { lang: 'en', gl: 'JO', query: 'Jordan news safety travel' },
-  UA: { lang: 'en', gl: 'UA', query: 'Ukraine war conflict news' },
   LB: { lang: 'en', gl: 'LB', query: 'Lebanon news security' },
   EG: { lang: 'en', gl: 'EG', query: 'Egypt news' },
-  MX: { lang: 'en', gl: 'MX', query: 'Mexico safety security news' },
-  PK: { lang: 'en', gl: 'PK', query: 'Pakistan news security' },
-  TH: { lang: 'en', gl: 'TH', query: 'Thailand news travel' },
-  FR: { lang: 'en', gl: 'FR', query: 'France news security' },
-  JP: { lang: 'en', gl: 'JP', query: 'Japan news' },
-  ZA: { lang: 'en', gl: 'ZA', query: 'South Africa news safety' },
   IL: { lang: 'en', gl: 'IL', query: 'Israel news conflict' },
   IQ: { lang: 'en', gl: 'IQ', query: 'Iraq news security' },
-  CO: { lang: 'en', gl: 'CO', query: 'Colombia news safety' },
-  NG: { lang: 'en', gl: 'NG', query: 'Nigeria news security' },
-  IN: { lang: 'en', gl: 'IN', query: 'India news' },
-  BR: { lang: 'en', gl: 'BR', query: 'Brazil news safety' },
-  KE: { lang: 'en', gl: 'KE', query: 'Kenya news security' },
-  PH: { lang: 'en', gl: 'PH', query: 'Philippines news' },
-  TR: { lang: 'en', gl: 'TR', query: 'Turkey news security' },
   MA: { lang: 'en', gl: 'MA', query: 'Morocco news travel' },
+  SA: { lang: 'en', gl: 'SA', query: 'Saudi Arabia news' },
+  AE: { lang: 'en', gl: 'AE', query: 'UAE Dubai news' },
+  IR: { lang: 'en', gl: 'IR', query: 'Iran news' },
+  SY: { lang: 'en', gl: 'SY', query: 'Syria news conflict' },
+  YE: { lang: 'en', gl: 'YE', query: 'Yemen news conflict' },
+  LY: { lang: 'en', gl: 'LY', query: 'Libya news security' },
+  TN: { lang: 'en', gl: 'TN', query: 'Tunisia news' },
+  DZ: { lang: 'en', gl: 'DZ', query: 'Algeria news' },
+  // Europe
+  FR: { lang: 'en', gl: 'FR', query: 'France news security' },
+  DE: { lang: 'en', gl: 'DE', query: 'Germany news' },
+  GB: { lang: 'en', gl: 'GB', query: 'UK Britain news safety' },
+  UA: { lang: 'en', gl: 'UA', query: 'Ukraine war conflict news' },
+  TR: { lang: 'en', gl: 'TR', query: 'Turkey news security' },
+  RU: { lang: 'en', gl: 'RU', query: 'Russia news conflict' },
+  ES: { lang: 'en', gl: 'ES', query: 'Spain news' },
+  IT: { lang: 'en', gl: 'IT', query: 'Italy news' },
+  PL: { lang: 'en', gl: 'PL', query: 'Poland news' },
+  GR: { lang: 'en', gl: 'GR', query: 'Greece news' },
+  RS: { lang: 'en', gl: 'RS', query: 'Serbia news Balkans' },
+  // Americas
+  US: { lang: 'en', gl: 'US', query: 'United States news safety security' },
+  MX: { lang: 'en', gl: 'MX', query: 'Mexico safety security news' },
+  BR: { lang: 'en', gl: 'BR', query: 'Brazil news safety' },
+  CO: { lang: 'en', gl: 'CO', query: 'Colombia news safety' },
+  VE: { lang: 'en', gl: 'VE', query: 'Venezuela news crisis' },
+  AR: { lang: 'en', gl: 'AR', query: 'Argentina news' },
+  HT: { lang: 'en', gl: 'HT', query: 'Haiti news crisis security' },
+  GT: { lang: 'en', gl: 'GT', query: 'Guatemala news safety' },
+  HN: { lang: 'en', gl: 'HN', query: 'Honduras news safety' },
+  // Asia Pacific
+  IN: { lang: 'en', gl: 'IN', query: 'India news' },
+  PK: { lang: 'en', gl: 'PK', query: 'Pakistan news security' },
+  JP: { lang: 'en', gl: 'JP', query: 'Japan news' },
+  CN: { lang: 'en', gl: 'CN', query: 'China news' },
+  TH: { lang: 'en', gl: 'TH', query: 'Thailand news travel' },
+  PH: { lang: 'en', gl: 'PH', query: 'Philippines news' },
+  KR: { lang: 'en', gl: 'KR', query: 'South Korea news' },
+  ID: { lang: 'en', gl: 'ID', query: 'Indonesia news' },
+  MM: { lang: 'en', gl: 'MM', query: 'Myanmar Burma news conflict' },
+  BD: { lang: 'en', gl: 'BD', query: 'Bangladesh news' },
+  NP: { lang: 'en', gl: 'NP', query: 'Nepal news' },
+  AF: { lang: 'en', gl: 'AF', query: 'Afghanistan news security' },
+  // Africa
+  NG: { lang: 'en', gl: 'NG', query: 'Nigeria news security' },
+  ZA: { lang: 'en', gl: 'ZA', query: 'South Africa news safety' },
+  KE: { lang: 'en', gl: 'KE', query: 'Kenya news security' },
+  ET: { lang: 'en', gl: 'ET', query: 'Ethiopia news conflict' },
+  SO: { lang: 'en', gl: 'SO', query: 'Somalia news security' },
+  SD: { lang: 'en', gl: 'SD', query: 'Sudan news conflict' },
+  CD: { lang: 'en', gl: 'CD', query: 'Congo DRC news conflict' },
+  ML: { lang: 'en', gl: 'ML', query: 'Mali news security' },
+  GH: { lang: 'en', gl: 'GH', query: 'Ghana news' },
+  TZ: { lang: 'en', gl: 'TZ', query: 'Tanzania news' },
 };
 
 // Reliable backup feeds that allow server access
@@ -51,7 +93,7 @@ const BACKUP_FEEDS = [
 async function fetchRSS(url) {
   try {
     const res = await fetch(url, {
-      timeout: 10000,
+      timeout: 25000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; AtlasAlly/1.0; +https://atlas-ally.com)',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*',
@@ -208,4 +250,36 @@ async function fetchNewsForAnyCountry(countryName, countryCode) {
   return items.slice(0, 10).map(extractItem).filter(i => i.title.length > 10);
 }
 
-module.exports = { refreshAllNews, refreshNewsForCountry, fetchNewsForAnyCountry };
+module.exports = { refreshAllNews, refreshNewsForCountry, fetchNewsForAnyCountry, fetchGDELTEvents };
+
+// GDELT event ingestion — real-time conflict and incident data
+async function fetchGDELTEvents(countryCode, countryName) {
+  const query = encodeURIComponent(countryName + ' conflict protest attack disaster');
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}&mode=artlist&maxrecords=10&format=json&timespan=1440`;
+  try {
+    const res = await fetch(url, {
+      timeout: 25000,
+      headers: { 'User-Agent': 'AtlasAlly/1.0' }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.articles || []).map(a => ({
+      country_code: countryCode,
+      source_name: a.domain || 'GDELT',
+      title: (a.title || '').slice(0, 500),
+      description: '',
+      url: a.url || '',
+      lat: a.socialimage ? null : null,
+      lng: null,
+      published_at: a.seendate ? new Date(
+        a.seendate.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')
+      ).toISOString() : new Date().toISOString(),
+      category: 'event'
+    }));
+  } catch (e) {
+    console.warn(`  GDELT timeout for ${countryCode}: ${e.message}`);
+    return [];
+  }
+}
+
+module.exports.fetchGDELTEvents = fetchGDELTEvents;
