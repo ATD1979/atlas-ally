@@ -92,12 +92,11 @@
         <div class="mb-adv" id="badge-adv"></div>
       </div>
     </div>
-    <div class="map-locate" onclick="locateUser()">
+    <div class="map-locate" onclick="locateUser()" title="Find my location">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
     </div>
-    <div id="filter-72h" onclick="toggle72h()">72h ⏱</div>
-    <div id="crime-toggle" onclick="toggleCrimeLayer()" title="Crime statistics layer">🔴</div>
-    <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Toggle crime/risk heatmap" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(255,255,255,0.95);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">🔥</div>
+    <div id="heatmap-toggle" onclick="toggleHeatmap()" title="Temperature overlay" style="position:absolute;top:54px;right:10px;z-index:20;width:34px;height:34px;background:rgba(255,255,255,0.95);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:all .2s;">🔥</div>
+    <div id="crime-toggle" onclick="toggleCrimeLayer()" title="Crime layer" style="position:absolute;top:98px;right:10px;z-index:20;width:34px;height:34px;background:rgba(255,255,255,0.95);border:1px solid var(--db2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;">🔴</div>
     <div class="score-overlay" id="score-overlay">
       <div class="so-label">Safety Score</div>
       <div class="so-score" id="so-score" style="color:var(--safe)">—</div>

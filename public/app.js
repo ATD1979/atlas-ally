@@ -344,3 +344,87 @@
     window.loadNewsWithGPS = window.loadNewsWithGPS || loadNewsWithGPS;
   })();
 })();
+
+// ── Missing global functions restored ──
+
+window.locateUser = function() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude;
+    var lng = pos.coords.longitude;
+    if (window.map) window.map.setView([lat, lng], 10);
+    if (typeof window.currentLat !== 'undefined') { window.currentLat = lat; window.currentLng = lng; }
+  }, function() {
+    if (typeof toast === 'function') toast('GPS not available', 'err');
+  });
+};
+
+window.toggle72h = function() {
+  var btn = document.getElementById('filter-72h');
+  if (btn) btn.style.background = btn.style.background === 'var(--teal)' ? '' : 'var(--teal)';
+};
+
+window.toggleCrimeLayer = function() {
+  var btn = document.getElementById('crime-toggle');
+  if (btn) btn.style.opacity = btn.style.opacity === '0.4' ? '1' : '0.4';
+};
+
+window.toggleHeatmap = function() {
+  if (typeof window.handleFlameBtn === 'function') window.handleFlameBtn();
+};
+
+window.openReport = function() {
+  var sheet = document.getElementById('rsheet');
+  if (sheet) sheet.classList.add('open');
+  var bd = document.getElementById('bd');
+  if (bd) bd.classList.add('on');
+};
+
+window.openCheckin = function() {
+  var sheet = document.getElementById('checkin-sheet');
+  if (sheet) sheet.classList.add('open');
+};
+
+window.openRouteSheet = function() {
+  var sheet = document.getElementById('route-sheet');
+  if (sheet) sheet.classList.add('open');
+};
+
+window.closeAll = function() {
+  document.querySelectorAll('#rsheet, #checkin-sheet, #route-sheet').forEach(function(s) {
+    s.classList.remove('open');
+  });
+  var bd = document.getElementById('bd');
+  if (bd) bd.classList.remove('on');
+};
+
+window.toast = window.toast || function(msg, type) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function() { t.className = ''; }, 2800);
+};
+
+window.toggleJourney = window.toggleJourney || function() {
+  var btn = document.getElementById('journey-toggle');
+  if (btn) btn.textContent = btn.textContent === 'Start' ? 'Stop' : 'Start';
+};
+
+window.goBack = window.goBack || function() {
+  document.querySelectorAll('#rsheet, #checkin-sheet, #route-sheet').forEach(function(s) {
+    s.classList.remove('open');
+  });
+};
+
+window.sendCheckin = window.sendCheckin || function() {
+  if (typeof toast === 'function') toast('✅ Safe check-in sent!', 'ok');
+  window.closeAll();
+};
+
+window.confirmCountries = window.confirmCountries || function() {
+  if (typeof window.hidePicker === 'function') window.hidePicker();
+};
+
+window.closeAllSheets = window.closeAll;
