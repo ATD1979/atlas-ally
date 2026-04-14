@@ -2,7 +2,10 @@ window.map = L.map('map', {
   center: [20, 10],
   zoom: 2,
   zoomControl: false,
-  attributionControl: false
+  attributionControl: false,
+  worldCopyJump: false,
+  maxBounds: [[-90, -180], [90, 180]],
+  maxBoundsViscosity: 1.0
 });
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
@@ -121,20 +124,15 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('Â
   register();
 })();
 
-/* PATCH: Fix map zoom to fill screen â€” corrected for mobile */
+/* PATCH: Fix map zoom to fill screen */
 (function(){
   function atlasFit(){
     if(typeof window.map === 'undefined') return;
     var w = window.innerWidth;
-    // Zoom so the world fills the screen width exactly once (no repeating)
-    // At zoom 1, one world tile = 512px. At zoom 2 = 1024px etc.
-    // We want: 256 * 2^z = w  =>  z = log2(w/256)
     var z = Math.log2(w / 256);
-    // Clamp: never below 1.8 (prevents repeat), never above 3
     z = Math.max(1.8, Math.min(z, 3));
     window.map.options.zoomSnap = 0.1;
-    window.map.setMinZoom(z); // prevent zooming out past this
-    window.map.setMaxBounds(null);
+    window.map.setMinZoom(z);
     window.map.setView([20, 10], z, {animate: false});
   }
 
