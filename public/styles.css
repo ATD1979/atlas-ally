@@ -24,10 +24,10 @@ html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidde
 .map-badge { z-index: 1000 !important; }
 .map-locate { z-index: 1000 !important; }
 @media (min-width: 768px) {
-  #app { max-width: 430px !important; margin: 0 auto !important; box-shadow: 0 0 40px rgba(0,0,0,0.2); }
-  #hdr { max-width: 430px !important; left: 50% !important; transform: translateX(-50%) !important; right: auto !important; width: 430px !important; }
-  #map-wrap { max-width: 430px !important; left: 50% !important; transform: translateX(-50%) !important; right: auto !important; width: 430px !important; }
-  #main-tab-bar { max-width: 430px !important; left: 50% !important; transform: translateX(-50%) !important; right: auto !important; width: 430px !important; }
+  #app { margin: 0 !important; box-shadow: none !important; }
+  #hdr { left: 0 !important; transform: none !important; right: 0 !important; width: 100% !important; }
+  #map-wrap { left: 0 !important; transform: none !important; right: 0 !important; width: 100% !important; }
+  #main-tab-bar { left: 0 !important; transform: none !important; right: 0 !important; width: 100% !important; }
 }
 .tbi-label { font-size: 13px !important; font-weight: 700 !important; }
 #main-tab-bar { padding: 10px 0 max(14px,env(safe-area-inset-bottom)) !important; }
@@ -379,6 +379,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 /* ── Nav panel */
 #nav-panel{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:300;background:#fff;border-right:1px solid var(--border);transform:translateX(-280px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
 #nav-panel.open{transform:translateX(0);}
+#app.nav-open #nav-panel{transform:translateX(0);}
 .nav-panel-hdr{padding:16px;background:var(--teal);border-bottom:none;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .nav-panel-logo{width:34px;height:34px;background:rgba(255,255,255,0.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 .nav-panel-title{font-size:17px;font-weight:800;color:white;}

@@ -157,7 +157,7 @@ if (document.readyState === 'loading') {
         if (data && data.country_code) {
           if (typeof myCountries !== 'undefined' && !myCountries.includes(data.country_code))
             myCountries.push(data.country_code);
-          setActiveCountry(data.country_code);
+          setActiveCountry(data.country_code, { lat: lat, lng: lng });
           if (typeof toast === 'function')
             toast('📍 ' + ((data.country && data.country.name) ? data.country.name : data.country_code), 'ok');
         }
