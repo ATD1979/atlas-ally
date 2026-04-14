@@ -173,7 +173,7 @@
   </div>
   <div class="nav-body">
     <div class="nav-section-label">Quick Actions</div>
-    <div class="nav-item" onclick="toggleJourney();closeNav()" ontouchstart="">
+    <button class="nav-item" onclick="toggleJourney();closeNav()" type="button">
       <div class="nav-item-icon">🧭</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Journey Mode</div>
@@ -181,7 +181,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openReport();closeNav()" ontouchstart="">
+    <button class="nav-item" onclick="openReport();closeNav()" type="button">
       <div class="nav-item-icon">⚠️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Report Incident</div>
@@ -189,7 +189,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openCheckin();closeNav()" ontouchstart="">
+    <button class="nav-item" onclick="openCheckin();closeNav()" type="button">
       <div class="nav-item-icon">✅</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Safe Check-in</div>
@@ -197,7 +197,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openRouteSheet();closeNav()" ontouchstart="">
+    <button class="nav-item" onclick="openRouteSheet();closeNav()" type="button">
       <div class="nav-item-icon">🗺️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Route Planner</div>
@@ -205,7 +205,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openNavSection('account-panel');closeNav()" ontouchstart="">
+    <button class="nav-item" onclick="openNavSection('account-panel');closeNav()" type="button">
       <div class="nav-item-icon">⚙️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">App Settings</div>
@@ -688,7 +688,8 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  // DOM is already ready (script is at bottom of body) — run immediately
+  (function() {
     // Wire map overlay buttons explicitly (Android pointer-events fix)
     var mapBtns = [
       { id: 'heatmap-toggle', fn: function(){ window.toggleHeatmap && window.toggleHeatmap(); } },
@@ -716,7 +717,7 @@
     document.querySelectorAll('.ftab').forEach(function(btn){
       btn.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(btn); });
     });
-  });
+  })();
 })();
 </script>
 
