@@ -38,13 +38,11 @@
 
       if (tabName === 'map') {
         if (mapWrap) mapWrap.classList.remove('map-hidden');
-        if (drawer)  drawer.style.display = 'none';
+        if (drawer) drawer.style.display = 'none';
+        closeAllPanels();
       } else {
         if (mapWrap) mapWrap.classList.add('map-hidden');
-        if (drawer) {
-          drawer.style.display = 'flex';
-          drawer.style.flexDirection = 'column';
-        }
+        if (drawer) drawer.style.display = 'none';
         var panelMap = {
           feed:      'feed-panel',
           pack:      'pack-panel',
