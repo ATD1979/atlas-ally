@@ -64,9 +64,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 
 /* ── Header ── */
 #hdr{background:var(--teal);padding:0 14px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;box-shadow:0 2px 12px rgba(14,116,144,0.25);transition:margin-left .3s ease;}
-#app.nav-open #hdr{margin-left:280px;}
-#app.nav-open #map-wrap{margin-left:280px;}
-#app.nav-open .travel-drawer{left:280px;}
+/* nav overlays instead of pushing */
 .logo{display:flex;align-items:center;gap:8px;cursor:pointer;}
 .logo-mark{width:28px;height:28px;background:rgba(255,255,255,0.2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;}
 .logo-name{font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;color:white;letter-spacing:-0.2px;}
@@ -377,7 +375,7 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 .cpconfirm:disabled{opacity:.4;}
 
 /* ── Nav panel */
-#nav-panel{position:fixed;left:0;top:0;bottom:0;width:320px;z-index:300;background:#fff;border-right:1px solid var(--border);transform:translateX(-320px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
+#nav-panel{position:fixed;left:0;top:0;bottom:0;width:320px;z-index:99998;background:#fff;border-right:1px solid var(--border);transform:translateX(-320px);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
 #nav-panel.open{transform:translateX(0);}
 #app.nav-open #nav-panel{transform:translateX(0);}
 #app.nav-open #nav-backdrop{opacity:1;pointer-events:auto;}
@@ -487,3 +485,6 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 
 #map-wrap.map-hidden { z-index: -1 !important; pointer-events: none !important; visibility: hidden !important; }
 .panel.open { z-index: 99998 !important; transform: translateY(0) !important; display:flex !important; }
+
+#nav-backdrop{position:fixed;inset:0;z-index:99997;background:rgba(0,0,0,0.4);opacity:0;pointer-events:none;transition:opacity .3s;}
+#app.nav-open #nav-backdrop{opacity:1;pointer-events:auto;}

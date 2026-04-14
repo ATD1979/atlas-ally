@@ -106,8 +106,27 @@
     if (pos && pos.lat && pos.lng) {
       window.activeCountryPos = { lat: pos.lat, lng: pos.lng };
     }
-    var badge = document.getElementById('badge-name');
-    if (badge) badge.textContent = code || 'Select country';
+
+    // Find country data for flag and name
+    var countryData = (window.allCountries || []).find(function(c){ return c.code === code; });
+    var flag = countryData ? countryData.flag : '🌍';
+    var name = countryData ? countryData.name : code;
+
+    // Update map badge
+    var badgeFlag = document.getElementById('badge-flag');
+    var badgeName = document.getElementById('badge-name');
+    var badgeAdv  = document.getElementById('badge-adv');
+    if (badgeFlag) badgeFlag.textContent = flag;
+    if (badgeName) badgeName.textContent = name;
+    if (badgeAdv && countryData) badgeAdv.textContent = countryData.advisoryLabel || '';
+
+    // Update header country button
+    var hdrFlag    = document.getElementById('hdr-flag');
+    var hdrCountry = document.getElementById('hdr-country');
+    if (hdrFlag)    hdrFlag.textContent    = flag;
+    if (hdrCountry) hdrCountry.textContent = code;
+
+    // Place marker on map
     if (typeof window.map !== 'undefined' && pos && pos.lat && pos.lng) {
       if (window.activeCountryMarker) {
         window.map.removeLayer(window.activeCountryMarker);
@@ -120,7 +139,7 @@
           iconAnchor: [9, 9]
         })
       }).addTo(window.map);
-      window.map.setView([pos.lat, pos.lng], Math.max(window.map.getZoom(), 4));
+      window.map.setView([pos.lat, pos.lng], Math.max(window.map.getZoom(), 5));
     }
     return code;
   }
