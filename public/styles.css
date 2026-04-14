@@ -6,7 +6,7 @@ html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidde
 #map-wrap { pointer-events: none !important; }
 .leaflet-container { pointer-events: auto !important; }
 #main-tab-bar { position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; }
-#main-tab-bar { pointer-events: all !important; z-index: 99999 !important; isolation: isolate; }
+#main-tab-bar { pointer-events: all !important; z-index: 999999 !important; isolation: isolate; }
 #main-tab-bar * { pointer-events: all !important; }
 #hdr { pointer-events: all !important; z-index: 99999 !important; isolation: isolate; }
 #hdr * { pointer-events: all !important; }

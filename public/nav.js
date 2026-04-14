@@ -83,7 +83,7 @@
     /* ── Wire tabs ── */
     var tabNames = ['map','feed','pack','countries','account'];
     tabs.forEach(function(btn, i){
-      btn.removeAttribute('onclick');
+      // onclick attributes are already set in HTML — just add listeners as a backup
       btn.addEventListener('click', function(e){
         e.stopPropagation();
         switchTab(tabNames[i]);
