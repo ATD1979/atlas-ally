@@ -15,7 +15,7 @@ html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidde
 #nav-panel { pointer-events: all !important; z-index: 99999 !important; }
 .leaflet-control-zoom { margin-bottom: 80px !important; }
 .leaflet-bottom { bottom: 62px !important; }
-.tbi-icon { font-size: 32px !important; }
+.tbi-icon { font-size: 32px !important; display:flex; align-items:center; justify-content:center; color:var(--subtle); } .tbi-icon.on { color:var(--teal); }
 .leaflet-bottom { bottom: 62px !important; }
 .leaflet-control-zoom { margin-bottom: 10px !important; }
 #heatmap-toggle { z-index: 1000 !important; }
@@ -123,8 +123,8 @@ html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;}
 .travel-drawer{display:none;}
 
 /* ── Section panels (topbar style) ── */
-.panel{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none;}
-.panel.open{transform:translateY(0);pointer-events:all;}
+.panel{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;background:var(--bg);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+.panel.open{transform:translateY(0);pointer-events:all;z-index:9000;}
 .phdr{background:var(--teal);padding:0 14px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .ptitle{font-size:16px;font-weight:700;color:white;}
 .pclose{width:28px;height:28px;border:1px solid rgba(255,255,255,0.25);border-radius:5px;background:rgba(255,255,255,0.15);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
