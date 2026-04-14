@@ -12,7 +12,7 @@
     return '#E83B3B';
   }
 
-  function showTempOverlay(lat, lng, temp){
+  window.showTempOverlay = function(lat, lng, temp){
     if(typeof window.map === 'undefined') return;
     if(tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
     if(tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
@@ -32,7 +32,7 @@
         iconAnchor: [30, 0]
       })
     }).addTo(map);
-  }
+  };
 
   function waitForMap(){
     if(typeof window.map === 'undefined') return setTimeout(waitForMap, 500);
@@ -44,7 +44,7 @@
         .then(function(d){
           var temp = d && d.temp !== undefined ? d.temp : d && d.temperature;
           if(temp === undefined || temp === null) return;
-          showTempOverlay(lat, lng, temp);
+          window.showTempOverlay(lat, lng, temp);
         })
         .catch(function(){});
     });
@@ -68,7 +68,7 @@ function handleFlameBtn(){
         fetch('/api/weather/point?lat='+lat+'&lng='+lng)
           .then(function(r){ return r.json(); })
           .then(function(d){
-            if(d.temp !== undefined) showTempOverlay(lat, lng, d.temp);
+            if(d.temp !== undefined) window.showTempOverlay(lat, lng, d.temp);
           }).catch(function(){});
       });
     }
@@ -79,8 +79,8 @@ function handleFlameBtn(){
     clearInterval(_tempGpsInterval);
     document.getElementById('heatmap-toggle').style.background = 'rgba(255,255,255,0.97)';
     document.getElementById('heatmap-toggle').style.color = '';
-    if(tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
-    if(tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
+    if(typeof window.map !== 'undefined' && tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
+    if(typeof window.map !== 'undefined' && tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
   }
 }
 
