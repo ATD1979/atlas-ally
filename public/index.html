@@ -139,23 +139,23 @@
   </div>
   <!-- ── Permanent bottom tab bar ── -->
   <nav id="main-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;border-top:1px solid #E5EAEF;display:flex;justify-content:space-around;padding:6px 0 max(10px,env(safe-area-inset-bottom));box-shadow:0 -2px 12px rgba(0,0,0,0.06);">
-    <button onclick="drawerNav('map',this)" class="main-tab active" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
+    <button class="main-tab active" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon on">🗺️</div>
       <div class="tbi-label on">Map</div>
     </button>
-    <button onclick="drawerNav('feed',this)" class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
+    <button class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon">📡</div>
       <div class="tbi-label">Feed</div>
     </button>
-    <button onclick="drawerNav('checklists',this)" class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
+    <button class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon">🎒</div>
       <div class="tbi-label">Pack</div>
     </button>
-    <button onclick="drawerNav('countries',this)" class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
+    <button class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon">🌍</div>
       <div class="tbi-label">World</div>
     </button>
-    <button onclick="drawerNav('account',this)" class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
+    <button class="main-tab" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 0;outline:none;">
       <div class="tbi-icon">👤</div>
       <div class="tbi-label">Account</div>
     </button>
@@ -173,88 +173,44 @@
     <button class="nav-close-btn" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closeNav()">✕</button>
   </div>
   <div class="nav-body">
-    <div class="nav-section-label">Monitoring</div>
-    <div class="nav-item active" onclick="closeNav()">
-      <div class="nav-item-icon">🗺️</div>
+    <div class="nav-section-label">Quick Actions</div>
+    <div class="nav-item" onclick="toggleJourney();closeNav()">
+      <div class="nav-item-icon">🧭</div>
       <div class="nav-item-text">
-        <div class="nav-item-title">Live Map</div>
-        <div class="nav-item-desc">Real-time incident map with GPS tracking</div>
+        <div class="nav-item-title">Journey Mode</div>
+        <div class="nav-item-desc">Track your route and alert contacts in danger zones</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openNavSection('feed-panel')">
-      <div class="nav-item-icon">📡</div>
+    <div class="nav-item" onclick="openReport();closeNav()">
+      <div class="nav-item-icon">⚠️</div>
       <div class="nav-item-text">
-        <div class="nav-item-title">Live Feed</div>
-        <div class="nav-item-desc">Latest alerts and incidents by country</div>
+        <div class="nav-item-title">Report Incident</div>
+        <div class="nav-item-desc">Submit an alert from anywhere</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="openNavSection('countries-panel')">
-      <div class="nav-item-icon">🌍</div>
-      <div class="nav-item-text">
-        <div class="nav-item-title">My Countries</div>
-        <div class="nav-item-desc">Manage countries you are monitoring</div>
-      </div>
-      <div class="nav-item-arrow">›</div>
-    </div>
-    <div class="nav-item" onclick="showCountryPicker();closeNav()">
-      <div class="nav-item-icon">➕</div>
-      <div class="nav-item-text">
-        <div class="nav-item-title">Add Country</div>
-        <div class="nav-item-desc">Monitor a new country or region</div>
-      </div>
-      <div class="nav-item-arrow">›</div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-section-label">Travel Tools</div>
-    <div class="nav-item" onclick="openNavSection('checklists-panel')">
+    <div class="nav-item" onclick="openCheckin();closeNav()">
       <div class="nav-item-icon">✅</div>
       <div class="nav-item-text">
-        <div class="nav-item-title">Travel Checklists</div>
-        <div class="nav-item-desc">Pre-departure, go-bag, family, business</div>
+        <div class="nav-item-title">Safe Check-in</div>
+        <div class="nav-item-desc">Tell your circle you're safe</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
     <div class="nav-item" onclick="openRouteSheet();closeNav()">
-      <div class="nav-item-icon">🛣️</div>
+      <div class="nav-item-icon">🗺️</div>
       <div class="nav-item-text">
-        <div class="nav-item-title">Safe Route Planner</div>
-        <div class="nav-item-desc">Plan routes avoiding high-risk areas</div>
+        <div class="nav-item-title">Route Planner</div>
+        <div class="nav-item-desc">Find safer routes on the map</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
-    <div class="nav-item" onclick="toggleHeatmap();closeNav()">
-      <div class="nav-item-icon">🔥</div>
+    <div class="nav-item" onclick="openNavSection('account-panel');closeNav()">
+      <div class="nav-item-icon">⚙️</div>
       <div class="nav-item-text">
-        <div class="nav-item-title">Risk Heatmap</div>
-        <div class="nav-item-desc">Visualize crime and danger zones on map</div>
-      </div>
-      <div class="nav-item-arrow">›</div>
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-section-label">Account</div>
-    <div class="nav-item" onclick="openNavSection('account-panel')">
-      <div class="nav-item-icon">👤</div>
-      <div class="nav-item-text">
-        <div class="nav-item-title">My Account</div>
-        <div class="nav-item-desc">Subscription, WhatsApp alerts, contacts</div>
-      </div>
-      <div class="nav-item-arrow">›</div>
-    </div>
-    <div class="nav-item" onclick="window.open('/landing','_blank');closeNav()">
-      <div class="nav-item-icon">⭐</div>
-      <div class="nav-item-text">
-        <div class="nav-item-title">Upgrade to Premium</div>
-        <div class="nav-item-desc">From $3/month · Family plan $8/month</div>
-      </div>
-      <div class="nav-item-arrow">›</div>
-    </div>
-    <div class="nav-item" onclick="openFeedback();closeNav()">
-      <div class="nav-item-icon">📋</div>
-      <div class="nav-item-text">
-        <div class="nav-item-title">Share Feedback</div>
-        <div class="nav-item-desc">Rate the app and suggest improvements</div>
+        <div class="nav-item-title">App Settings</div>
+        <div class="nav-item-desc">Manage your account and offline maps</div>
       </div>
       <div class="nav-item-arrow">›</div>
     </div>
@@ -470,7 +426,7 @@
     <button class="ftab" id="tab-crime" onclick="switchFeedTab('crime')">🔴 Crime</button>
   </div>
   <div class="feed-meta">
-    <span>🌍 Global</span>
+    <span id="feed-context">🌍 Global</span>
     <span class="feed-meta-live">● LIVE</span>
   </div>
   <div class="pbody" style="flex:1;overflow-y:auto;padding:0;">
@@ -479,25 +435,35 @@
     <div class="feed-tab-pane" id="pane-crime"><div id="feed-crime-body" style="padding-bottom:20px;"></div></div>
   </div>
 </div>
-<!-- Checklists Panel -->
-<div id="checklists-panel" class="panel">
-  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">Travel Checklists</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('checklists-panel')">✕</button></div>
-  <div class="pbody">
-    <div class="sec" style="border-top:1px solid var(--db);">
-      <div class="sec-title">Offline Country Briefs</div>
-      <div style="font-size:12px;color:var(--dm);margin-bottom:11px;font-family:var(--mono);line-height:1.5;">Download a full country brief to your device. Works without internet while traveling.</div>
-      <div id="offline-list"></div>
+<!-- Pack Assistant Panel -->
+<div id="pack-panel" class="panel">
+  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">Pack Assistant</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('pack-panel')">✕</button></div>
+  <div class="pbody" style="padding:18px;">
+    <div style="font-size:20px;font-weight:800;line-height:1.2;">🎒 Pack Assistant</div>
+    <div style="margin-top:10px;font-size:14px;color:var(--dm);line-height:1.6;">AI-powered packing lists coming soon. For now, use this quick starter guide to prepare for your trip.</div>
+    <div style="margin-top:20px;display:grid;gap:12px;">
+      <div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.08);">Passport, travel documents, visas</div>
+      <div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.08);">Phone charger, power adapter, backup battery</div>
+      <div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.08);">Medication, first-aid, masks, hand sanitizer</div>
+      <div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.08);">Weather layers, rain gear, comfortable shoes</div>
     </div>
+    <div style="margin-top:24px;font-size:13px;color:var(--dm);line-height:1.6;">This panel is the foundation for future AI packing assistance. Next up: adaptive lists based on destination safety, weather, and trip duration.</div>
   </div>
 </div>
 
 <!-- Countries Panel -->
 <div id="countries-panel" class="panel">
-  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">My Countries</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('countries-panel')">✕</button></div>
+  <div class="phdr" style="background:var(--teal);border-color:transparent;"><div class="ptitle" style="color:#fff;font-family:'Syne',sans-serif;">World Browser</div><button class="pclose" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.25);color:white;" onclick="closePanel('countries-panel')">✕</button></div>
   <div class="pbody">
-    <div id="countries-body"></div>
-    <div style="padding:14px;">
-      <button onclick="showPicker()" style="width:100%;background:var(--dk3);color:var(--dt);border:1px solid var(--db2);border-radius:9px;padding:12px;font-family:var(--display);font-size:14px;font-weight:600;cursor:pointer;">+ Add Country</button>
+    <div style="padding:16px;">
+      <div style="font-size:17px;font-weight:800;">Country Browser</div>
+      <div style="margin-top:8px;font-size:13px;color:var(--dm);line-height:1.6;">Search all countries, compare safety scores, and pin the places you're watching.</div>
+      <input id="world-search" placeholder="Search countries…" oninput="filterCountries(this.value)" style="width:100%;margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--bg);font-size:14px;color:var(--text);outline:none;" autocomplete="off">
+    </div>
+    <div id="pinned-countries" style="padding:0 16px 12px;display:grid;gap:10px;"></div>
+    <div id="country-browser" style="padding:0 16px 12px;display:grid;gap:12px;"></div>
+    <div style="padding:0 16px 14px;">
+      <button onclick="showPicker()" style="width:100%;background:var(--dk3);color:var(--dt);border:1px solid var(--db2);border-radius:12px;padding:12px;font-family:var(--display);font-size:14px;font-weight:600;cursor:pointer;">+ Add country to watchlist</button>
     </div>
   </div>
 </div>
@@ -719,7 +685,7 @@
   var drawer = document.getElementById('content-drawer');
   var mapWrap = document.getElementById('map-wrap');
 
-  function activateTab(btn, section) {
+  function activateTab(btn) {
     tabs.forEach(function(t){
       var icon = t.querySelector('.tbi-icon');
       var lbl  = t.querySelector('.tbi-label');
@@ -732,14 +698,6 @@
     if(icon) icon.classList.add('on');
     if(lbl)  lbl.classList.add('on');
     btn.classList.add('active');
-
-    if(section === 'map'){
-      if(mapWrap) mapWrap.style.display = 'block';
-      if(drawer)  drawer.style.display  = 'none';
-    } else {
-      if(mapWrap) mapWrap.style.display = 'none';
-      if(drawer)  drawer.style.display  = 'flex';
-    }
   }
 
   function closeAllPanels() {
@@ -752,24 +710,237 @@
     if (panel) panel.classList.add('open');
   }
 
-  function closePanel(id) {
-    var panel = document.getElementById(id);
-    if (panel) panel.classList.remove('open');
+  function switchTab(tabName) {
+    // Hide all panels first
+    closeAllPanels();
+    
+    // Update tab styling
+    var tabButtons = {
+      'map': tabs[0],
+      'feed': tabs[1], 
+      'pack': tabs[2],
+      'countries': tabs[3],
+      'account': tabs[4]
+    };
+    var btn = tabButtons[tabName];
+    if (btn) activateTab(btn);
+    
+    // Show/hide map vs drawer
+    if (tabName === 'map') {
+      if (mapWrap) mapWrap.style.display = 'block';
+      if (drawer) drawer.style.display = 'none';
+    } else {
+      if (mapWrap) mapWrap.style.display = 'none';
+      if (drawer) drawer.style.display = 'flex';
+      
+      // Open the specific panel
+      var panelMap = {
+        'feed': 'feed-panel',
+        'pack': 'pack-panel', 
+        'countries': 'countries-panel',
+        'account': 'account-panel'
+      };
+      if (panelMap[tabName]) {
+        openPanel(panelMap[tabName]);
+      }
+      
+      // Special handling for feed
+      if (tabName === 'feed' && typeof refreshFeedPanel === 'function') {
+        refreshFeedPanel();
+      }
+    }
   }
 
-  function openSectionPanel(section) {
-    var map = { feed: 'feed-panel', checklists: 'checklists-panel', countries: 'countries-panel', account: 'account-panel' };
-    if (map[section]) openPanel(map[section]);
+  // Single click handler for all tabs
+  tabs.forEach(function(btn, index){
+    btn.addEventListener('click', function(){
+      var tabNames = ['map', 'feed', 'pack', 'countries', 'account'];
+      switchTab(tabNames[index]);
+    });
+  });
+
+  function getFeedLocation() {
+    if (window.activeCountryPos) return window.activeCountryPos;
+    if (typeof currentLat !== 'undefined' && typeof currentLng !== 'undefined') return { lat: currentLat, lng: currentLng };
+    if (window.map && typeof window.map.getCenter === 'function') {
+      var c = window.map.getCenter();
+      return { lat: c.lat, lng: c.lng };
+    }
+    return null;
   }
+
+  function renderCountryBrowser(list) {
+    list = list || window.allCountries || [];
+    var pinned = document.getElementById('pinned-countries');
+    var browser = document.getElementById('country-browser');
+    if (pinned) {
+      var pinnedList = (window.pinnedCountries || []).map(function(code) {
+        return list.find(function(country){ return country.code === code; });
+      }).filter(Boolean);
+      pinned.innerHTML = pinnedList.length ? '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--dm);">Pinned countries</div>' + pinnedList.map(function(country){
+        var active = (window.activeCountry === country.code);
+        return '<div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.06);display:flex;justify-content:space-between;align-items:center;gap:14px;">' +
+               '<div><div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+               '<div style="font-size:12px;color:var(--dm);margin-top:5px;">' + country.advisoryLabel + ' · ' + country.capital + '</div></div>' +
+               '<button onclick="togglePinnedCountry(\'' + country.code + '\')" style="border:none;padding:8px 12px;border-radius:12px;background:' + (active ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (active ? '#fff' : 'var(--text)') + ';cursor:pointer;font-size:13px;">' + (active ? 'Selected' : 'Remove') + '</button>' +
+               '</div>';
+      }).join('') : '<div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.05);color:var(--dm);font-size:13px;">No pinned countries yet. Use the browser or add a country to start monitoring.</div>';
+    }
+    if (browser) {
+      browser.innerHTML = list.length ? list.map(function(country){
+        var pinned = (window.pinnedCountries || []).includes(country.code);
+        return '<div style="padding:14px;border-radius:16px;background:rgba(255,255,255,0.95);border:1px solid var(--border);display:grid;gap:10px;">' +
+               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+               '<div><div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+               '<div style="font-size:12px;color:var(--dm);margin-top:4px;">' + country.advisoryLabel + ' | ' + country.capital + '</div></div>' +
+               '<button onclick="togglePinnedCountry(\'' + country.code + '\')" style="border:none;padding:8px 12px;border-radius:12px;background:' + (pinned ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (pinned ? '#fff' : 'var(--text)') + ';cursor:pointer;font-size:13px;">' + (pinned ? 'Unpin' : 'Pin') + '</button>' +
+               '</div>' +
+               '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);">' +
+               '<span>Score ' + country.advisoryEmoji + ' ' + country.advisoryLabel + '</span>' +
+               '<span>' + country.language + '</span>' +
+               '<span>' + country.currency + '</span>' +
+               '</div>' +
+               '</div>';
+      }).join('') : '<div style="padding:18px;color:var(--muted);font-size:14px;text-align:center;">No countries found. Try a different search term.</div>';
+    }
+  }
+
+  function renderPickerList(list) {
+    list = list || window.allCountries || [];
+    var picker = document.getElementById('cplist');
+    if (!picker) return;
+    picker.innerHTML = list.length ? list.map(function(country){
+      var pinned = (window.pinnedCountries || []).includes(country.code);
+      return '<div class="ccard" data-code="' + country.code + '" style="padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;">' +
+             '<div>' +
+             '<div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+             '<div style="font-size:12px;color:var(--dm);margin-top:4px;">' + country.advisoryLabel + ' · ' + country.capital + '</div>' +
+             '</div>' +
+             '<button style="border:none;padding:8px 10px;border-radius:12px;background:' + (pinned ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (pinned ? '#fff' : 'var(--text)') + ';font-size:13px;">' + (pinned ? 'Pinned' : 'Pin') + '</button>' +
+             '</div>';
+    }).join('') : '<div style="padding:18px;color:var(--muted);font-size:14px;text-align:center;">Search for a country by name or code.</div>';
+  }
+
+  function savePinnedCountries() {
+    try { localStorage.setItem('atlas_pinned_countries', JSON.stringify(window.pinnedCountries || [])); } catch(e) {}
+    renderCountryBrowser();
+    renderPickerList();
+  }
+
+  function togglePinnedCountry(code) {
+    window.pinnedCountries = window.pinnedCountries || [];
+    var wasPinned = window.pinnedCountries.includes(code);
+    if (wasPinned) {
+      window.pinnedCountries = window.pinnedCountries.filter(function(item){ return item !== code; });
+    } else {
+      window.pinnedCountries.push(code);
+    }
+    savePinnedCountries();
+    if (!wasPinned && typeof setActiveCountry === 'function') {
+      var country = (window.allCountries || []).find(function(c){ return c.code === code; });
+      if (country && Array.isArray(country.center) && country.center.length === 2) {
+        setActiveCountry(code, { lat: country.center[0], lng: country.center[1] });
+      } else {
+        setActiveCountry(code, window.activeCountryPos || getFeedLocation());
+  }
+
+  function filterCountries(query) {
+    query = String(query || '').trim().toLowerCase();
+    if (!window.allCountries || !window.allCountries.length) return;
+    var filtered = window.allCountries.filter(function(country) {
+      return country.name.toLowerCase().indexOf(query) >= 0 || country.code.toLowerCase().indexOf(query) >= 0 || country.capital.toLowerCase().indexOf(query) >= 0;
+    });
+    renderCountryBrowser(filtered);
+    renderPickerList(filtered);
+  }
+
+  function loadCountries() {
+    if (window.allCountries && window.allCountries.length) {
+      renderCountryBrowser();
+      renderPickerList();
+      return;
+    }
+    fetch('/api/countries').then(function(r){ return r.json(); }).then(function(data){
+      window.allCountries = Array.isArray(data) ? data : [];
+      renderCountryBrowser();
+      renderPickerList();
+    }).catch(function(){
+      window.allCountries = window.allCountries || [];
+      renderCountryBrowser();
+      renderPickerList();
+    });
+  }
+
+  function makeFeedCard(title, description) {
+    return '<div style="padding:14px;border-radius:16px;border:1px solid var(--border);background:rgba(255,255,255,0.95);margin-bottom:12px;"><div style="font-size:15px;font-weight:700;margin-bottom:6px;">' + title + '</div><div style="font-size:13px;color:var(--dm);line-height:1.5;">' + description + '</div></div>';
+  }
+
+  function switchFeedTab(tab) {
+    document.querySelectorAll('.ftab').forEach(function(btn){
+      btn.classList.toggle('active', btn.id === 'tab-' + tab);
+    });
+    document.querySelectorAll('.feed-tab-pane').forEach(function(pane){
+      pane.classList.toggle('active', pane.id === 'pane-' + tab);
+    });
+    refreshFeedPanel();
+  }
+
+  function refreshFeedPanel() {
+    var ctx = document.getElementById('feed-context');
+    var newsBody = document.getElementById('feed-news-body');
+    var eventsBody = document.getElementById('feed-events-body');
+    var crimeBody = document.getElementById('feed-crime-body');
+    var loc = getFeedLocation();
+    var country = window.activeCountry || (typeof currentCountry !== 'undefined' ? currentCountry : null);
+    if (ctx) {
+      if (country) ctx.textContent = 'Monitoring ' + country + ' · 300km radius';
+      else if (loc) ctx.textContent = 'Current location: ' + loc.lat.toFixed(2) + ', ' + loc.lng.toFixed(2);
+      else ctx.textContent = 'No location or country selected yet.';
+    }
+    if (newsBody) newsBody.innerHTML = makeFeedCard('News', country ? 'Latest safety news around ' + country + '.' : 'Select a country or drop a pin to see location-based news.');
+    if (eventsBody) eventsBody.innerHTML = makeFeedCard('Danger Alerts', 'Recent threats and incidents within a 300 km radius of your current pin or GPS position.');
+    if (crimeBody) crimeBody.innerHTML = makeFeedCard('Crime Stats', 'Local crime and safety trends based on nearby data and historical patterns.');
+    if (country) {
+      fetch('/api/events?country_code=' + country).then(function(r){ return r.json(); }).then(function(events){
+        if (!events || !events.length) {
+          eventsBody.innerHTML = '<div style="padding:18px;color:var(--muted);text-align:center;">No recent alerts for this country.</div>';
+          return;
+        }
+        eventsBody.innerHTML = events.slice(0,6).map(function(ev){
+          return '<div style="padding:12px;margin-bottom:10px;border-radius:14px;background:rgba(14,116,144,0.06);">' +
+                 '<div style="font-size:14px;font-weight:700;">' + (ev.title || 'Alert') + '</div>' +
+                 '<div style="font-size:12px;color:var(--dm);margin-top:4px;">' + (ev.location || ev.source || 'Location unknown') + '</div>' +
+                 '<div style="margin-top:8px;font-size:13px;color:var(--text);">' + (ev.description ? ev.description.slice(0,140) : 'No details provided.') + '</div>' +
+                 '</div>';
+        }).join('');
+      }).catch(function(){ if (eventsBody) eventsBody.innerHTML = '<div style="padding:18px;color:var(--muted);text-align:center;">Unable to load alerts.</div>'; });
+    }
+    if (loc) {
+      fetch('/api/crime/near?lat=' + loc.lat + '&lng=' + loc.lng + '&radius=300').then(function(r){ return r.json(); }).then(function(data){
+        if (!data || !data.global_stats || !data.global_stats.length) {
+          crimeBody.innerHTML = '<div style="padding:18px;color:var(--muted);text-align:center;">No nearby crime data available.</div>';
+          return;
+        }
+        crimeBody.innerHTML = data.global_stats.slice(0,4).map(function(stat){
+          return '<div style="padding:12px;margin-bottom:10px;border-radius:14px;background:rgba(14,116,144,0.05);">' +
+                 '<div style="font-size:14px;font-weight:700;">' + stat.city + '</div>' +
+                 '<div style="font-size:12px;color:var(--dm);margin-top:4px;">Overall safety index: ' + (stat.safety_index || 'n/a') + '</div>' +
+                 '</div>';
+        }).join('') + '<div style="font-size:12px;color:var(--dm);">Showing nearest available crime stats for this radius.</div>';
+      }).catch(function(){ if (crimeBody) crimeBody.innerHTML = '<div style="padding:18px;color:var(--muted);text-align:center;">Unable to load crime stats.</div>'; });
+    }
+  }
+
+  window.filterCountries = window.filterCountries || function(query) { filterCountries(query); };
+  window.switchFeedTab = window.switchFeedTab || function(tab) { switchFeedTab(tab); };
+  window.loadCountries = window.loadCountries || function() { loadCountries(); };
 
   window.openPanel = window.openPanel || openPanel;
   window.closePanel = window.closePanel || closePanel;
   window.openNavSection = window.openNavSection || function(panelId) {
     var section = panelId.replace('-panel', '');
-    var btn = document.querySelector('.main-tab[onclick*="drawerNav(' + section + ')"]');
-    if (typeof window.drawerNav === 'function') window.drawerNav(section, btn);
+    switchTab(section);
     if (typeof closeNav === 'function') closeNav();
-    openPanel(panelId);
   };
   window.toggleNav = window.toggleNav || function() {
     var app = document.getElementById('app');
@@ -807,6 +978,9 @@
   };
   window.setActiveCountry = window.setActiveCountry || function(code, pos) {
     window.activeCountry = code;
+    if (pos && pos.lat && pos.lng) {
+      window.activeCountryPos = { lat: pos.lat, lng: pos.lng };
+    }
     var badge = document.getElementById('badge-name');
     if (badge) badge.textContent = code || 'Select country';
     if (typeof window.map !== 'undefined' && pos && pos.lat && pos.lng) {
@@ -826,43 +1000,15 @@
     return code;
   };
 
-  window.drawerNav = function(section, btn) {
-    if (!btn) {
-      btn = document.querySelector('.main-tab[onclick*="drawerNav(\'" + section + "\')"]');
-    }
-    if (!btn) {
-      btn = tabs[0];
-    }
-    activateTab(btn, section || 'map');
-    if (section === 'map') {
-      closeAllPanels();
-      return;
-    }
-    openSectionPanel(section);
-  };
-
-  tabs.forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var m = (btn.getAttribute('onclick')||'').match(/drawerNav\('([^']+)'/);
-      activateTab(btn, m ? m[1] : 'map');
-    });
+  window.pinnedCountries = window.pinnedCountries || JSON.parse(localStorage.getItem('atlas_pinned_countries') || '[]');
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof loadCountries === 'function') loadCountries();
+    if (typeof switchFeedTab === 'function') switchFeedTab('news');
   });
 })();
 </script>
 
 <script>
-// ── PATCH: Feed tab → Live Feed panel ──
-(function () {
-  var feedBtn = document.querySelector('button[onclick*="drawerNav(\'feed\'"]');
-  if (!feedBtn) return;
-  feedBtn.addEventListener('click', function () {
-    setTimeout(function () {
-      if (typeof openPanel === 'function') openPanel('feed-panel');
-      if (typeof loadFeed === 'function') loadFeed();
-    }, 0);
-  });
-})();
-
 // ── PATCH: GPS-aware incident loading ──
 // Intercepts the obfuscated loadFeedEvents to pass user GPS to /api/events,
 // then re-renders incident cards with a distance badge.
