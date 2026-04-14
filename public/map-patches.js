@@ -1,4 +1,4 @@
-﻿window.map = L.map('map', {
+window.map = L.map('map', {
   center: [20, 10],
   zoom: 2,
   zoomControl: false,
@@ -12,16 +12,11 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('�
 
 /* PATCH: Temperature gradient overlay */
 (function(){
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
-  }
-
   var tempCircle = null;
-  var tempLabel = null;
+  var tempLabel  = null;
 
   function getColor(temp){
-    if(temp <= 0) return '#3B9FE8';
+    if(temp <= 0)  return '#3B9FE8';
     if(temp <= 10) return '#74C0F5';
     if(temp <= 20) return '#90D4A0';
     if(temp <= 30) return '#F5C842';
@@ -31,132 +26,82 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('�
 
   window.showTempOverlay = function(lat, lng, temp){
     if(typeof window.map === 'undefined') return;
-    if(tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
-    if(tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
+    if(tempCircle){ window.map.removeLayer(tempCircle); tempCircle = null; }
+    if(tempLabel){  window.map.removeLayer(tempLabel);  tempLabel  = null; }
     var color = getColor(temp);
     tempCircle = L.circle([lat, lng], {
       radius: 150000,
-      color: color,
-      fillColor: color,
-      fillOpacity: 0.15,
-      weight: 2,
-      opacity: 0.6
-    }).addTo(map);
+      color: color, fillColor: color, fillOpacity: 0.15, weight: 2, opacity: 0.6
+    }).addTo(window.map);
     tempLabel = L.marker([lat, lng], {
       icon: L.divIcon({
         className: '',
         html: '<div style="background:'+color+';color:#fff;font-family:monospace;font-size:13px;font-weight:700;padding:4px 8px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.2);">'+Math.round(temp)+'°C</div>',
         iconAnchor: [30, 0]
       })
-    }).addTo(map);
+    }).addTo(window.map);
   };
 
-  waitForMap(function(){
-    map.on('click', function(e){
-      var lat = e.latlng.lat;
-      var lng = e.latlng.lng;
+  window.map.on('click', function(e){
+    var lat = e.latlng.lat;
+    var lng = e.latlng.lng;
+    fetch('/api/weather/point?lat='+lat+'&lng='+lng)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var temp = d && d.temp !== undefined ? d.temp : d && d.temperature;
+        if(temp === undefined || temp === null) return;
+        window.showTempOverlay(lat, lng, temp);
+      })
+      .catch(function(){});
+  });
+})();
+
+/* PATCH: Flame button GPS temp */
+(function(){
+  var _active   = false;
+  var _interval = null;
+
+  function updateGpsTemp(){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
       fetch('/api/weather/point?lat='+lat+'&lng='+lng)
         .then(function(r){ return r.json(); })
-        .then(function(d){
-          var temp = d && d.temp !== undefined ? d.temp : d && d.temperature;
-          if(temp === undefined || temp === null) return;
-          window.showTempOverlay(lat, lng, temp);
-        })
+        .then(function(d){ if(d.temp !== undefined) window.showTempOverlay(lat, lng, d.temp); })
         .catch(function(){});
     });
-  });
-})();
+  }
 
-/* PATCH: Flame button GPS temp + heatmap toggle */
-var _tempGpsActive = false;
-var _tempGpsInterval = null;
-
-function handleFlameBtn(){
-  if(!_tempGpsActive){
-    _tempGpsActive = true;
+  window.handleFlameBtn = function(){
     var btn = document.getElementById('heatmap-toggle');
-    if (btn) { btn.style.background = '#0E7490'; btn.style.color = 'white'; }
-    function updateGpsTemp(){
-      navigator.geolocation.getCurrentPosition(function(pos){
-        var lat = pos.coords.latitude;
-        var lng = pos.coords.longitude;
-        fetch('/api/weather/point?lat='+lat+'&lng='+lng)
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            if(d.temp !== undefined) window.showTempOverlay(lat, lng, d.temp);
-          }).catch(function(){});
-      });
+    if(!_active){
+      _active = true;
+      if(btn){ btn.style.background = '#0E7490'; btn.style.color = 'white'; }
+      updateGpsTemp();
+      _interval = setInterval(updateGpsTemp, 30000);
+    } else {
+      _active = false;
+      clearInterval(_interval);
+      if(btn){ btn.style.background = 'rgba(255,255,255,0.97)'; btn.style.color = ''; }
     }
-    updateGpsTemp();
-    _tempGpsInterval = setInterval(updateGpsTemp, 30000);
+  };
+
+  function bindFlameButton(){
+    var btn = document.getElementById('heatmap-toggle');
+    if(btn){ btn.removeAttribute('onclick'); btn.addEventListener('click', window.handleFlameBtn); }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindFlameButton);
   } else {
-    _tempGpsActive = false;
-    clearInterval(_tempGpsInterval);
-    var btn = document.getElementById('heatmap-toggle');
-    if (btn) { btn.style.background = 'rgba(255,255,255,0.97)'; btn.style.color = ''; }
-    if(typeof window.map !== 'undefined' && tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
-    if(typeof window.map !== 'undefined' && tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
+    bindFlameButton();
   }
-}
-
-function bindFlameButton() {
-  var btn = document.getElementById('heatmap-toggle');
-  if (btn) btn.onclick = handleFlameBtn;
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bindFlameButton);
-} else {
-  bindFlameButton();
-}
-
-/* === PATCH: Ensure a Leaflet base tile layer is present === */
-(function() {
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
-  }
-
-  function hasTileLayer(map) {
-    var found = false;
-    map.eachLayer(function(layer) {
-      if (layer instanceof L.TileLayer) found = true;
-    });
-    return found;
-  }
-
-  function addDefaultTileLayer(map) {
-    if (!map || hasTileLayer(map)) return;
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      detectRetina: true,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-  }
-
-  waitForMap(function() {
-    if (typeof window.map.whenReady === 'function') {
-      window.map.whenReady(function() {
-        addDefaultTileLayer(window.map);
-      });
-    }
-    addDefaultTileLayer(window.map);
-    setTimeout(function() { addDefaultTileLayer(window.map); }, 800);
-    setTimeout(function() { addDefaultTileLayer(window.map); }, 2000);
-  });
 })();
 
-/* === PATCH: Map click to detect country === */
-(function() {
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
-  }
-
-  function registerCountryClick() {
-    if (typeof setActiveCountry === 'undefined') {
-      return setTimeout(registerCountryClick, 300);
-    }
-    map.on('click', async function(e) {
+/* PATCH: Map click to detect country */
+(function(){
+  function register(){
+    if(typeof window.setActiveCountry === 'undefined') return setTimeout(register, 300);
+    window.map.on('click', async function(e){
       var lat = e.latlng.lat, lng = e.latlng.lng;
       try {
         var res = await fetch('/api/detect-country', {
@@ -165,95 +110,59 @@ if (document.readyState === 'loading') {
           body: JSON.stringify({lat: lat, lng: lng})
         });
         var data = await res.json();
-        if (data && data.country_code) {
-          if (typeof myCountries !== 'undefined' && !myCountries.includes(data.country_code))
-            myCountries.push(data.country_code);
-          setActiveCountry(data.country_code, { lat: lat, lng: lng });
-          if (typeof toast === 'function')
+        if(data && data.country_code){
+          window.setActiveCountry(data.country_code, { lat: lat, lng: lng });
+          if(typeof toast === 'function')
             toast('📍 ' + ((data.country && data.country.name) ? data.country.name : data.country_code), 'ok');
         }
-      } catch(err) {}
+      } catch(err){}
     });
   }
-
-  waitForMap(registerCountryClick);
+  register();
 })();
 
-/* === PATCH: Fix map zoom to fill screen === */
-(function() {
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
+/* PATCH: Fix map zoom to fill screen — corrected for mobile */
+(function(){
+  function atlasFit(){
+    if(typeof window.map === 'undefined') return;
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    // Calculate zoom so world fits horizontally
+    var z = Math.log2(w / 256);
+    // On mobile, also factor height so we see the full world map
+    var zh = Math.log2(h / 256) + 0.5;
+    var finalZ = Math.min(z, zh);
+    finalZ = Math.max(1.5, Math.min(finalZ, 3));
+    window.map.options.zoomSnap = 0.1;
+    window.map.setMinZoom(1);
+    window.map.setMaxBounds(null);
+    window.map.setView([20, 10], finalZ, {animate: false});
   }
 
-  waitForMap(function() {
-    var _atlasFit = function() {
-      if (typeof window.map === 'undefined') return;
-      map.options.zoomSnap = 0;
-      map.setMaxBounds(null);
-      map._limitZoom = function(z) { return z; };
-      var w = window.innerWidth;
-      var z = Math.max(1, Math.log2(w / 256));
-      map.setMinZoom(z);
-      map.setView([20, 0], z, {animate: false});
-    };
-    setTimeout(_atlasFit, 600);
-    setTimeout(_atlasFit, 1500);
-    setTimeout(_atlasFit, 3500);
-    window.addEventListener('resize', function() { setTimeout(_atlasFit, 200); });
-  });
+  setTimeout(atlasFit, 300);
+  setTimeout(atlasFit, 1000);
+  setTimeout(atlasFit, 2500);
+  window.addEventListener('resize', function(){ setTimeout(atlasFit, 200); });
 })();
 
-/* === PATCH: Fix map canvas background to match ocean === */
-(function() {
-  function fixBg() {
+/* PATCH: Fix map canvas background */
+(function(){
+  function fixBg(){
     var lc = document.querySelector('.leaflet-container');
-    if (lc) lc.style.background = '#a8d0e0';
+    if(lc) lc.style.background = '#a8d0e0';
     var mapEl = document.getElementById('map');
-    if (mapEl) mapEl.style.background = '#a8d0e0';
+    if(mapEl) mapEl.style.background = '#a8d0e0';
   }
   setTimeout(fixBg, 300);
   setTimeout(fixBg, 1200);
 })();
 
-/* === PATCH: Fix map size === */
+/* PATCH: Invalidate map size after render */
 (function(){
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
+  function fixSize(){
+    if(typeof window.map !== 'undefined') window.map.invalidateSize({reset: true});
   }
-
-  waitForMap(function() {
-    function fixSize(){
-      var mw = document.getElementById('map-wrap');
-      var m = document.getElementById('map');
-      if(!mw || !m) return setTimeout(fixSize, 300);
-      if(typeof window.map !== 'undefined'){
-        window.map.invalidateSize({reset:true});
-      }
-    }
-    setTimeout(fixSize, 800);
-    setTimeout(fixSize, 2000);
-  });
-})();
-
-/* === PATCH: Fix map float and pixelation === */
-(function(){
-  function waitForMap(cb){
-    if(typeof window.map !== 'undefined') return cb();
-    setTimeout(function(){ waitForMap(cb); }, 200);
-  }
-
-  waitForMap(function patchMap(){
-    if(typeof window.map==='undefined'||!window.map._loaded) return setTimeout(patchMap,500);
-    map.options.worldCopyJump=true;
-    map.invalidateSize({reset:true});
-    map.eachLayer(function(l){
-      if(l instanceof L.TileLayer){
-        l.options.maxNativeZoom=19;
-        l.options.detectRetina=true;
-        l.redraw();
-      }
-    });
-  });
+  setTimeout(fixSize, 800);
+  setTimeout(fixSize, 2000);
+  window.addEventListener('resize', function(){ setTimeout(fixSize, 200); });
 })();
