@@ -85,10 +85,49 @@ function handleFlameBtn(){
 }
 
 // Override flame button click
-document.addEventListener('DOMContentLoaded', function(){
+function bindFlameButton() {
   var btn = document.getElementById('heatmap-toggle');
-  if(btn) btn.onclick = handleFlameBtn;
-});
+  if (btn) btn.onclick = handleFlameBtn;
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindFlameButton);
+} else {
+  bindFlameButton();
+}
+
+/* === PATCH: Ensure a Leaflet base tile layer is present === */
+(function() {
+  function hasTileLayer(map) {
+    var found = false;
+    map.eachLayer(function(layer) {
+      if (layer instanceof L.TileLayer) found = true;
+    });
+    return found;
+  }
+
+  function addDefaultTileLayer(map) {
+    if (!map || hasTileLayer(map)) return;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      detectRetina: true,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+  }
+
+  function waitForMapWithTiles() {
+    if (typeof window.map === 'undefined') return setTimeout(waitForMapWithTiles, 500);
+    if (typeof window.map.whenReady === 'function') {
+      window.map.whenReady(function() {
+        addDefaultTileLayer(window.map);
+      });
+    }
+    addDefaultTileLayer(window.map);
+    setTimeout(function() { addDefaultTileLayer(window.map); }, 800);
+    setTimeout(function() { addDefaultTileLayer(window.map); }, 2000);
+  }
+
+  setTimeout(waitForMapWithTiles, 200);
+})();
 
 /* === PATCH: Map click to detect country === */
 (function waitForMap() {
