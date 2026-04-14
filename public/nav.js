@@ -174,6 +174,16 @@
       });
     }
 
+    // Wire tab buttons via addEventListener (backup to onclick attributes in HTML)
+    var tabButtons = document.querySelectorAll('.main-tab');
+    var tabNames2  = ['map', 'feed', 'pack', 'countries', 'account'];
+    tabButtons.forEach(function (btn, i) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        switchTab(tabNames2[i]);
+      });
+    });
+
     document.addEventListener('click', function (e) {
       if (!navPanel || !navPanel.classList.contains('open')) return;
       if (!navPanel.contains(e.target) && e.target !== hamburger) {
