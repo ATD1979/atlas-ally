@@ -1004,6 +1004,19 @@ return [
   window.loadNewsWithGPS = loadNewsWithGPS;
 })();
 </script>
+<script>
+window.map = L.map('map', {
+  center: [20, 10],
+  zoom: 2,
+  zoomControl: false,
+  attributionControl: false
+});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(window.map);
+L.control.zoom({position: 'bottomright'}).addTo(window.map);
+L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('© <a href="https://openstreetmap.org">OSM</a>').addTo(window.map);
+</script>
 <script src="/map-patches.js"></script>
 </body>
 
