@@ -126,17 +126,16 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('Â
   function atlasFit(){
     if(typeof window.map === 'undefined') return;
     var w = window.innerWidth;
-    var h = window.innerHeight;
-    // Calculate zoom so world fits horizontally
+    // Zoom so the world fills the screen width exactly once (no repeating)
+    // At zoom 1, one world tile = 512px. At zoom 2 = 1024px etc.
+    // We want: 256 * 2^z = w  =>  z = log2(w/256)
     var z = Math.log2(w / 256);
-    // On mobile, also factor height so we see the full world map
-    var zh = Math.log2(h / 256) + 0.5;
-    var finalZ = Math.min(z, zh);
-    finalZ = Math.max(1.5, Math.min(finalZ, 3));
+    // Clamp: never below 1.8 (prevents repeat), never above 3
+    z = Math.max(1.8, Math.min(z, 3));
     window.map.options.zoomSnap = 0.1;
-    window.map.setMinZoom(1);
+    window.map.setMinZoom(z); // prevent zooming out past this
     window.map.setMaxBounds(null);
-    window.map.setView([20, 10], finalZ, {animate: false});
+    window.map.setView([20, 10], z, {animate: false});
   }
 
   setTimeout(atlasFit, 300);
