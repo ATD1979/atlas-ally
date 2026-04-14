@@ -29,18 +29,33 @@
         var p = document.getElementById(id);
         if (!p) return;
         p.classList.remove('open');
-        p.style.cssText = ''; // Clear any lingering inline styles — CSS handles hidden state
+        // setProperty with 'important' flag beats ALL external CSS including gallery.css
+        p.style.setProperty('display', 'none', 'important');
       });
     }
 
-    /* ── Show one panel — class only, no inline styles ── */
-    /* NOTE: !important in style.cssText is silently stripped by browsers and doesn't work.
-       The fix is to drive everything through .panel.open in styles.css which CAN use !important. */
+    /* ── Show one panel ── */
+    /* Uses setProperty('display','flex','important') — the only JS API that creates a true
+       !important inline style, beating any external stylesheet including gallery.css */
     function showPanel(id) {
       hideAllPanels();
       var p = document.getElementById(id);
       if (!p) { console.warn('Panel not found:', id); return; }
       p.classList.add('open');
+      // Force visible with !important inline styles — beats everything
+      p.style.setProperty('display',         'flex',    'important');
+      p.style.setProperty('flex-direction',  'column',  'important');
+      p.style.setProperty('position',        'fixed',   'important');
+      p.style.setProperty('top',             '56px',    'important');
+      p.style.setProperty('left',            '0',       'important');
+      p.style.setProperty('right',           '0',       'important');
+      p.style.setProperty('bottom',          '62px',    'important');
+      p.style.setProperty('z-index',         '9000',    'important');
+      p.style.setProperty('background',      '#F8FAFB', 'important');
+      p.style.setProperty('overflow',        'hidden',  'important');
+      p.style.setProperty('pointer-events',  'all',     'important');
+      p.style.setProperty('visibility',      'visible', 'important');
+      p.style.setProperty('transform',       'none',    'important');
     }
 
     /* ── Map show/hide ── */
@@ -118,7 +133,10 @@
     window.openPanel = showPanel;
     window.closePanel = function(id) {
       var p = document.getElementById(id);
-      if (p) { p.classList.remove('open'); p.style.cssText = ''; }
+      if (p) {
+        p.classList.remove('open');
+        p.style.setProperty('display', 'none', 'important');
+      }
     };
     window.closeAllPanels = hideAllPanels;
     window.toggleNav  = function() { if (navPanel) navPanel.classList.toggle('open'); };
