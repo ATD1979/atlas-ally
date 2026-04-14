@@ -114,15 +114,12 @@ a[href] .fi-item:hover {
   /* let the renderer's inline background color show through */
   filter: saturate(3);
 }
-#feed-news-body > div:first-child {
-  display: none !important;
+/* Fixed: was a malformed block that hid news content */
 .fi-ico.fi-red   { background: rgba(239,68,68,0.15)  !important; border-color: rgba(239,68,68,0.4)  !important; }
 .fi-ico.fi-amber { background: rgba(245,158,11,0.15) !important; border-color: rgba(245,158,11,0.4) !important; }
 .fi-ico.fi-green { background: rgba(34,197,94,0.15)  !important; border-color: rgba(34,197,94,0.4)  !important; }
 .fi-ico.fi-blue  { background: rgba(37,99,235,0.15)  !important; border-color: rgba(37,99,235,0.4)  !important; }
 .fi-ico.fi-gray  { background: rgba(148,163,184,0.15)!important; border-color: rgba(148,163,184,0.4)!important; }
-
-}
 
 .fi-title {
   font-family: var(--sans, sans-serif);
