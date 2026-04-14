@@ -1,3 +1,15 @@
+﻿window.map = L.map('map', {
+  center: [20, 10],
+  zoom: 2,
+  zoomControl: false,
+  attributionControl: false
+});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(window.map);
+L.control.zoom({position: 'bottomright'}).addTo(window.map);
+L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('© <a href="https://openstreetmap.org">OSM</a>').addTo(window.map);
+
 /* PATCH: Temperature gradient overlay */
 (function(){
   function waitForMap(cb){
@@ -62,8 +74,8 @@ var _tempGpsInterval = null;
 function handleFlameBtn(){
   if(!_tempGpsActive){
     _tempGpsActive = true;
-    document.getElementById('heatmap-toggle').style.background = '#0E7490';
-    document.getElementById('heatmap-toggle').style.color = 'white';
+    var btn = document.getElementById('heatmap-toggle');
+    if (btn) { btn.style.background = '#0E7490'; btn.style.color = 'white'; }
     function updateGpsTemp(){
       navigator.geolocation.getCurrentPosition(function(pos){
         var lat = pos.coords.latitude;
@@ -80,14 +92,13 @@ function handleFlameBtn(){
   } else {
     _tempGpsActive = false;
     clearInterval(_tempGpsInterval);
-    document.getElementById('heatmap-toggle').style.background = 'rgba(255,255,255,0.97)';
-    document.getElementById('heatmap-toggle').style.color = '';
+    var btn = document.getElementById('heatmap-toggle');
+    if (btn) { btn.style.background = 'rgba(255,255,255,0.97)'; btn.style.color = ''; }
     if(typeof window.map !== 'undefined' && tempCircle){ map.removeLayer(tempCircle); tempCircle = null; }
     if(typeof window.map !== 'undefined' && tempLabel){ map.removeLayer(tempLabel); tempLabel = null; }
   }
 }
 
-// Override flame button click
 function bindFlameButton() {
   var btn = document.getElementById('heatmap-toggle');
   if (btn) btn.onclick = handleFlameBtn;
@@ -166,25 +177,6 @@ if (document.readyState === 'loading') {
   }
 
   waitForMap(registerCountryClick);
-})();
-
-/* === PATCH: Country panel card click to select country === */
-(function waitForPanel() {
-  if (typeof setActiveCountry === 'undefined') return setTimeout(waitForPanel, 500);
-  document.addEventListener('click', function(e) {
-    var card = e.target.closest('[data-code], .ccard, .country-card, .cpcard');
-    if (!card) return;
-    var code = card.dataset.code || card.getAttribute('data-code');
-    if (code && typeof setActiveCountry === 'function') setActiveCountry(code);
-  });
-
-  if (typeof openCountryDetail === 'function') {
-    var _origDetail = openCountryDetail;
-    window.openCountryDetail = function(code) {
-      if (code && typeof setActiveCountry === 'function') setActiveCountry(code);
-      return _origDetail.apply(this, arguments);
-    };
-  }
 })();
 
 /* === PATCH: Fix map zoom to fill screen === */
