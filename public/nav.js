@@ -289,7 +289,7 @@
         // Category breakdown table
         if (cats.length && total > 0) {
           html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
-          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:14px;">3-MONTH BREAKDOWN \u00b7 GDELT</div>';
+          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:14px;">3-MONTH BREAKDOWN \u00b7 NEWS MEDIA</div>';
 
           // Header row
           html += '<div style="display:grid;grid-template-columns:110px 1fr 1fr 1fr 52px;gap:4px;margin-bottom:8px;">';
@@ -326,14 +326,14 @@
             html += '</div></div>';
           });
 
-          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">GDELT Project \u00b7 1 query, local bucketing \u00b7 updated hourly</div>';
+          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">Source: Google News RSS \u00b7 keyword classified \u00b7 refreshed every 30 min</div>';
           html += '</div>';
 
         } else if (total === 0) {
           html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:20px;text-align:center;">';
           html += '<div style="font-size:32px;margin-bottom:8px;">\uD83D\uDCCA</div>';
-          html += '<div style="font-size:14px;font-weight:600;color:'+T.text+';margin-bottom:4px;">No GDELT data returned</div>';
-          html += '<div style="font-size:12px;color:'+T.muted+';">GDELT may be rate-limited. UNODC and World Bank data still shown below.</div>';
+          html += '<div style="font-size:14px;font-weight:600;color:'+T.text+';margin-bottom:4px;">No crime-related news cached yet</div>';
+          html += '<div style="font-size:12px;color:'+T.muted+';">News articles are refreshed every 30 minutes. Check back shortly.</div>';
           html += '</div>';
         }
 

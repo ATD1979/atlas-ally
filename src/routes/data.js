@@ -78,7 +78,7 @@ const COUNTRY_NAMES = {
   ZA:'South Africa',
 };
 
-// ── World Bank (3 confirmed indicators) ──────────────────────────────────────
+// ── World Bank — 3 confirmed indicators ──────────────────────────────────────
 async function fetchWorldBank(code) {
   const indicators = [
     { id:'VC.IHR.PSRC.P5',    label:'Homicide Rate',        unit:'per 100k' },
@@ -88,7 +88,7 @@ async function fetchWorldBank(code) {
   const results = await Promise.all(indicators.map(async ind => {
     try {
       const url  = `https://api.worldbank.org/v2/country/${code}/indicator/${ind.id}?format=json&mrv=3&per_page=3`;
-      const r    = await fetch(url, { timeout: 8000, headers:{'User-Agent':'AtlasAlly/1.0'} });
+      const r    = await fetch(url, { timeout:8000, headers:{'User-Agent':'AtlasAlly/1.0'} });
       if (!r.ok) return { ...ind, value:null, date:null };
       const data = await r.json();
       const rows = Array.isArray(data[1]) ? data[1] : [];
@@ -101,74 +101,40 @@ async function fetchWorldBank(code) {
   return results.some(r => r.value !== null) ? results : null;
 }
 
-// ── GDELT safe fetch — ONE request, local bucketing ──────────────────────────
-// Key insight: one broad query avoids rate limiting entirely.
-// Articles are bucketed into categories by keyword matching their titles.
-async function fetchGDELT(countryName, start, end) {
-  const q   = encodeURIComponent(
-    '"' + countryName + '" (crime OR violence OR attack OR protest OR drug OR arrest OR robbery OR security OR shooting OR bomb)'
-  );
-  const url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + q +
-    '&mode=artlist&maxrecords=250&format=json&startdatetime=' + start + '&enddatetime=' + end;
-  try {
-    const r    = await fetch(url, { timeout: 20000, headers:{'User-Agent':'AtlasAlly/1.0'} });
-    if (!r.ok) { console.warn('GDELT HTTP ' + r.status + ' for ' + countryName); return []; }
-    const text = await r.text();
-    // GDELT returns plain text error pages when rate-limited — must check before parsing
-    if (!text || text.trimStart()[0] !== '{') {
-      console.warn('GDELT non-JSON response for ' + countryName + ': ' + text.slice(0,80));
-      return [];
-    }
-    const data = JSON.parse(text);
-    return Array.isArray(data.articles) ? data.articles : [];
-  } catch(e) {
-    console.warn('GDELT error for ' + countryName + ': ' + e.message);
-    return [];
-  }
-}
-
-// Category keyword sets
-const CATEGORIES = [
+// ── Crime keyword classifier ──────────────────────────────────────────────────
+// Classifies news article titles into crime categories.
+// Uses existing news cache — zero external API calls, no rate limiting.
+const CRIME_CATEGORIES = [
   { key:'violence', label:'Violence & Conflict', icon:'💥',
-    words:['attack','shoot','bomb','explos','kill','wound','airstrike','missile','gun','murder','terror','dead','death'] },
+    words:['attack','shoot','bomb','explos','kill','wound','airstrike','missile','murder','terror','dead','death','war','hostage','military','troops'] },
   { key:'theft',    label:'Theft & Robbery',     icon:'🏪',
     words:['theft','robbery','burgl','stolen','steal','pickpocket','carjack','loot','fraud','scam','heist'] },
   { key:'unrest',   label:'Protests & Unrest',   icon:'✊',
-    words:['protest','riot','demonstrat','unrest','clash','strike','rally','uprising','march','coup'] },
+    words:['protest','riot','demonstrat','unrest','clash','strike','rally','uprising','march','coup','civil unrest'] },
   { key:'drugs',    label:'Drug Crime',           icon:'💊',
     words:['drug','narcotic','traffick','smuggl','cocaine','heroin','cannabis','seizure','cartel'] },
   { key:'security', label:'Security & Safety',   icon:'🚨',
-    words:['arrest','detain','police','criminal','security','crime','sentence','convict','custody','wanted'] },
+    words:['arrest','detain','police','criminal','security','crime','sentence','convict','custody','wanted','suspect'] },
 ];
 
-function classifyArticle(title) {
+function classifyTitle(title) {
   const t = (title || '').toLowerCase();
-  for (const cat of CATEGORIES) {
+  for (const cat of CRIME_CATEGORIES) {
     if (cat.words.some(w => t.includes(w))) return cat.key;
   }
-  return 'security';
+  return null; // not crime-related
 }
 
-function getMonthIndex(dateStr, now) {
-  // GDELT seendate format: YYYYMMDDTHHMMSSZ or ISO
+function articleMonthIndex(dateStr, now) {
   try {
-    let d;
-    if (dateStr && dateStr.length === 16 && !dateStr.includes('-')) {
-      // GDELT format: 20260414T120000Z
-      d = new Date(
-        dateStr.slice(0,4) + '-' + dateStr.slice(4,6) + '-' + dateStr.slice(6,8) +
-        'T' + dateStr.slice(9,11) + ':' + dateStr.slice(11,13) + ':' + dateStr.slice(13,15) + 'Z'
-      );
-    } else {
-      d = new Date(dateStr);
-    }
+    const d = new Date(dateStr);
     if (isNaN(d)) return -1;
     const mDiff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    if (mDiff === 0) return 2;  // this month
-    if (mDiff === 1) return 1;  // last month
-    if (mDiff === 2) return 0;  // 2 months ago
-    return -1;
-  } catch(e) { return -1; }
+    if (mDiff === 0) return 2;
+    if (mDiff === 1) return 1;
+    if (mDiff === 2) return 0;
+  } catch(e) {}
+  return -1;
 }
 
 // ── /crime/trend — MUST be before /crime/:code ────────────────────────────────
@@ -179,11 +145,7 @@ router.get('/crime/trend', async (req, res) => {
   const countryName = COUNTRY_NAMES[code] || code;
   const unodc       = UNODC[code] || null;
   const now         = new Date();
-  const fmt         = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
-  const start90     = fmt(new Date(now - 90 * 24 * 3600 * 1000));
-  const end90       = fmt(now);
 
-  // Month labels oldest → newest
   const monthLabels = [];
   for (let m = 2; m >= 0; m--) {
     const d = new Date(now);
@@ -191,26 +153,29 @@ router.get('/crime/trend', async (req, res) => {
     monthLabels.push(d.toLocaleDateString('en-US', { month:'long' }));
   }
 
-  // Fire GDELT + World Bank in parallel — only 2 external calls total
-  const [articles, worldBank] = await Promise.all([
-    fetchGDELT(countryName, start90, end90),
-    fetchWorldBank(code),
-  ]);
+  // Use existing news cache — already populated by Google News RSS refresh
+  let articles = [];
+  try { articles = db.getNewsByCountry.all(code) || []; } catch(e) {}
+  if (!articles.length) {
+    try { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code).catch(()=>{}); } catch(e) {}
+  }
 
-  // Initialise counts grid: category × 3 months
+  // Filter to last 90 days, classify and bucket
+  const cutoff = new Date(now - 90 * 24 * 3600 * 1000);
   const counts = {};
-  CATEGORIES.forEach(c => { counts[c.key] = [0, 0, 0]; });
+  CRIME_CATEGORIES.forEach(c => { counts[c.key] = [0, 0, 0]; });
+  let crimeCount = 0;
 
-  // Bucket each article
   articles.forEach(article => {
-    const dateStr = article.seendate || article.pubdate || '';
-    const mi      = getMonthIndex(dateStr, now);
-    if (mi < 0) return;
-    const key = classifyArticle(article.title);
-    counts[key][mi]++;
+    const pub = new Date(article.published_at || '');
+    if (isNaN(pub) || pub < cutoff) return;
+    const key = classifyTitle(article.title);
+    if (!key) return;
+    const mi = articleMonthIndex(article.published_at, now);
+    if (mi >= 0) { counts[key][mi]++; crimeCount++; }
   });
 
-  const catResults = CATEGORIES.map(cat => ({
+  const catResults = CRIME_CATEGORIES.map(cat => ({
     key:    cat.key,
     label:  cat.label,
     icon:   cat.icon,
@@ -218,25 +183,26 @@ router.get('/crime/trend', async (req, res) => {
     total:  counts[cat.key].reduce((a, b) => a + b, 0),
   }));
 
-  const grandTotal = articles.length;
-  const maxVal     = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
-  const violence   = catResults.find(c => c.key === 'violence') || catResults[0];
-  const trend      = violence.months[2].count > violence.months[0].count * 1.15 ? 'rising'
-                   : violence.months[2].count < violence.months[0].count * 0.85 ? 'falling'
-                   : 'stable';
+  const maxVal   = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
+  const violence = catResults.find(c => c.key === 'violence') || catResults[0];
+  const trend    = violence.months[2].count > violence.months[0].count * 1.15 ? 'rising'
+                 : violence.months[2].count < violence.months[0].count * 0.85 ? 'falling'
+                 : 'stable';
 
-  const sources = ['GDELT Project'];
+  const worldBank = await fetchWorldBank(code);
+  const sources   = ['Google News (cached)'];
   if (worldBank) sources.push('World Bank');
   if (unodc)     sources.push('UNODC');
 
-  console.log(`Crime trend ${code}: ${grandTotal} articles, WB=${!!worldBank}, UNODC=${!!unodc}`);
+  console.log(`Crime trend ${code}: ${crimeCount}/${articles.length} crime articles, WB=${!!worldBank}`);
 
   return res.json({
     country_code:   code,
     country_name:   countryName,
     categories:     catResults,
     months:         monthLabels,
-    grand_total:    grandTotal,
+    grand_total:    crimeCount,
+    total_articles: articles.length,
     max_val:        maxVal,
     trend,
     unodc_baseline: unodc,
@@ -269,7 +235,7 @@ router.get('/crime/near', (req, res) => {
   res.json({ global_stats, community });
 });
 
-// ── /crime/:code — parameterized, MUST be last ────────────────────────────────
+// ── /crime/:code — MUST be after specific routes ──────────────────────────────
 router.get('/crime/:code', (req, res) => {
   const code = req.params.code.toUpperCase();
   res.json({ global_stats: db.getCrimeStatsByCountry.all(code), community: db.getCommunityCrime.all(code) });
@@ -338,10 +304,17 @@ router.get('/news', (req, res) => {
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
     const center = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
-    items = items.map(a => ({ ...a, distance_km:Math.round(distanceKm(userLat,userLng,a.lat||center.lat,a.lng||center.lng)), has_real_location:!!(a.lat&&a.lng) }));
+    items = items.map(a => ({ ...a,
+      distance_km:       Math.round(distanceKm(userLat,userLng,a.lat||center.lat,a.lng||center.lng)),
+      has_real_location: !!(a.lat&&a.lng),
+    }));
     const nearby = items.filter(a => a.distance_km <= 150);
     items = nearby.length ? nearby : items;
-    items.sort((a,b) => { if(a.has_real_location&&!b.has_real_location)return -1; if(!a.has_real_location&&b.has_real_location)return 1; return a.distance_km-b.distance_km; });
+    items.sort((a,b) => {
+      if (a.has_real_location&&!b.has_real_location) return -1;
+      if (!a.has_real_location&&b.has_real_location) return 1;
+      return a.distance_km - b.distance_km;
+    });
   }
   res.json(items);
 });
@@ -352,13 +325,17 @@ router.get('/events', (req, res) => {
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code   = country_code.toUpperCase();
   const events = db.getEventsByCountry.all(code);
-  if (!events.length) { try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(()=>{}); } catch(e){} }
+  if (!events.length) {
+    try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(()=>{}); } catch(e) {}
+  }
   const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
     const center   = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
-    const enriched = events.map(ev => ({ ...ev, distance_km:Math.round(distanceKm(userLat,userLng,ev.lat||center.lat,ev.lng||center.lng)) }));
-    enriched.sort((a,b) => a.distance_km-b.distance_km);
+    const enriched = events.map(ev => ({
+      ...ev, distance_km:Math.round(distanceKm(userLat,userLng,ev.lat||center.lat,ev.lng||center.lng)),
+    }));
+    enriched.sort((a,b) => a.distance_km - b.distance_km);
     return res.json(enriched);
   }
   res.json(events);
