@@ -621,53 +621,94 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
   const parser  = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
   const gl      = countryCode.toUpperCase();
   const queries = SECURITY_QUERY_SETS[lang] || SECURITY_QUERY_SETS.en;
-  const seen    = new Set();
-  const results = [];
 
-  for (const terms of queries) {
+  // Country name variants for relevance filtering
+  const VARIANTS = {
+    JO:['jordan','amman','zarqa','irbid','aqaba','petra'],
+    UA:['ukraine','kyiv','kharkiv','odessa','mariupol','kherson','zaporizhzhia'],
+    LB:['lebanon','beirut','tripoli','sidon'],
+    SY:['syria','damascus','aleppo','homs','deir ez-zor'],
+    IQ:['iraq','baghdad','mosul','basra','erbil','kirkuk'],
+    IL:['israel','tel aviv','jerusalem','haifa','gaza'],
+    EG:['egypt','cairo','alexandria','sinai'],
+    MX:['mexico','mexico city','guadalajara','monterrey','tijuana','juarez'],
+    CO:['colombia','bogota','medellin','cali','cartagena'],
+    BR:['brazil','rio','sao paulo','brasilia','salvador'],
+    PH:['philippines','manila','davao','cebu','mindanao'],
+    NG:['nigeria','lagos','abuja','kano','maiduguri'],
+    KE:['kenya','nairobi','mombasa','kisumu'],
+    ZA:['south africa','johannesburg','cape town','durban','pretoria'],
+    VE:['venezuela','caracas','maracaibo'],
+    HN:['honduras','tegucigalpa','san pedro sula'],
+    GT:['guatemala','guatemala city'],
+    HT:['haiti','port-au-prince'],
+    AF:['afghanistan','kabul','kandahar','herat'],
+    PK:['pakistan','karachi','lahore','islamabad','peshawar'],
+    MM:['myanmar','yangon','naypyidaw','mandalay'],
+    SD:['sudan','khartoum','darfur','omdurman'],
+    ET:['ethiopia','addis ababa','tigray','amhara'],
+    SO:['somalia','mogadishu','hargeisa'],
+    YE:['yemen','sanaa','aden','hodeidah'],
+  };
+  const variants = [countryName.toLowerCase(), ...(VARIANTS[countryCode] || [])];
+
+  function isRelevant(title) {
+    const t = title.toLowerCase();
+    return variants.some(v => t.includes(v));
+  }
+
+  // Fetch all query sets in parallel — no sequential delays
+  const fetches = queries.map(async terms => {
     const q   = `"${countryName}" (${terms})`;
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
     try {
       const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
-      if (!r.ok) continue;
+      if (!r.ok) return [];
       const xml  = await r.text();
       const data = await parser.parseStringPromise(xml);
-      const items = data?.rss?.channel?.item || [];
-      const arr   = Array.isArray(items) ? items : [items];
+      const raw  = data?.rss?.channel?.item || [];
+      return Array.isArray(raw) ? raw : [raw];
+    } catch { return []; }
+  });
 
-      for (const item of arr.slice(0, 15)) {
-        const rawTitle = String(item.title?._ || item.title || '');
-        const dashIdx  = rawTitle.lastIndexOf(' - ');
-        const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle).replace(/<[^>]*>/g,'').trim();
-        const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
-        const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
-        const linkStr  = String(link).trim();
+  const allItems = (await Promise.all(fetches)).flat();
+  const seen     = new Set();
+  const results  = [];
 
-        if (title.length < 10 || seen.has(linkStr) || seen.has(title.toLowerCase().slice(0,50))) continue;
-        seen.add(linkStr);
-        seen.add(title.toLowerCase().slice(0,50));
+  for (const item of allItems) {
+    const rawTitle = String(item.title?._ || item.title || '');
+    const dashIdx  = rawTitle.lastIndexOf(' - ');
+    const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle).replace(/<[^>]*>/g, '').trim();
+    const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
+    const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+    const linkStr  = String(link).trim();
+    const titleKey = title.toLowerCase().slice(0, 50);
 
-        let published = new Date().toISOString();
-        try { published = new Date(item.pubDate || '').toISOString(); } catch {}
+    if (title.length < 10) continue;
+    if (seen.has(linkStr) || seen.has(titleKey)) continue;
+    if (!isRelevant(title)) continue; // must actually mention the country
 
-        const { type, severity } = classifyGNewsTitle(title);
-        results.push({
-          id:          `gnews-${Buffer.from(linkStr||title).toString('base64').slice(0, 20)}`,
-          country_code: countryCode,
-          type, severity,
-          title:       title.slice(0, 200),
-          description: '',
-          location:    countryName,
-          lat: null, lng: null,
-          source:      source,
-          source_url:  linkStr,
-          created_at:  published,
-          status:      'approved',
-          is_gnews:    true,
-        });
-      }
-    } catch {}
-    await new Promise(r => setTimeout(r, 200));
+    seen.add(linkStr);
+    seen.add(titleKey);
+
+    let published = new Date().toISOString();
+    try { published = new Date(item.pubDate || '').toISOString(); } catch {}
+
+    const { type, severity } = classifyGNewsTitle(title);
+    results.push({
+      id:           `gnews-${Buffer.from(linkStr || title).toString('base64').slice(0, 20)}`,
+      country_code:  countryCode,
+      type, severity,
+      title:         title.slice(0, 200),
+      description:  '',
+      location:      countryName,
+      lat: null, lng: null,
+      source:        source,
+      source_url:    linkStr,
+      created_at:    published,
+      status:       'approved',
+      is_gnews:     true,
+    });
   }
 
   return results;
