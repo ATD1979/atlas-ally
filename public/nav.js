@@ -320,61 +320,139 @@
   }
 
   /* ═══════════════════════════════════════════
-     FEED — ALERTS / INCIDENTS
+     FEED — INCIDENTS DASHBOARD
   ═══════════════════════════════════════════ */
   function loadAlerts(country) {
     var nb = document.getElementById('aa-feed-body');
     if (!nb) return;
-    if (!country) { nb.innerHTML = noCountry('Choose a country to see active safety incidents.'); return; }
-    nb.innerHTML = loading('Loading incidents for ' + country + '…');
+    if (!country) { nb.innerHTML = noCountry('Choose a country to see the safety intelligence dashboard.'); return; }
+    nb.innerHTML = loading('Building safety dashboard…');
     fetch('/api/events?country_code=' + encodeURIComponent(country) + '&lang=' + encodeURIComponent(_lang))
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(events) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
-        if (!events || !events.length) {
-          nb2.innerHTML = emptyState('✅', 'No Active Incidents', 'No incidents reported for ' + country + ' right now.');
-          return;
+
+        // ── Category definitions ──────────────────────────────
+        var CATS = [
+          { key:'air',      label:'Air Threats',       icon:'🚀', color:T.red,    bg:T.redLight,
+            types:['missile','drone','siren','airstrike','rocket'],
+            match:function(e){ return ['missile','drone','siren','airstrike','rocket'].includes(e.type) || e.severity==='critical'; }
+          },
+          { key:'explosion',label:'Explosions',        icon:'💥', color:T.red,    bg:T.redLight,
+            match:function(e){ return ['explosion','bomb','blast'].includes(e.type); }
+          },
+          { key:'shooting', label:'Armed Incidents',   icon:'🔫', color:'#DC2626', bg:'#FEF2F2',
+            match:function(e){ return ['shooting','gunfire','armed'].includes(e.type); }
+          },
+          { key:'protest',  label:'Civil Unrest',      icon:'✊', color:T.gold,   bg:T.goldLight,
+            match:function(e){ return ['protest','riot','demonstration','evacuation'].includes(e.type); }
+          },
+          { key:'weather',  label:'Weather',           icon:'⛈️', color:'#3B82F6', bg:'#EFF6FF',
+            match:function(e){ return ['earthquake','flood','fire','storm','weather'].includes(e.type); }
+          },
+          { key:'crime',    label:'Crime',             icon:'🔴', color:T.muted,  bg:T.bg,
+            match:function(e){ return ['crime','theft','robbery'].includes(e.type); }
+          },
+          { key:'other',    label:'Other',             icon:'📡', color:T.teal,   bg:T.tealLight,
+            match:function(e){ return true; } // catch-all
+          },
+        ];
+
+        // Tally events into categories (first-match wins)
+        var buckets = {};
+        CATS.forEach(function(c){ buckets[c.key] = []; });
+        events.forEach(function(ev) {
+          for (var i = 0; i < CATS.length; i++) {
+            if (CATS[i].match(ev)) { buckets[CATS[i].key].push(ev); break; }
+          }
+        });
+
+        // Overall threat level
+        var critical = events.filter(function(e){ return e.severity==='critical'; }).length;
+        var high     = events.filter(function(e){ return e.severity==='high'; }).length;
+        var threatLevel = critical > 0 ? ['HIGH THREAT',T.red] : high > 2 ? ['ELEVATED',T.gold] : events.length > 0 ? ['MONITOR','#3B82F6'] : ['CLEAR',T.green];
+
+        var countryName = COUNTRY_NAMES[country] || country;
+        var html = '';
+
+        // ── Threat level banner ───────────────────────────────
+        html += '<div style="margin:10px 12px 0;border-radius:12px;background:'+threatLevel[1]+';padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">';
+        html += '<div><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">Threat Level · '+countryName+'</div>';
+        html += '<div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:0.5px;">'+threatLevel[0]+'</div></div>';
+        html += '<div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#fff;">'+events.length+'</div><div style="font-size:9px;color:rgba(255,255,255,0.75);font-family:'+T.mono+';">INCIDENTS</div></div>';
+        html += '</div>';
+
+        // ── Category stat grid ────────────────────────────────
+        var activeCats = CATS.filter(function(c){ return buckets[c.key].length > 0; });
+        if (activeCats.length) {
+          html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px 0;">';
+          activeCats.forEach(function(c) {
+            var count = buckets[c.key].length;
+            var hasCrit = buckets[c.key].some(function(e){ return e.severity==='critical'; });
+            html += '<div style="background:#fff;border:1px solid '+T.border+';border-radius:10px;padding:10px 8px;text-align:center;">';
+            html += '<div style="font-size:20px;margin-bottom:4px;">'+c.icon+'</div>';
+            html += '<div style="font-size:18px;font-weight:800;color:'+(hasCrit?T.red:c.color)+';line-height:1;">'+count+'</div>';
+            html += '<div style="font-size:9px;font-weight:600;color:'+T.muted+';margin-top:3px;line-height:1.2;">'+c.label+'</div>';
+            if (hasCrit) html += '<div style="margin-top:4px;display:inline-block;padding:1px 6px;border-radius:100px;background:'+T.redLight+';color:'+T.red+';font-size:8px;font-weight:700;">ACTIVE</div>';
+            html += '</div>';
+          });
+          html += '</div>';
         }
-        function evIconClass(type, sev) {
-          if (sev==='critical' || ['missile','explosion','shooting','siren','drone','bomb'].includes(type)) return 'aa-fi-red';
-          if (sev==='high'     || ['protest','evacuation','earthquake','flood','fire'].includes(type))      return 'aa-fi-amber';
-          if (type==='all-clear') return 'aa-fi-green';
-          return 'aa-fi-blue';
+
+        // ── Safety score bar ──────────────────────────────────
+        var safeScore = Math.max(0, Math.min(100, 100 - (critical * 25) - (high * 8) - (events.length * 2)));
+        var scoreColor = safeScore >= 70 ? T.green : safeScore >= 40 ? T.gold : T.red;
+        var scoreLabel = safeScore >= 70 ? 'Generally Safe' : safeScore >= 40 ? 'Exercise Caution' : 'High Risk';
+        html += '<div style="margin:8px 12px 0;background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:12px 14px;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+        html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';">Safety Score</div>';
+        html += '<div style="font-size:13px;font-weight:800;color:'+scoreColor+';">'+safeScore+' <span style="font-size:10px;font-weight:600;">'+scoreLabel+'</span></div>';
+        html += '</div>';
+        html += '<div style="height:6px;background:'+T.border+';border-radius:3px;">';
+        html += '<div style="height:100%;width:'+safeScore+'%;background:'+scoreColor+';border-radius:3px;transition:width 0.6s;"></div>';
+        html += '</div></div>';
+
+        // ── Tourist safety tips ───────────────────────────────
+        var tips = [];
+        if (buckets.air.length)      tips.push('🚀 Air threat activity detected — know your nearest shelter');
+        if (buckets.explosion.length) tips.push('💥 Explosion reports — avoid crowded public spaces');
+        if (buckets.protest.length)  tips.push('✊ Civil unrest reported — avoid demonstrations');
+        if (buckets.weather.length)  tips.push('⛈️ Adverse weather — check local forecasts before travel');
+        if (buckets.crime.length)    tips.push('🔴 Crime activity — secure valuables, avoid isolated areas');
+        if (!tips.length && events.length === 0) tips.push('✅ No active incidents — normal travel precautions apply');
+
+        if (tips.length) {
+          html += '<div style="margin:8px 12px 0;background:'+T.tealLight+';border-radius:10px;border:1px solid rgba(14,116,144,0.2);padding:12px 14px;">';
+          html += '<div style="font-size:10px;font-weight:700;color:'+T.teal+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Tourist Advisory</div>';
+          tips.forEach(function(tip) {
+            html += '<div style="font-size:12px;color:'+T.text+';padding:4px 0;border-bottom:1px solid rgba(14,116,144,0.12);line-height:1.4;">'+tip+'</div>';
+          });
+          html += '</div>';
         }
-        function evEmoji(type, sev) {
-          var map = {missile:'🔴',explosion:'🔴',shooting:'🔴',siren:'🔴',drone:'🔴',bomb:'🔴',
-                     protest:'✊',evacuation:'⚠️',earthquake:'⛈️',flood:'⛈️',fire:'⛈️',
-                     'all-clear':'✅',incident:'📡'};
-          if (sev==='critical') return '🔴';
-          return map[type] || '⚠️';
-        }
-        function evTagClass(sev, type) {
-          if (sev==='critical') return 'aa-tr';
-          if (sev==='high')     return 'aa-ta';
-          if (type==='all-clear' || sev==='clear') return 'aa-tg';
-          return 'aa-tb';
-        }
-        function evTagLabel(sev, type) {
-          if (sev==='critical') return 'Urgent';
-          if (sev==='high')     return 'Advisory';
-          if (type==='all-clear') return 'All Clear';
-          return 'Advisory';
-        }
-        nb2.innerHTML =
-          '<div class="aa-count-bar">'+events.length+' INCIDENTS</div>' +
-          events.map(function(ev) {
+
+        // ── Recent incidents list ─────────────────────────────
+        var recent = events.slice(0, 20);
+        if (recent.length) {
+          html += '<div style="padding:10px 14px 4px;font-size:9px;font-weight:700;color:'+T.muted+';letter-spacing:1px;font-family:'+T.mono+';">RECENT INCIDENTS</div>';
+          html += recent.map(function(ev) {
+            var cat = CATS.find(function(c){ return c.match(ev); }) || CATS[CATS.length-1];
+            var tagCls = ev.severity==='critical'?'aa-tr':ev.severity==='high'?'aa-ta':'aa-tb';
+            var tagLbl = ev.severity==='critical'?'Urgent':ev.severity==='high'?'Advisory':'Info';
             return feedItem(
               ev.source_url || null,
-              evIconClass(ev.type, ev.severity),
-              evEmoji(ev.type, ev.severity),
-              evTagClass(ev.severity, ev.type),
-              evTagLabel(ev.severity, ev.type),
-              (ev.title || 'Incident').slice(0, 120),
+              ev.severity==='critical'?'aa-fi-red':ev.severity==='high'?'aa-fi-amber':'aa-fi-blue',
+              cat.icon,
+              tagCls, tagLbl,
+              (ev.title||'Incident').slice(0,120),
               relTime(ev.created_at || ev.published_at),
               ev.location || null
             );
           }).join('');
+        }
+
+        html += '<div style="height:20px;"></div>';
+        nb2.innerHTML = html;
       })
       .catch(function(err) {
         var nb2 = document.getElementById('aa-feed-body');
