@@ -387,30 +387,61 @@
         html += '<div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#fff;">'+events.length+'</div><div style="font-size:9px;color:rgba(255,255,255,0.75);font-family:'+T.mono+';">TOTAL</div></div>';
         html += '</div>';
 
-        // ── 7-day rolling average ─────────────────────────────
+        // ── 7-day running count ───────────────────────────────
         if (s7) {
           var perDay  = s7.per_day || 0;
-          var dayCol  = perDay >= 5 ? T.red : perDay >= 2 ? T.gold : T.green;
+          var dayCol  = s7.total >= 10 ? T.red : s7.total >= 4 ? T.gold : T.green;
           html += '<div style="margin:8px 12px 0;background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:12px 14px;">';
-          html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:10px;">7-DAY ROLLING AVERAGE</div>';
+          html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:10px;">LAST 7 DAYS</div>';
           html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">';
-          // Per day
+
+          // 7-day total — the headline stat
+          html += '<div style="text-align:center;background:'+(s7.total>0?'rgba(14,116,144,0.08)':T.bg)+';border-radius:8px;padding:10px 6px;border:1px solid '+(s7.total>0?T.teal:T.border)+';">';
+          html += '<div style="font-size:22px;font-weight:800;color:'+dayCol+';">'+s7.total+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;font-weight:600;">Incidents</div></div>';
+
+          // Daily rate
           html += '<div style="text-align:center;background:'+T.bg+';border-radius:8px;padding:10px 6px;">';
-          html += '<div style="font-size:18px;font-weight:800;color:'+dayCol+';">'+perDay.toFixed(1)+'</div>';
+          html += '<div style="font-size:22px;font-weight:800;color:'+T.text+';">'+perDay.toFixed(1)+'</div>';
           html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Per Day</div></div>';
-          // Last 7 total
-          html += '<div style="text-align:center;background:'+T.bg+';border-radius:8px;padding:10px 6px;">';
-          html += '<div style="font-size:18px;font-weight:800;color:'+T.text+';">'+s7.total+'</div>';
-          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Last 7 Days</div></div>';
+
           // Critical
           html += '<div style="text-align:center;background:'+(s7.critical>0?T.redLight:T.bg)+';border-radius:8px;padding:10px 6px;">';
-          html += '<div style="font-size:18px;font-weight:800;color:'+(s7.critical>0?T.red:T.muted)+';"> '+s7.critical+'</div>';
+          html += '<div style="font-size:22px;font-weight:800;color:'+(s7.critical>0?T.red:T.muted)+';">'+s7.critical+'</div>';
           html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Critical</div></div>';
+
           // High
           html += '<div style="text-align:center;background:'+(s7.high>0?T.goldLight:T.bg)+';border-radius:8px;padding:10px 6px;">';
-          html += '<div style="font-size:18px;font-weight:800;color:'+(s7.high>0?T.gold:T.muted)+';">'+s7.high+'</div>';
-          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">High</div></div>';
-          html += '</div></div>';
+          html += '<div style="font-size:22px;font-weight:800;color:'+(s7.high>0?T.gold:T.muted)+';">'+s7.high+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">High Alert</div></div>';
+
+          html += '</div>';
+
+          // Category breakdown for 7-day window
+          var catMap = s7.by_category || {};
+          var catOrder = [
+            {key:'air',     icon:'🚀', label:'Air/Missile'},
+            {key:'explosion',icon:'💥',label:'Explosions'},
+            {key:'armed',   icon:'🔫', label:'Armed'},
+            {key:'unrest',  icon:'✊', label:'Unrest'},
+            {key:'drug',    icon:'💊', label:'Drug Crime'},
+            {key:'crime',   icon:'🔴', label:'Crime'},
+            {key:'weather', icon:'⛈️', label:'Weather'},
+          ].filter(function(c){ return (catMap[c.key]||0) > 0; });
+
+          if (catOrder.length) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid '+T.border+';">';
+            catOrder.forEach(function(c) {
+              var n = catMap[c.key] || 0;
+              html += '<div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:'+T.bg+';border-radius:100px;border:1px solid '+T.border+';">';
+              html += '<span>'+c.icon+'</span>';
+              html += '<span style="font-size:10px;font-weight:700;color:'+T.text+';">'+n+'</span>';
+              html += '<span style="font-size:9px;color:'+T.muted+';">'+c.label+'</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
         }
 
         // ── Category stat grid ────────────────────────────────

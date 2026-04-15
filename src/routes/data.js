@@ -575,83 +575,102 @@ router.get('/news', (req, res) => {
 
 // ── Events ────────────────────────────────────────────────────────────────────
 // ── Security keyword queries per language for Google News alerts ──────────────
-const SECURITY_QUERIES = {
-  en: 'security OR attack OR explosion OR missile OR shooting OR protest OR emergency OR incident OR crime OR warning',
-  ar: 'أمن OR هجوم OR انفجار OR صاروخ OR إطلاق نار OR احتجاج OR طوارئ OR حادث OR تحذير',
-  fr: 'sécurité OR attaque OR explosion OR missile OR fusillade OR manifestation OR urgence OR incident',
-  es: 'seguridad OR ataque OR explosión OR misil OR disparos OR protesta OR emergencia OR incidente',
-  pt: 'segurança OR ataque OR explosão OR míssil OR tiroteio OR protesto OR emergência OR incidente',
-  ru: 'безопасность OR атака OR взрыв OR ракета OR стрельба OR протест OR чрезвычайная OR инцидент',
-  zh: '安全 OR 袭击 OR 爆炸 OR 导弹 OR 枪击 OR 抗议 OR 紧急 OR 事件',
-  de: 'Sicherheit OR Angriff OR Explosion OR Rakete OR Schießerei OR Protest OR Notfall OR Vorfall',
-  ja: '安全 OR 攻撃 OR 爆発 OR ミサイル OR 銃撃 OR 抗議 OR 緊急 OR 事件',
-  ko: '보안 OR 공격 OR 폭발 OR 미사일 OR 총격 OR 시위 OR 비상 OR 사건',
-  tr: 'güvenlik OR saldırı OR patlama OR füze OR silahlı OR protesto OR acil OR olay',
-  hi: 'सुरक्षा OR हमला OR विस्फोट OR मिसाइल OR गोलीबारी OR विरोध OR आपातकाल OR घटना',
+// Per-language security query sets — multiple passes for broader coverage
+const SECURITY_QUERY_SETS = {
+  en: [
+    'attack OR explosion OR missile OR bombing OR airstrike OR shooting OR gunfire OR drone strike',
+    'protest OR riot OR unrest OR demonstration OR clash OR crackdown OR civil unrest',
+    'crime OR murder OR arrest OR robbery OR trafficking OR drug bust OR gang OR kidnap',
+    'earthquake OR flood OR fire OR emergency OR evacuation OR disaster OR accident OR crash',
+    'warning OR alert OR threat OR security incident OR military OR troops OR border',
+  ],
+  ar: ['هجوم OR انفجار OR صاروخ OR احتجاج OR مخدرات OR جريمة OR كارثة OR تحذير OR أمن'],
+  fr: ['attaque OR explosion OR missile OR manifestation OR crime OR catastrophe OR alerte OR sécurité'],
+  es: ['ataque OR explosión OR misil OR protesta OR crimen OR catástrofe OR alerta OR seguridad'],
+  pt: ['ataque OR explosão OR míssil OR protesto OR crime OR desastre OR alerta OR segurança'],
+  ru: ['атака OR взрыв OR ракета OR протест OR преступление OR катастрофа OR предупреждение OR безопасность'],
+  zh: ['袭击 OR 爆炸 OR 导弹 OR 抗议 OR 犯罪 OR 灾难 OR 警报 OR 安全'],
+  de: ['Angriff OR Explosion OR Rakete OR Protest OR Verbrechen OR Katastrophe OR Warnung OR Sicherheit'],
+  ja: ['攻撃 OR 爆発 OR ミサイル OR 抗議 OR 犯罪 OR 災害 OR 警告 OR 安全'],
+  ko: ['공격 OR 폭발 OR 미사일 OR 시위 OR 범죄 OR 재난 OR 경고 OR 보안'],
+  tr: ['saldırı OR patlama OR füze OR protesto OR suç OR afet OR uyarı OR güvenlik'],
+  hi: ['हमला OR विस्फोट OR मिसाइल OR विरोध OR अपराध OR आपदा OR चेतावनी OR सुरक्षा'],
 };
 
-// English security terms for relevance checking regardless of UI language
-const SECURITY_TERMS_EN = [
-  'attack','explosion','missile','rocket','drone','bomb','blast','shooting',
-  'gunfire','siren','airstrike','military','armed','artillery','evacuation',
-  'emergency','conflict','killed','injured','protest','riot','arrest','police',
-  'security','crime','earthquake','flood','fire','crash','accident','warning',
-  'alert','incident','troops','soldiers','terror','threat','hostage','border',
-];
-
-function isSecurityArticle(title) {
-  const lower = (title || '').toLowerCase();
-  return SECURITY_TERMS_EN.some(k => lower.includes(k));
+// Classify Google News article title into an event type
+function classifyGNewsTitle(title) {
+  const t = title.toLowerCase();
+  if (/missile|rocket|airstrike|drone strike|bomb/.test(t)) return { type:'missile',   severity:'critical' };
+  if (/explos|blast/.test(t))                               return { type:'explosion', severity:'critical' };
+  if (/shoot|gunfire|gun attack|armed/.test(t))             return { type:'shooting',  severity:'high'     };
+  if (/siren|air raid|shelter/.test(t))                     return { type:'siren',     severity:'high'     };
+  if (/protest|riot|unrest|demonstrat|clash/.test(t))       return { type:'protest',   severity:'warn'     };
+  if (/drug|narcotic|traffick|cartel|smuggl|seizure/.test(t)) return { type:'drug',    severity:'warn'     };
+  if (/murder|kill|dead|casualt|fatality/.test(t))          return { type:'shooting',  severity:'high'     };
+  if (/earthquake|quake/.test(t))                           return { type:'earthquake',severity:'high'     };
+  if (/flood|flash flood/.test(t))                          return { type:'flood',     severity:'high'     };
+  if (/fire|wildfire|blaze/.test(t))                        return { type:'fire',      severity:'high'     };
+  if (/arrest|detain|convict|sentence|bust/.test(t))        return { type:'crime',     severity:'warn'     };
+  if (/accident|crash|collision/.test(t))                   return { type:'incident',  severity:'warn'     };
+  return { type:'incident', severity:'warn' };
 }
 
-// Fetch security-relevant Google News in the user's language
+// Fetch security news across multiple query passes for broad coverage
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
-  // Build query: country name + security terms in user's language
-  const query = `"${countryName}" (${SECURITY_QUERIES[lang] || SECURITY_QUERIES.en})`;
-  const gl    = countryCode.toUpperCase();
-  const url   = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
-  try {
-    const xml2js = require('xml2js');
-    const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
-    const r      = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
-    if (!r.ok) return [];
-    const xml    = await r.text();
-    const data   = await parser.parseStringPromise(xml);
-    const items  = data?.rss?.channel?.item || [];
-    const arr    = Array.isArray(items) ? items : [items];
+  const xml2js  = require('xml2js');
+  const parser  = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
+  const gl      = countryCode.toUpperCase();
+  const queries = SECURITY_QUERY_SETS[lang] || SECURITY_QUERY_SETS.en;
+  const seen    = new Set();
+  const results = [];
 
-    return arr.slice(0, 20).map(item => {
-      const rawTitle = String(item.title?._ || item.title || '');
-      const dashIdx  = rawTitle.lastIndexOf(' - ');
-      const title    = dashIdx > 10 ? rawTitle.slice(0, dashIdx).trim() : rawTitle.trim();
-      const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
-      const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
-      let published  = new Date().toISOString();
-      try { published = new Date(item.pubDate || '').toISOString(); } catch {}
-      return { title: title.replace(/<[^>]*>/g, '').trim().slice(0, 200), source, link: String(link).trim(), published };
-    })
-    .filter(e => {
-      if (e.title.length < 10) return false;
-      // For English, verify it's actually security-related (other langs trust Google's query matching)
-      if (lang === 'en' && !isSecurityArticle(e.title)) return false;
-      return true;
-    })
-    .map(e => ({
-      id:           `gnews-${Buffer.from(e.link).toString('base64').slice(0, 20)}`,
-      country_code:  countryCode,
-      type:         'incident',
-      severity:     'warn',
-      title:         e.title,
-      description:  '',
-      location:      countryName,
-      lat: null, lng: null,
-      source:        e.source,
-      source_url:    e.link,
-      created_at:    e.published,
-      status:       'approved',
-      is_gnews:     true,
-    }));
-  } catch { return []; }
+  for (const terms of queries) {
+    const q   = `"${countryName}" (${terms})`;
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
+    try {
+      const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      if (!r.ok) continue;
+      const xml  = await r.text();
+      const data = await parser.parseStringPromise(xml);
+      const items = data?.rss?.channel?.item || [];
+      const arr   = Array.isArray(items) ? items : [items];
+
+      for (const item of arr.slice(0, 15)) {
+        const rawTitle = String(item.title?._ || item.title || '');
+        const dashIdx  = rawTitle.lastIndexOf(' - ');
+        const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle).replace(/<[^>]*>/g,'').trim();
+        const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
+        const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+        const linkStr  = String(link).trim();
+
+        if (title.length < 10 || seen.has(linkStr) || seen.has(title.toLowerCase().slice(0,50))) continue;
+        seen.add(linkStr);
+        seen.add(title.toLowerCase().slice(0,50));
+
+        let published = new Date().toISOString();
+        try { published = new Date(item.pubDate || '').toISOString(); } catch {}
+
+        const { type, severity } = classifyGNewsTitle(title);
+        results.push({
+          id:          `gnews-${Buffer.from(linkStr||title).toString('base64').slice(0, 20)}`,
+          country_code: countryCode,
+          type, severity,
+          title:       title.slice(0, 200),
+          description: '',
+          location:    countryName,
+          lat: null, lng: null,
+          source:      source,
+          source_url:  linkStr,
+          created_at:  published,
+          status:      'approved',
+          is_gnews:    true,
+        });
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  return results;
 }
 
 router.get('/events', async (req, res) => {

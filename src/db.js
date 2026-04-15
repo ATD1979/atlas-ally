@@ -354,7 +354,7 @@ const helpers = {
 
   // Events
   addEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test)`),
-  getEventsByCountry: db.prepare(`SELECT * FROM events WHERE country_code = ? AND status = 'approved' AND is_test = 0 ORDER BY created_at DESC LIMIT 100`),
+  getEventsByCountry: db.prepare(`SELECT * FROM events WHERE country_code = ? AND status = 'approved' AND is_test = 0 AND created_at > datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 200`),
   getEvents72h: db.prepare(`SELECT * FROM events WHERE status = 'approved' AND is_test = 0 AND created_at > datetime('now', '-72 hours') ORDER BY created_at DESC`),
   getRecentEvents: db.prepare(`SELECT * FROM events ORDER BY created_at DESC LIMIT 100`),
   getAllEventsAdmin: db.prepare(`SELECT * FROM events ORDER BY created_at DESC LIMIT 500`),
