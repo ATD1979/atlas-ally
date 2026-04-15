@@ -269,22 +269,21 @@
     } catch(e) { return ''; }
   }
 
-  function feedItem(href, iconBg, iconEmoji, tagBg, tagColor, tagLabel, title, time) {
-    return '<a href="'+(href||'#')+'" target="_blank" rel="noopener" '+
-      'style="display:flex;gap:9px;align-items:flex-start;padding:10px 14px;'+
-      'border-bottom:1px solid '+T.border+';background:#fff;text-decoration:none;'+
-      '-webkit-tap-highlight-color:transparent;font-family:'+T.font+';">'+
-      '<div style="width:30px;height:30px;border-radius:8px;background:'+iconBg+';'+
-        'flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;">'+iconEmoji+'</div>'+
-      '<div style="flex:1;min-width:0;">'+
-        '<div style="font-size:11px;font-weight:500;color:'+T.text+';line-height:1.35;margin-bottom:4px;">'+title+'</div>'+
-        '<div style="display:flex;gap:6px;align-items:center;">'+
-          '<span style="padding:2px 6px;border-radius:8px;background:'+tagBg+';color:'+tagColor+';'+
-            'font-size:8px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;">'+tagLabel+'</span>'+
-          '<span style="font-size:9px;color:'+T.subtle+';font-family:'+T.mono+';">'+time+'</span>'+
+  function feedItem(href, iconClass, iconEmoji, tagClass, tagLabel, title, time, location) {
+    var inner =
+      '<div class="aa-ficon '+iconClass+'">'+iconEmoji+'</div>'+
+      '<div class="aa-fbody">'+
+        '<div class="aa-fhead">'+title+'</div>'+
+        '<div class="aa-fsub">'+
+          '<span class="aa-ftag '+tagClass+'">'+tagLabel+'</span>'+
+          '<span class="aa-ftime">'+time+'</span>'+
         '</div>'+
-      '</div>'+
-    '</a>';
+        (location ? '<div class="aa-floc">📍 '+location+'</div>' : '')+
+      '</div>';
+    if (href) {
+      return '<a href="'+href+'" target="_blank" rel="noopener" class="aa-fitem">'+inner+'</a>';
+    }
+    return '<div class="aa-fitem">'+inner+'</div>';
   }
 
   function loadNews(country) {
@@ -301,30 +300,22 @@
           nb2.innerHTML = emptyState('📡', t('noNews'), 'No articles found for ' + country + ' right now.');
           return;
         }
-        nb2.innerHTML = articles.map(function(a) {
-          var title = (a.title || 'Untitled').slice(0, 120);
-          var src   = (a.source_name || 'News').replace(/-/g, ' ').slice(0, 20);
-          var time  = relTime(a.published_at);
-          // Pick icon and tag by source/title keywords
-          var lower = title.toLowerCase();
-          var urgent = lower.match(/attack|explos|missile|bomb|kill|dead|crisis|warn|alert|urgent/);
-          var iconBg  = urgent ? T.redLight  : T.tealLight;
-          var iconEm  = urgent ? '🔴'        : '📰';
-          var tagBg   = urgent ? T.redLight  : T.tealLight;
-          var tagCol  = urgent ? T.red       : T.teal;
-          var tagLbl  = urgent ? 'Breaking'  : src;
-          return feedItem(a.url, iconBg, iconEm, tagBg, tagCol, tagLbl, title, time);
-        }).join('');
+        nb2.innerHTML =
+          '<div class="aa-count-bar">'+articles.length+' ARTICLES</div>' +
+          articles.map(function(a) {
+            var title  = (a.title || 'Untitled').slice(0, 120);
+            var src    = (a.source_name || 'News').replace(/-/g, ' ').slice(0, 20);
+            var time   = relTime(a.published_at);
+            var lower  = title.toLowerCase();
+            var urgent = /attack|explos|missile|bomb|kill|dead|crisis|warn|alert|urgent|shoot|drone|siren/.test(lower);
+            return feedItem(a.url, urgent?'aa-fi-red':'aa-fi-blue', urgent?'🔴':'📰', urgent?'aa-tr':'aa-tb', urgent?'Breaking':src, title, time, null);
+          }).join('');
       })
       .catch(function(err) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
-        nb2.innerHTML = '<div style="padding:32px;text-align:center;">' +
-          '<div style="font-size:13px;color:'+T.red+';margin-bottom:14px;">⚠️ ' + err.message + '</div>' +
-          '<button id="aa-retry-news" style="padding:9px 22px;background:'+T.teal+';color:#fff;' +
-          'border:none;border-radius:8px;font-size:13px;cursor:pointer;touch-action:manipulation;">Retry</button></div>';
-        var btn = document.getElementById('aa-retry-news');
-        if (btn) btn.addEventListener('click', function() { loadNews(window.activeCountry); });
+        nb2.innerHTML = '<div style="padding:32px;text-align:center;"><div style="font-size:13px;color:'+T.red+';margin-bottom:14px;">⚠️ '+err.message+'</div>'+
+          '<button onclick="loadNews(window.activeCountry)" style="padding:9px 22px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">Retry</button></div>';
       });
   }
 
@@ -345,43 +336,44 @@
           nb2.innerHTML = emptyState('✅', 'No Active Incidents', 'No incidents reported for ' + country + ' right now.');
           return;
         }
-
-        function evIconBg(type, sev) {
-          if (sev === 'critical' || ['missile','explosion','shooting','siren','drone'].includes(type)) return T.redLight;
-          if (sev === 'high'     || ['protest','evacuation','earthquake','flood','fire'].includes(type)) return T.goldLight;
-          if (sev === 'info'     || type === 'all-clear') return T.greenLight;
-          return T.tealLight;
+        function evIconClass(type, sev) {
+          if (sev==='critical' || ['missile','explosion','shooting','siren','drone','bomb'].includes(type)) return 'aa-fi-red';
+          if (sev==='high'     || ['protest','evacuation','earthquake','flood','fire'].includes(type))      return 'aa-fi-amber';
+          if (type==='all-clear') return 'aa-fi-green';
+          return 'aa-fi-blue';
         }
-        function evIcon(type, sev) {
-          if (sev === 'critical' || ['missile','explosion','shooting','siren','drone'].includes(type)) return '🔴';
-          if (sev === 'high'     || ['protest','evacuation'].includes(type)) return '⚠️';
-          if (['earthquake','flood','fire'].includes(type)) return '⛈️';
-          if (type === 'all-clear') return '✅';
-          return '📡';
+        function evEmoji(type, sev) {
+          var map = {missile:'🔴',explosion:'🔴',shooting:'🔴',siren:'🔴',drone:'🔴',bomb:'🔴',
+                     protest:'✊',evacuation:'⚠️',earthquake:'⛈️',flood:'⛈️',fire:'⛈️',
+                     'all-clear':'✅',incident:'📡'};
+          if (sev==='critical') return '🔴';
+          return map[type] || '⚠️';
         }
-        function tagInfo(sev, type) {
-          if (sev === 'critical') return [T.redLight,  T.red,    'Urgent'];
-          if (sev === 'high')     return [T.goldLight, '#92400E','Advisory'];
-          if (type === 'all-clear' || sev === 'clear') return [T.greenLight, '#065F46', 'All Clear'];
-          return [T.tealLight, T.teal, 'Advisory'];
+        function evTagClass(sev, type) {
+          if (sev==='critical') return 'aa-tr';
+          if (sev==='high')     return 'aa-ta';
+          if (type==='all-clear' || sev==='clear') return 'aa-tg';
+          return 'aa-tb';
         }
-
+        function evTagLabel(sev, type) {
+          if (sev==='critical') return 'Urgent';
+          if (sev==='high')     return 'Advisory';
+          if (type==='all-clear') return 'All Clear';
+          return 'Advisory';
+        }
         nb2.innerHTML =
-          '<div style="padding:6px 14px 4px;background:'+T.bg+';font-size:9px;font-weight:700;'+
-            'color:'+T.muted+';letter-spacing:1px;font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
+          '<div class="aa-count-bar">'+events.length+' INCIDENTS</div>' +
           events.map(function(ev) {
-            var ti   = tagInfo(ev.severity, ev.type);
-            var time = relTime(ev.created_at || ev.published_at);
             return feedItem(
               ev.source_url || null,
-              evIconBg(ev.type, ev.severity),
-              evIcon(ev.type, ev.severity),
-              ti[0], ti[1], ti[2],
+              evIconClass(ev.type, ev.severity),
+              evEmoji(ev.type, ev.severity),
+              evTagClass(ev.severity, ev.type),
+              evTagLabel(ev.severity, ev.type),
               (ev.title || 'Incident').slice(0, 120),
-              time
-            ) + (ev.location
-              ? '<div style="padding:0 14px 8px 53px;font-size:9px;color:'+T.teal+';margin-top:-6px;background:#fff;border-bottom:1px solid '+T.border+';">📍 '+ev.location+'</div>'
-              : '');
+              relTime(ev.created_at || ev.published_at),
+              ev.location || null
+            );
           }).join('');
       })
       .catch(function(err) {
@@ -1029,6 +1021,116 @@
   }
 
   /* ═══════════════════════════════════════════
+     MAP TAP — REPORT INCIDENT MODAL
+  ═══════════════════════════════════════════ */
+  var REPORT_TYPES = [
+    { type:'drone',     icon:'🚁', label:'Drone / UAV',        severity:'high'     },
+    { type:'missile',   icon:'🚀', label:'Missile / Strike',   severity:'critical' },
+    { type:'explosion', icon:'💥', label:'Explosion / Blast',  severity:'critical' },
+    { type:'shooting',  icon:'🔫', label:'Shooting / Gunfire', severity:'high'     },
+    { type:'protest',   icon:'✊', label:'Protest / Unrest',   severity:'warn'     },
+    { type:'fire',      icon:'🔥', label:'Fire',               severity:'high'     },
+    { type:'flood',     icon:'🌊', label:'Flood',              severity:'high'     },
+    { type:'earthquake',icon:'🌍', label:'Earthquake',         severity:'high'     },
+    { type:'crime',     icon:'🔴', label:'Crime / Theft',      severity:'warn'     },
+    { type:'incident',  icon:'⚠️', label:'Other Incident',     severity:'warn'     },
+  ];
+
+  function showReportModal(lat, lng) {
+    closeModal();
+    var country = window.activeCountry || '';
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.6);'+
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+
+    var typeButtons = REPORT_TYPES.map(function(rt) {
+      return '<button data-rtype="'+rt.type+'" data-rsev="'+rt.severity+'" '+
+        'style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;'+
+        'border:1.5px solid #E5EAEF;border-radius:10px;background:#fff;cursor:pointer;'+
+        'touch-action:manipulation;min-width:62px;flex:1;">'+
+        '<span style="font-size:20px;">'+rt.icon+'</span>'+
+        '<span style="font-size:9px;font-weight:600;color:#1A2332;text-align:center;line-height:1.2;font-family:\'DM Sans\',sans-serif;">'+rt.label+'</span>'+
+        '</button>';
+    }).join('');
+
+    modal.innerHTML =
+      '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;'+
+        'padding:20px 16px 36px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">'+
+        '<div style="width:40px;height:4px;background:#E5EAEF;border-radius:2px;margin:0 auto 16px;"></div>'+
+        '<div style="font-size:16px;font-weight:700;color:#1A2332;margin-bottom:4px;font-family:\'DM Sans\',sans-serif;">📍 Report Incident</div>'+
+        '<div style="font-size:12px;color:#6B7C93;margin-bottom:16px;font-family:\'DM Sans\',sans-serif;">'+
+          (lat ? 'Location: '+lat.toFixed(4)+', '+lng.toFixed(4) : country || 'Current location')+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:16px;" id="aa-rtype-grid">'+
+          typeButtons+
+        '</div>'+
+        '<textarea id="aa-report-desc" placeholder="Optional description…" '+
+          'style="width:100%;border:1.5px solid #E5EAEF;border-radius:10px;padding:10px 12px;'+
+          'font-size:13px;color:#1A2332;background:#F8FAFB;outline:none;resize:none;height:70px;'+
+          'box-sizing:border-box;font-family:\'DM Sans\',sans-serif;margin-bottom:12px;"></textarea>'+
+        '<button id="aa-report-submit" style="width:100%;padding:13px;background:#0E7490;color:#fff;'+
+          'border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;'+
+          'touch-action:manipulation;font-family:\'DM Sans\',sans-serif;opacity:0.4;pointer-events:none;">'+
+          'Select an incident type to report</button>'+
+        '<button id="aa-report-cancel" style="width:100%;padding:11px;background:none;color:#6B7C93;'+
+          'border:none;font-size:13px;cursor:pointer;touch-action:manipulation;font-family:\'DM Sans\',sans-serif;margin-top:4px;">'+
+          'Cancel</button>'+
+      '</div>';
+
+    document.body.appendChild(modal);
+
+    var selectedType = null;
+    var selectedSev  = null;
+
+    modal.querySelector('#aa-rtype-grid').addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-rtype]');
+      if (!btn) return;
+      selectedType = btn.dataset.rtype;
+      selectedSev  = btn.dataset.rsev;
+      modal.querySelectorAll('[data-rtype]').forEach(function(b) {
+        b.style.borderColor = b.dataset.rtype === selectedType ? '#0E7490' : '#E5EAEF';
+        b.style.background  = b.dataset.rtype === selectedType ? '#E0F2F7' : '#fff';
+      });
+      var sub = document.getElementById('aa-report-submit');
+      sub.textContent  = '📍 Submit Report';
+      sub.style.opacity = '1';
+      sub.style.pointerEvents = 'auto';
+    });
+
+    document.getElementById('aa-report-submit').addEventListener('click', function() {
+      if (!selectedType) return;
+      var desc = (document.getElementById('aa-report-desc') || {}).value || '';
+      fetch('/api/events', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          country_code: country,
+          type:         selectedType,
+          severity:     selectedSev,
+          title:        REPORT_TYPES.find(function(r){return r.type===selectedType;}).label + ' reported' + (country?' in '+(COUNTRY_NAMES[country]||country):''),
+          description:  desc,
+          lat:          lat || null,
+          lng:          lng || null,
+          location:     country ? (COUNTRY_NAMES[country] || country) : null,
+          source_url:   'user-report',
+        }),
+      })
+      .then(function() {
+        showToast('✅ Incident reported — thank you', 'ok');
+        closeModal();
+        // Refresh alerts if currently on that tab
+        if (_feedTab === 'alerts' && overlay && overlay.style.display !== 'none') {
+          loadAlerts(window.activeCountry);
+        }
+      })
+      .catch(function() { showToast('⚠️ Could not submit report', 'error'); });
+    });
+
+    document.getElementById('aa-report-cancel').addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  }
+
+  /* ═══════════════════════════════════════════
      SAFE CHECK-IN MODAL
   ═══════════════════════════════════════════ */
   function showCheckin() {
@@ -1171,6 +1273,37 @@
       lk.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap';
       document.head.appendChild(lk);
     }
+    // Inject design system CSS (exact match to UI spec)
+    if (!document.getElementById('aa-design-css')) {
+      var st = document.createElement('style');
+      st.id  = 'aa-design-css';
+      st.textContent = [
+        '*{box-sizing:border-box}',
+        '.aa-feed-meta{display:flex;justify-content:space-between;padding:7px 14px 5px;background:#F8FAFB;border-bottom:1px solid #E5EAEF}',
+        '.aa-fmeta{font-size:9px;color:#6B7C93;font-family:"DM Mono",monospace;display:flex;align-items:center;gap:4px}',
+        '.aa-ldot{width:5px;height:5px;border-radius:50%;background:#10B981;display:inline-block}',
+        '.aa-fitem{padding:10px 14px;border-bottom:1px solid #E5EAEF;background:#fff;display:flex;gap:9px;align-items:flex-start;text-decoration:none;-webkit-tap-highlight-color:transparent;cursor:pointer}',
+        '.aa-fitem:active{background:#F8FAFB}',
+        '.aa-ficon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}',
+        '.aa-fi-red{background:#FEF2F2}',
+        '.aa-fi-amber{background:#FEF3C7}',
+        '.aa-fi-green{background:#ECFDF5}',
+        '.aa-fi-blue{background:#E0F2F7}',
+        '.aa-fbody{flex:1;min-width:0}',
+        '.aa-fhead{font-size:11px;font-weight:500;color:#1A2332;line-height:1.3;margin-bottom:3px;font-family:"DM Sans",-apple-system,sans-serif}',
+        '.aa-fsub{display:flex;gap:6px;align-items:center}',
+        '.aa-ftag{padding:2px 6px;border-radius:8px;font-size:8px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;font-family:"DM Sans",sans-serif}',
+        '.aa-tr{background:#FEF2F2;color:#EF4444}',
+        '.aa-ta{background:#FEF3C7;color:#92400E}',
+        '.aa-tg{background:#ECFDF5;color:#065F46}',
+        '.aa-tb{background:#E0F2F7;color:#0E7490}',
+        '.aa-tm{background:#F8FAFB;color:#6B7C93}',
+        '.aa-ftime{font-size:9px;color:#A8B5C4;font-family:"DM Mono",monospace}',
+        '.aa-floc{font-size:9px;color:#0E7490;margin-top:4px;font-family:"DM Sans",sans-serif}',
+        '.aa-count-bar{padding:6px 14px 4px;background:#F8FAFB;font-size:9px;font-weight:700;color:#6B7C93;letter-spacing:1px;font-family:"DM Mono",monospace;border-bottom:1px solid #E5EAEF}',
+      ].join('\n');
+      document.head.appendChild(st);
+    }
     mapWrap  = document.getElementById('map-wrap');
     navPanel = document.getElementById('nav-panel');
 
@@ -1202,7 +1335,8 @@
     window.toggleNav         = function(){if(navPanel)navPanel.classList.toggle('open');};
     window.closeNav          = function(){if(navPanel)navPanel.classList.remove('open');};
     window.openCheckin       = showCheckin;
-    window.openReport        = function(){switchTab('feed');setTimeout(function(){_feedTab='alerts';var b=document.querySelector('[data-ftab="alerts"]');if(b)b.click();},200);};
+    window.openReport        = function(lat, lng){ showReportModal(lat||null, lng||null); };
+    window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
     window.toggleHeatmap     = function(){if(window.handleFlameBtn)window.handleFlameBtn();};
