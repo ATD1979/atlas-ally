@@ -527,32 +527,49 @@ router.post('/route', async (req, res) => {
 router.get('/news', (req, res) => {
   const { country_code, lat, lng, lang = 'en' } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  const code = country_code.toUpperCase();
+  const code    = country_code.toUpperCase();
+  const userLat = parseFloat(lat);
+  const userLng = parseFloat(lng);
+  const hasGPS  = !isNaN(userLat) && !isNaN(userLng);
+  const RADIUS  = 300; // km — hard filter
 
-  // getNewsByCountry is now a function (lang-aware), not a prepared statement
   let items = db.getNewsByCountry(code, lang);
 
-  // If nothing cached for this lang, trigger a background fetch then return empty
-  if (!items.length) {
+  // Trigger background refresh if cache is thin
+  if (items.length < 5) {
     const { refreshNewsForCountry } = require('../news');
     refreshNewsForCountry(code, lang).catch(() => {});
   }
-  const userLat = parseFloat(lat), userLng = parseFloat(lng);
-  if (!isNaN(userLat) && !isNaN(userLng)) {
+
+  if (hasGPS) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
-    items = items.map(a => ({ ...a,
-      distance_km:       Math.round(distanceKm(userLat,userLng,a.lat||center.lat,a.lng||center.lng)),
-      has_real_location: !!(a.lat&&a.lng),
+    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+
+    // Attach distance to every article
+    items = items.map(a => ({
+      ...a,
+      distance_km:       a.lat && a.lng
+                           ? Math.round(distanceKm(userLat, userLng, a.lat, a.lng))
+                           : Math.round(distanceKm(userLat, userLng, center.lat, center.lng)),
+      has_real_location: !!(a.lat && a.lng),
     }));
-    const nearby = items.filter(a => a.distance_km <= 150);
-    items = nearby.length ? nearby : items;
-    items.sort((a,b) => {
-      if (a.has_real_location&&!b.has_real_location) return -1;
-      if (!a.has_real_location&&b.has_real_location) return 1;
+
+    // Hard 300 km filter — articles without real coords use country centre
+    // Real-location articles: strict 300 km
+    // Country-centre articles: included only if country centre is within 300 km
+    const inRadius = items.filter(a => a.distance_km <= RADIUS);
+
+    // If nothing falls within radius, return empty (don't leak irrelevant articles)
+    items = inRadius;
+
+    // Sort: real nearby locations first, then by recency
+    items.sort((a, b) => {
+      if (a.has_real_location && !b.has_real_location) return -1;
+      if (!a.has_real_location && b.has_real_location) return 1;
       return a.distance_km - b.distance_km;
     });
   }
+
   res.json(items);
 });
 
@@ -642,37 +659,64 @@ router.get('/events', async (req, res) => {
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
 
-  // Official events from DB (embassy alerts, FCDO, ACLED — always authoritative)
+  // Official events from DB
   let events = db.getEventsByCountry.all(code);
   if (!events.length) {
     try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(()=>{}); } catch(e) {}
   }
 
-  // Augment with Google News security feed in the user's selected language
+  // Augment with Google News security feed in user's language
   const countryName = COUNTRY_NAMES[code] || code;
   const gnews = await fetchSecurityNewsInLang(countryName, code, lang);
 
-  // Merge: official events first, then lang-matched Google News, deduped by source_url
+  // Merge deduped
   const seen = new Set(events.map(e => e.source_url).filter(Boolean));
   const merged = [
     ...events,
     ...gnews.filter(e => !seen.has(e.source_url)),
   ];
-
-  // Sort newest first
   merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  // ── 7-day rolling average stats ───────────────────────────────────────────
+  const now7    = Date.now();
+  const day7ago = now7 - 7 * 24 * 3600 * 1000;
+  const last7   = merged.filter(e => new Date(e.created_at || 0).getTime() > day7ago);
+
+  // Count by category for the 7-day window
+  const TYPE_TO_CAT = {
+    missile:'air', drone:'air', siren:'air', airstrike:'air', rocket:'air',
+    explosion:'explosion', bomb:'explosion', blast:'explosion',
+    shooting:'armed', gunfire:'armed', armed:'armed',
+    protest:'unrest', riot:'unrest', evacuation:'unrest', demonstration:'unrest',
+    earthquake:'weather', flood:'weather', fire:'weather', storm:'weather',
+    drug:'drug', crime:'crime', theft:'crime', robbery:'crime',
+  };
+  const catCounts = {};
+  last7.forEach(ev => {
+    const cat = TYPE_TO_CAT[ev.type] || 'other';
+    catCounts[cat] = (catCounts[cat] || 0) + 1;
+  });
+
+  const stats7d = {
+    total:      last7.length,
+    per_day:    parseFloat((last7.length / 7).toFixed(1)),
+    by_category: catCounts,
+    critical:   last7.filter(e => e.severity === 'critical').length,
+    high:       last7.filter(e => e.severity === 'high').length,
+  };
 
   const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
     const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
-    return res.json(merged.map(ev => ({
+    const enriched = merged.map(ev => ({
       ...ev,
       distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),
-    })).sort((a, b) => a.distance_km - b.distance_km));
+    })).sort((a, b) => a.distance_km - b.distance_km);
+    return res.json({ events: enriched, stats7d });
   }
 
-  res.json(merged);
+  res.json({ events: merged, stats7d });
 });
 
 module.exports = router;

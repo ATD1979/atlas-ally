@@ -329,9 +329,13 @@
     nb.innerHTML = loading('Building safety dashboard…');
     fetch('/api/events?country_code=' + encodeURIComponent(country) + '&lang=' + encodeURIComponent(_lang))
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(events) {
+      .then(function(resp) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
+
+        // Handle both old array response and new { events, stats7d } shape
+        var events = Array.isArray(resp) ? resp : (resp.events || []);
+        var s7     = resp.stats7d || null;
 
         // ── Category definitions ──────────────────────────────
         var CATS = [
@@ -380,8 +384,34 @@
         html += '<div style="margin:10px 12px 0;border-radius:12px;background:'+threatLevel[1]+';padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">';
         html += '<div><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.75);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">Threat Level · '+countryName+'</div>';
         html += '<div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:0.5px;">'+threatLevel[0]+'</div></div>';
-        html += '<div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#fff;">'+events.length+'</div><div style="font-size:9px;color:rgba(255,255,255,0.75);font-family:'+T.mono+';">INCIDENTS</div></div>';
+        html += '<div style="text-align:right"><div style="font-size:22px;font-weight:800;color:#fff;">'+events.length+'</div><div style="font-size:9px;color:rgba(255,255,255,0.75);font-family:'+T.mono+';">TOTAL</div></div>';
         html += '</div>';
+
+        // ── 7-day rolling average ─────────────────────────────
+        if (s7) {
+          var perDay  = s7.per_day || 0;
+          var dayCol  = perDay >= 5 ? T.red : perDay >= 2 ? T.gold : T.green;
+          html += '<div style="margin:8px 12px 0;background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:12px 14px;">';
+          html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:10px;">7-DAY ROLLING AVERAGE</div>';
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">';
+          // Per day
+          html += '<div style="text-align:center;background:'+T.bg+';border-radius:8px;padding:10px 6px;">';
+          html += '<div style="font-size:18px;font-weight:800;color:'+dayCol+';">'+perDay.toFixed(1)+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Per Day</div></div>';
+          // Last 7 total
+          html += '<div style="text-align:center;background:'+T.bg+';border-radius:8px;padding:10px 6px;">';
+          html += '<div style="font-size:18px;font-weight:800;color:'+T.text+';">'+s7.total+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Last 7 Days</div></div>';
+          // Critical
+          html += '<div style="text-align:center;background:'+(s7.critical>0?T.redLight:T.bg)+';border-radius:8px;padding:10px 6px;">';
+          html += '<div style="font-size:18px;font-weight:800;color:'+(s7.critical>0?T.red:T.muted)+';"> '+s7.critical+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">Critical</div></div>';
+          // High
+          html += '<div style="text-align:center;background:'+(s7.high>0?T.goldLight:T.bg)+';border-radius:8px;padding:10px 6px;">';
+          html += '<div style="font-size:18px;font-weight:800;color:'+(s7.high>0?T.gold:T.muted)+';">'+s7.high+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-top:2px;">High</div></div>';
+          html += '</div></div>';
+        }
 
         // ── Category stat grid ────────────────────────────────
         var activeCats = CATS.filter(function(c){ return buckets[c.key].length > 0; });
@@ -510,33 +540,46 @@
           html += '<div style="font-size:9px;font-weight:700;color:'+T.subtle+';text-align:right;">TOTAL</div>';
           html += '</div>';
 
+          // Use a fixed benchmark scale per category so bars never "peg out"
+          // Each bar shows count vs benchmark — if count exceeds benchmark, bar shows 90% max
+          // and a "+" indicator appears, telling the user there is more data
+          var BENCHMARKS = { violence:20, drugs:15, theft:15, unrest:10, security:20 };
+
           cats.forEach(function(cat) {
             var pct = total > 0 ? Math.round((cat.total/total)*100) : 0;
             var col = pct > 35 ? T.red : pct > 20 ? T.gold : T.teal;
+            var benchmark = BENCHMARKS[cat.key] || 20;
+
             html += '<div style="display:grid;grid-template-columns:110px 1fr 1fr 1fr 52px;gap:4px;align-items:center;padding:8px 0;border-top:1px solid '+T.border+';">';
+
             // Label
             html += '<div style="display:flex;align-items:center;gap:5px;">';
             html += '<span style="font-size:15px;">'+cat.icon+'</span>';
             html += '<span style="font-size:10px;font-weight:600;color:'+T.text+';line-height:1.2;">'+cat.label+'</span>';
             html += '</div>';
-            // Monthly bars
+
+            // Monthly bars — absolute scale, never peg at 100%
             cat.months.forEach(function(mo) {
-              var h = maxVal > 0 ? Math.max(Math.round((mo.count/maxVal)*100),mo.count>0?8:0) : 0;
-              var bc = mo.count===0 ? T.border : (h>70?T.red:h>35?T.gold:T.green);
+              var capped  = mo.count >= benchmark;
+              // Cap bar at 85% of container so there's always visual headroom
+              var fillPct = mo.count === 0 ? 0 : Math.min(Math.round((mo.count / benchmark) * 85), 85);
+              var bc = mo.count === 0 ? T.border : (capped ? T.red : fillPct > 50 ? T.gold : T.green);
               html += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">';
-              html += '<div style="font-size:10px;font-weight:600;color:'+T.text+';">'+mo.count+'</div>';
+              // Number + "+" if at or above benchmark
+              html += '<div style="font-size:10px;font-weight:700;color:'+(capped?T.red:T.text)+';">'+mo.count+(capped?'+':'')+'</div>';
               html += '<div style="width:100%;height:24px;background:'+T.border+';border-radius:3px;overflow:hidden;display:flex;align-items:flex-end;">';
-              if (h>0) html += '<div style="width:100%;height:'+h+'%;background:'+bc+';"></div>';
+              if (fillPct > 0) html += '<div style="width:100%;height:'+fillPct+'%;background:'+bc+';border-radius:3px;"></div>';
               html += '</div></div>';
             });
-            // Total
+
+            // Total + share
             html += '<div style="text-align:right;">';
             html += '<div style="font-size:11px;font-weight:700;color:'+col+';">'+cat.total+'</div>';
             html += '<div style="font-size:9px;color:'+T.muted+';">'+pct+'%</div>';
             html += '</div></div>';
           });
 
-          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">Source: Google News RSS \u00b7 keyword classified \u00b7 refreshed every 30 min</div>';
+          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">Bars scale to benchmark · + means more incidents likely exist beyond sample</div>';
           html += '</div>';
 
         } else if (total === 0) {
