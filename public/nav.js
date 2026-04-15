@@ -25,10 +25,12 @@
     if (!overlay) return;
     overlay.innerHTML = html;
     overlay.style.display = 'block';
+    overlay.style.pointerEvents = 'all';
   }
   function hideOverlay() {
     if (!overlay) return;
     overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
     overlay.innerHTML = '';
   }
 
@@ -341,27 +343,36 @@
       return;
     }
     el.innerHTML = list.slice(0, 150).map(function (c) {
-      var centerStr = (c.center && c.center.length === 2)
-        ? '{lat:' + c.center[0] + ',lng:' + c.center[1] + '}'
-        : 'null';
+      var lat = (c.center && c.center.length === 2) ? c.center[0] : '';
+      var lng = (c.center && c.center.length === 2) ? c.center[1] : '';
       return (
-        '<div onclick="(function(){\'' +
-          'window.setActiveCountry && window.setActiveCountry(\'' + c.code + '\',' + centerStr + ');' +
-          'window.hidePicker && window.hidePicker();' +
-          'window.switchTab(\'map\');' +
-        '})()" ' +
+        '<div class="aa-country-row" data-code="' + c.code + '" data-lat="' + lat + '" data-lng="' + lng + '" ' +
         'style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid ' + T.border + ';cursor:pointer;">' +
           '<div style="font-size:28px;width:44px;text-align:center;flex-shrink:0;">' + (c.flag || '🌍') + '</div>' +
-          '<div style="flex:1;">' +
+          '<div style="flex:1;pointer-events:none;">' +
             '<div style="font-size:14px;font-weight:600;color:' + T.text + ';">' + c.name + '</div>' +
             '<div style="font-size:11px;color:' + T.muted + ';margin-top:2px;">' + (c.advisoryLabel || '') + (c.capital ? ' · ' + c.capital : '') + '</div>' +
           '</div>' +
-          '<div style="font-size:18px;color:' + T.muted + ';">›</div>' +
+          '<div style="font-size:18px;color:' + T.muted + ';pointer-events:none;">›</div>' +
         '</div>'
       );
     }).join('');
+    // One click listener on the container — no inline onclick escaping issues
+    el.addEventListener('click', function (e) {
+      var row = e.target.closest('.aa-country-row');
+      if (!row) return;
+      var code = row.dataset.code;
+      var lat  = parseFloat(row.dataset.lat);
+      var lng  = parseFloat(row.dataset.lng);
+      var pos  = (!isNaN(lat) && !isNaN(lng)) ? { lat: lat, lng: lng } : null;
+      if (typeof window.setActiveCountry === 'function') window.setActiveCountry(code, pos);
+      window.switchTab('map');
+      if (typeof window.toast === 'function') {
+        var found = (window.allCountries || []).find(function(c) { return c.code === code; });
+        window.toast('\uD83D\uDCCD ' + (found ? found.name : code), 'ok');
+      }
+    });
   }
-
   function loadWorldCountries() {
     if (window.allCountries && window.allCountries.length) {
       renderCountryList(window.allCountries);
@@ -466,11 +477,12 @@
     overlay.id = 'aa-overlay';
     overlay.style.cssText =
       'display:none;' +
-      'position:fixed;top:0;left:0;right:0;bottom:62px;' +   /* bottom:62px = tab bar height */
+      'position:fixed;top:0;left:0;right:0;bottom:62px;' +
       'z-index:500000;' +
       'background:' + T.bg + ';' +
       'overflow-y:auto;' +
-      '-webkit-overflow-scrolling:touch;';
+      '-webkit-overflow-scrolling:touch;' +
+      'pointer-events:none;';
     document.body.appendChild(overlay);
 
     /* Hamburger — remove onclick, use addEventListener */
