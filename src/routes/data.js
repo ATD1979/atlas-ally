@@ -390,11 +390,11 @@ router.post('/route', async (req, res) => {
 
 // ── News ──────────────────────────────────────────────────────────────────────
 router.get('/news', (req, res) => {
-  const { country_code, lat, lng } = req.query;
+  const { country_code, lat, lng, lang } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
   let items  = db.getNewsByCountry.all(code);
-  if (!items.length) { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code).catch(()=>{}); }
+  if (!items.length) { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code, lang || 'en').catch(()=>{}); }
   const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');

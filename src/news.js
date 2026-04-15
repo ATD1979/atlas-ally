@@ -154,7 +154,7 @@ function isRemoteSource(item) {
   return REMOTE_DOMAINS.some(d => item.sourceDomain.includes(d.replace('.', '')));
 }
 
-async function refreshNewsForCountry(countryCode) {
+async function refreshNewsForCountry(countryCode, langOverride) {
   const country = COUNTRIES[countryCode];
   if (!country) return;
 
@@ -162,10 +162,13 @@ async function refreshNewsForCountry(countryCode) {
     lang: 'en', gl: countryCode, query: `${country.name} news safety travel`
   };
 
+  // Use caller's language preference if provided, else fall back to config
+  const lang = langOverride || config.lang || 'en';
+
   let count = 0;
 
   // Primary: Google News RSS (always works, auto-scales to any country)
-  const gnUrl = googleNewsUrl(config.query, config.lang, config.gl);
+  const gnUrl = googleNewsUrl(config.query, lang, config.gl);
   const gnItems = await fetchRSS(gnUrl);
   const seen = new Set();
   for (const raw of gnItems.slice(0, 15)) {
