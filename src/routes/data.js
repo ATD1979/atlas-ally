@@ -202,4 +202,138 @@ router.get('/events', (req, res) => {
   res.json(events);
 });
 
+
+// ── GDELT Crime Trend Proxy ───────────────────────────────────────────────────
+// Proxies GDELT to avoid CORS. Queries 3 months of crime-related media volume.
+
+const UNODC_BASELINE = {
+  AF:{homicide:6.5,assault:72,theft:95,robbery:38,year:2022},
+  AE:{homicide:0.5,assault:10,theft:62,robbery:2,year:2022},
+  AR:{homicide:5.3,assault:142,theft:890,robbery:88,year:2022},
+  BD:{homicide:2.6,assault:45,theft:180,robbery:28,year:2022},
+  BR:{homicide:22.3,assault:248,theft:1580,robbery:156,year:2022},
+  CD:{homicide:13.5,assault:165,theft:280,robbery:95,year:2022},
+  CN:{homicide:0.5,assault:28,theft:180,robbery:12,year:2022},
+  CO:{homicide:27.9,assault:198,theft:980,robbery:112,year:2022},
+  DE:{homicide:0.9,assault:132,theft:1420,robbery:42,year:2022},
+  DZ:{homicide:1.9,assault:38,theft:210,robbery:18,year:2022},
+  EG:{homicide:3.2,assault:42,theft:210,robbery:15,year:2022},
+  ET:{homicide:7.6,assault:95,theft:185,robbery:52,year:2022},
+  FR:{homicide:1.3,assault:142,theft:1650,robbery:78,year:2022},
+  GB:{homicide:1.1,assault:164,theft:1820,robbery:52,year:2022},
+  GH:{homicide:1.7,assault:55,theft:245,robbery:32,year:2022},
+  GT:{homicide:22.4,assault:165,theft:620,robbery:98,year:2022},
+  HN:{homicide:38.9,assault:210,theft:720,robbery:128,year:2022},
+  HT:{homicide:35.2,assault:195,theft:580,robbery:142,year:2022},
+  ID:{homicide:0.4,assault:35,theft:155,robbery:18,year:2022},
+  IL:{homicide:1.4,assault:22,theft:890,robbery:18,year:2022},
+  IN:{homicide:2.8,assault:52,theft:185,robbery:18,year:2022},
+  IQ:{homicide:5.8,assault:68,theft:120,robbery:22,year:2022},
+  IR:{homicide:3.1,assault:58,theft:165,robbery:28,year:2022},
+  IT:{homicide:0.5,assault:58,theft:1250,robbery:48,year:2022},
+  JO:{homicide:1.8,assault:28,theft:145,robbery:8,year:2022},
+  JP:{homicide:0.2,assault:18,theft:285,robbery:2,year:2022},
+  KE:{homicide:8.5,assault:98,theft:380,robbery:65,year:2022},
+  KR:{homicide:0.6,assault:48,theft:620,robbery:8,year:2022},
+  LB:{homicide:2.1,assault:35,theft:180,robbery:12,year:2022},
+  LY:{homicide:8.2,assault:95,theft:280,robbery:58,year:2022},
+  MA:{homicide:1.4,assault:32,theft:195,robbery:22,year:2022},
+  ML:{homicide:9.8,assault:112,theft:195,robbery:68,year:2022},
+  MM:{homicide:7.8,assault:88,theft:165,robbery:45,year:2022},
+  MX:{homicide:29.9,assault:182,theft:1240,robbery:128,year:2022},
+  NG:{homicide:10.3,assault:128,theft:420,robbery:88,year:2022},
+  NP:{homicide:2.8,assault:48,theft:185,robbery:22,year:2022},
+  PH:{homicide:8.4,assault:115,theft:380,robbery:62,year:2022},
+  PK:{homicide:7.8,assault:88,theft:220,robbery:45,year:2022},
+  PL:{homicide:0.7,assault:78,theft:890,robbery:28,year:2022},
+  RU:{homicide:8.2,assault:95,theft:680,robbery:42,year:2022},
+  SA:{homicide:1.5,assault:18,theft:95,robbery:6,year:2022},
+  SD:{homicide:12.8,assault:142,theft:210,robbery:88,year:2022},
+  SO:{homicide:18.2,assault:195,theft:165,robbery:112,year:2022},
+  SY:{homicide:18.5,assault:185,theft:285,robbery:125,year:2022},
+  TH:{homicide:3.2,assault:48,theft:290,robbery:22,year:2022},
+  TN:{homicide:2.1,assault:42,theft:225,robbery:28,year:2022},
+  TR:{homicide:4.3,assault:55,theft:320,robbery:28,year:2022},
+  TZ:{homicide:4.8,assault:68,theft:285,robbery:38,year:2022},
+  UA:{homicide:6.2,assault:78,theft:410,robbery:35,year:2022},
+  US:{homicide:6.8,assault:246,theft:1958,robbery:82,year:2022},
+  VE:{homicide:49.9,assault:285,theft:1580,robbery:188,year:2022},
+  YE:{homicide:21.8,assault:188,theft:195,robbery:128,year:2022},
+  ZA:{homicide:45.5,assault:580,theft:2200,robbery:320,year:2022},
+};
+
+const COUNTRY_NAMES_MAP = {
+  AF:'Afghanistan',AE:'UAE',AR:'Argentina',BD:'Bangladesh',BR:'Brazil',
+  CD:'DR Congo',CN:'China',CO:'Colombia',DE:'Germany',DZ:'Algeria',
+  EG:'Egypt',ET:'Ethiopia',FR:'France',GB:'United Kingdom',GH:'Ghana',
+  GT:'Guatemala',HN:'Honduras',HT:'Haiti',ID:'Indonesia',IL:'Israel',
+  IN:'India',IQ:'Iraq',IR:'Iran',IT:'Italy',JO:'Jordan',JP:'Japan',
+  KE:'Kenya',KR:'South Korea',LB:'Lebanon',LY:'Libya',MA:'Morocco',
+  ML:'Mali',MM:'Myanmar',MX:'Mexico',NG:'Nigeria',NP:'Nepal',
+  PH:'Philippines',PK:'Pakistan',PL:'Poland',RU:'Russia',SA:'Saudi Arabia',
+  SD:'Sudan',SO:'Somalia',SY:'Syria',TH:'Thailand',TN:'Tunisia',
+  TR:'Turkey',TZ:'Tanzania',UA:'Ukraine',US:'United States',
+  VE:'Venezuela',YE:'Yemen',ZA:'South Africa',
+};
+
+router.get('/crime/trend', async (req, res) => {
+  const code = (req.query.country_code || '').toUpperCase().trim();
+  if (!code) return res.status(400).json({ error: 'country_code required' });
+
+  const countryName = COUNTRY_NAMES_MAP[code] || code;
+  const unodc = UNODC_BASELINE[code] || null;
+
+  // Build 3 monthly date ranges
+  const now = new Date();
+  const months = [];
+  for (let m = 2; m >= 0; m--) {
+    const end   = new Date(now);
+    end.setMonth(end.getMonth() - m);
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 1);
+    const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
+    months.push({
+      label: end.toLocaleDateString('en-US', {month:'long'}),
+      start: fmt(start),
+      end:   fmt(end),
+      count: 0
+    });
+  }
+
+  const query = encodeURIComponent(
+    '(' + countryName + ') (crime OR violence OR attack OR robbery OR shooting OR explosion OR conflict OR security)'
+  );
+
+  // Fetch all 3 months from GDELT (server-side — no CORS issue)
+  const counts = await Promise.all(months.map(async mo => {
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${query}` +
+      `&mode=artlist&maxrecords=250&format=json` +
+      `&startdatetime=${mo.start}&enddatetime=${mo.end}`;
+    try {
+      const r    = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      if (!r.ok) return 0;
+      const data = await r.json();
+      return (data.articles || []).length;
+    } catch { return 0; }
+  }));
+
+  months.forEach((mo, i) => { mo.count = counts[i]; });
+  const total    = counts.reduce((a,b) => a+b, 0);
+  const maxCount = Math.max(...counts, 1);
+  const trend    = counts[2] > counts[0]*1.15 ? 'rising' :
+                   counts[2] < counts[0]*0.85 ? 'falling' : 'stable';
+
+  res.json({
+    country_code: code,
+    country_name: countryName,
+    months,
+    total_incidents: total,
+    max_monthly: maxCount,
+    trend,
+    unodc_baseline: unodc,
+    sources: ['GDELT Project', unodc ? 'UNODC' : null].filter(Boolean),
+    generated_at: new Date().toISOString(),
+  });
+});
+
 module.exports = router;

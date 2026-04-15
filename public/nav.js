@@ -263,64 +263,29 @@
     var countryName = COUNTRY_NAMES[country] || country;
     var unodc = UNODC[country] || null;
 
-    // Query GDELT directly from browser — no backend needed
-    // Use 3 separate monthly queries for accurate monthly breakdown
-    var now = new Date();
-    var months = [];
-    for (var m = 2; m >= 0; m--) {
-      var end   = new Date(now);
-      end.setMonth(end.getMonth() - m);
-      var start = new Date(end);
-      start.setMonth(start.getMonth() - 1);
-      months.push({
-        label: end.toLocaleDateString('en-US', {month:'long'}),
-        start: fmtDate(start),
-        end:   fmtDate(end),
-        count: 0
-      });
-    }
+    // Call our backend proxy — handles GDELT server-side (no CORS)
+    fetch('/api/crime/trend?country_code=' + encodeURIComponent(country))
+      .then(function(r) { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(data) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
 
-    function fmtDate(d) {
-      return d.getFullYear().toString() +
-        ('0'+(d.getMonth()+1)).slice(-2) +
-        ('0'+d.getDate()).slice(-2) + '000000';
-    }
+        var months   = data.months || [];
+        var counts   = months.map(function(m){return m.count;});
+        var total    = data.total_incidents || 0;
+        var maxCount = data.max_monthly || 1;
+        var trend    = data.trend || 'stable';
+        var trendIcon  = {rising:'📈',falling:'📉',stable:'➡️'}[trend];
+        var trendColor = {rising:T.red,falling:T.green,stable:T.gold}[trend];
 
-    var query = encodeURIComponent('(' + countryName + ') (crime OR violence OR attack OR robbery OR shooting OR explosion OR conflict OR security)');
+        var html = '';
 
-    // Fetch all 3 months in parallel
-    var promises = months.map(function(mo) {
-      var url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + query +
-        '&mode=artlist&maxrecords=250&format=json' +
-        '&startdatetime=' + mo.start + '&enddatetime=' + mo.end;
-      return fetch(url, {headers:{'Accept':'application/json'}})
-        .then(function(r) { return r.ok ? r.json() : {articles:[]}; })
-        .then(function(data) { return (data.articles || []).length; })
-        .catch(function() { return 0; });
-    });
-
-    Promise.all(promises).then(function(counts) {
-      var nb2 = document.getElementById('aa-feed-body');
-      if (!nb2) return;
-
-      months.forEach(function(mo, i) { mo.count = counts[i]; });
-      var total = counts.reduce(function(a,b){return a+b;}, 0);
-      var maxCount = Math.max.apply(null, counts) || 1;
-
-      // Trend
-      var trend = counts[2] > counts[0] * 1.15 ? 'rising' :
-                  counts[2] < counts[0] * 0.85 ? 'falling' : 'stable';
-      var trendIcon  = {rising:'📈',falling:'📉',stable:'➡️'}[trend];
-      var trendColor = {rising:T.red,falling:T.green,stable:T.gold}[trend];
-
-      var html = '';
-
-      // Summary row
-      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
-      html += summaryCard('🔍','Total Reports',total,'Last 90 days',T.teal);
-      html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs 90 days prior',trendColor);
-      html += summaryCard('📡','Sources','GDELT + UNODC','Data providers',T.muted);
-      html += '</div>';
+        // Summary row
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
+        html += summaryCard('🔍','Total Reports',total,'Last 90 days',T.teal);
+        html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs prior period',trendColor);
+        html += summaryCard('📡','Sources',(data.sources||[]).join(' + '),'Data providers',T.muted);
+        html += '</div>';
 
       // Monthly bars
       html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
@@ -386,16 +351,16 @@
       html += '<div style="height:20px;"></div>';
       nb2.innerHTML = html;
 
-    }).catch(function(err) {
-      var nb2 = document.getElementById('aa-feed-body');
-      if (!nb2) return;
-      // If GDELT fails, still show UNODC if available
-      if (unodc) {
-        renderCrimeUNODCOnly(nb2, unodc, countryName);
-      } else {
-        nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ Could not load crime data. Check your connection.</div>' + renderSafetyTips();
-      }
-    });
+      })
+      .catch(function(err) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        if (unodc) {
+          renderCrimeUNODCOnly(nb2, unodc, countryName);
+        } else {
+          nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ Could not load crime data: '+err.message+'</div>' + renderSafetyTips();
+        }
+      });
   }
 
   function renderCrimeUNODCOnly(el, unodc, countryName) {
