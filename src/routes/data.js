@@ -122,57 +122,83 @@ router.get('/crime/trend', async (req, res) => {
   const countryName = COUNTRY_NAMES[code] || code;
   const unodc       = UNODC[code] || null;
 
-  // Build 3 monthly date ranges
-  const now    = new Date();
+  // 3-month date range
+  const now   = new Date();
+  const fmt   = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
+  const end90 = fmt(now);
+  const start90 = fmt(new Date(now - 90 * 24 * 3600 * 1000));
+
+  // Monthly buckets for breakdown
   const months = [];
   for (let m = 2; m >= 0; m--) {
-    const end   = new Date(now);
-    end.setMonth(end.getMonth() - m);
-    const start = new Date(end);
-    start.setMonth(start.getMonth() - 1);
-    const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
-    months.push({
-      label: end.toLocaleDateString('en-US', { month: 'long' }),
-      start: fmt(start),
-      end:   fmt(end),
-      count: 0,
-    });
+    const end   = new Date(now); end.setMonth(end.getMonth() - m);
+    const start = new Date(end); start.setMonth(start.getMonth() - 1);
+    months.push({ label: end.toLocaleDateString('en-US', {month:'long'}), start: fmt(start), end: fmt(end) });
   }
 
-  // GDELT query
-  const q = encodeURIComponent(
-    `"${countryName}" (crime OR violence OR attack OR shooting OR bombing OR robbery OR conflict OR security OR explosion)`
-  );
+  // GDELT timelinevol — returns actual article volume counts, not capped list
+  // One query per category, covering full 90-day window
+  const CATEGORIES = [
+    { key: 'violence',  label: 'Violence & Conflict', icon: '💥',
+      terms: 'attack OR shooting OR bombing OR explosion OR killed OR wounded OR airstrike' },
+    { key: 'theft',     label: 'Theft & Robbery',     icon: '🏪',
+      terms: 'theft OR robbery OR burglary OR stolen OR pickpocket OR carjacking' },
+    { key: 'unrest',    label: 'Protests & Unrest',   icon: '✊',
+      terms: 'protest OR riot OR demonstration OR unrest OR clashes OR crowd' },
+    { key: 'drugs',     label: 'Drug Crime',           icon: '💊',
+      terms: 'drug OR narcotics OR trafficking OR smuggling OR cocaine OR heroin' },
+    { key: 'security',  label: 'Security & Safety',   icon: '🚨',
+      terms: 'arrest OR detained OR police OR criminal OR security OR crime' },
+  ];
 
-  // Run GDELT (3 months) + World Bank in parallel
-  const [gdeltCounts, worldBank] = await Promise.all([
-    Promise.all(months.map(async mo => {
-      const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
-        `&mode=artlist&maxrecords=250&format=json` +
-        `&startdatetime=${mo.start}&enddatetime=${mo.end}`;
-      try {
-        const r = await fetch(url, {
-          timeout: 15000,
-          headers: { 'User-Agent': 'AtlasAlly/1.0; +https://atlas-ally.com' },
-        });
-        if (!r.ok) return 0;
-        const data = await r.json();
-        return Array.isArray(data.articles) ? data.articles.length : 0;
-      } catch (e) {
-        console.warn(`GDELT failed ${code} ${mo.label}: ${e.message}`);
-        return 0;
-      }
+  async function gdeltVolume(terms, startDt, endDt) {
+    const q   = encodeURIComponent(`"${countryName}" (${terms})`);
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
+      `&mode=timelinevol&format=json&startdatetime=${startDt}&enddatetime=${endDt}`;
+    try {
+      const r = await fetch(url, {
+        timeout: 15000,
+        headers: { 'User-Agent': 'AtlasAlly/1.0' },
+      });
+      if (!r.ok) return 0;
+      const data = await r.json();
+      // timelinevol returns timeline array — sum all volume values
+      const timeline = data.timeline || [];
+      return timeline.reduce((sum, bucket) => {
+        return sum + (bucket.data || []).reduce((s, d) => s + (d.value || 0), 0);
+      }, 0);
+    } catch(e) {
+      console.warn(`GDELT vol failed ${code} ${terms.slice(0,20)}: ${e.message}`);
+      return 0;
+    }
+  }
+
+  async function gdeltMonthly(terms) {
+    return Promise.all(months.map(mo => gdeltVolume(terms, mo.start, mo.end)));
+  }
+
+  // Run all categories + World Bank in parallel
+  const [catResults, worldBank] = await Promise.all([
+    Promise.all(CATEGORIES.map(async cat => {
+      const monthlyCounts = await gdeltMonthly(cat.terms);
+      return {
+        key:    cat.key,
+        label:  cat.label,
+        icon:   cat.icon,
+        months: months.map((mo, i) => ({ label: mo.label, count: monthlyCounts[i] })),
+        total:  monthlyCounts.reduce((a, b) => a + b, 0),
+      };
     })),
     fetchWorldBank(code),
   ]);
 
-  months.forEach((mo, i) => { mo.count = gdeltCounts[i]; });
+  const grandTotal = catResults.reduce((s, c) => s + c.total, 0);
+  const maxMonthly = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
 
-  const total    = gdeltCounts.reduce((a, b) => a + b, 0);
-  const maxMonth = Math.max(...gdeltCounts, 1);
-  const trend    = gdeltCounts[2] > gdeltCounts[0] * 1.15 ? 'rising'
-                 : gdeltCounts[2] < gdeltCounts[0] * 0.85 ? 'falling'
-                 : 'stable';
+  // Trend based on violence category (most meaningful)
+  const violence = catResults.find(c => c.key === 'violence') || catResults[0];
+  const v0 = violence.months[0].count, v2 = violence.months[2].count;
+  const trend = v2 > v0 * 1.15 ? 'rising' : v2 < v0 * 0.85 ? 'falling' : 'stable';
 
   const sources = ['GDELT Project'];
   if (worldBank) sources.push('World Bank');
@@ -181,9 +207,10 @@ router.get('/crime/trend', async (req, res) => {
   return res.json({
     country_code:    code,
     country_name:    countryName,
-    months,
-    total_incidents: total,
-    max_monthly:     maxMonth,
+    categories:      catResults,
+    months:          months.map(m => m.label),
+    grand_total:     grandTotal,
+    max_monthly:     maxMonthly,
     trend,
     unodc_baseline:  unodc,
     world_bank:      worldBank,
@@ -191,6 +218,7 @@ router.get('/crime/trend', async (req, res) => {
     generated_at:    new Date().toISOString(),
   });
 });
+
 
 // ── Crime: Near location (MUST be before /crime/:code) ────────────────────────
 router.get('/crime/near', (req, res) => {
