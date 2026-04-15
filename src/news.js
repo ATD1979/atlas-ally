@@ -83,12 +83,26 @@ const GOOGLE_NEWS_CONFIG = {
   TZ: { lang: 'en', gl: 'TZ', query: '"Tanzania" news security' },
 };
 
-// Reliable backup feeds that allow server access
-const BACKUP_FEEDS = [
-  { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
-  { name: 'AP News', url: 'https://rsshub.app/apnews/topics/apf-intlnews' },
-  { name: 'Al Jazeera English', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
-];
+// Country-specific drug/crime supplement queries
+const DRUG_QUERIES = {
+  JO: '"Jordan" (captagon OR drug OR trafficking OR narcotics OR hashish OR smuggling OR seized)',
+  SY: '"Syria" (captagon OR drug OR trafficking OR narcotics OR hashish)',
+  LB: '"Lebanon" (captagon OR drug OR trafficking OR narcotics OR hashish)',
+  MX: '"Mexico" (cartel OR drug OR cocaine OR fentanyl OR narco OR trafficking)',
+  CO: '"Colombia" (cocaine OR drug OR cartel OR trafficking OR narco)',
+  AF: '"Afghanistan" (heroin OR opium OR drug OR poppy OR trafficking)',
+  PK: '"Pakistan" (heroin OR drug OR trafficking OR narcotics)',
+  MM: '"Myanmar" (methamphetamine OR drug OR golden triangle OR trafficking)',
+  PH: '"Philippines" (shabu OR drug OR methamphetamine OR trafficking)',
+  TH: '"Thailand" (drug OR methamphetamine OR trafficking OR golden triangle)',
+  NG: '"Nigeria" (drug OR cocaine OR heroin OR trafficking)',
+  ET: '"Ethiopia" (khat OR drug OR trafficking)',
+  KE: '"Kenya" (drug OR heroin OR trafficking OR cocaine)',
+  BR: '"Brazil" (drug OR cocaine OR gang OR trafficking OR cartel)',
+  VE: '"Venezuela" (drug OR cocaine OR trafficking OR cartel)',
+  HN: '"Honduras" (drug OR cartel OR trafficking OR gang)',
+  GT: '"Guatemala" (drug OR cartel OR trafficking)',
+};
 
 async function fetchRSS(url) {
   try {
@@ -202,6 +216,10 @@ async function refreshNewsForCountry(countryCode, langOverride) {
   // Tertiary: conflict/violence query
   const conflictQuery = `"${crimeName}" (attack OR explosion OR conflict OR violence OR protest OR military OR troops OR airstrike)`;
   await fetchAndCache(googleNewsUrl(conflictQuery, 'en', config.gl), 'Google News Conflict');
+
+  // Quaternary: country-specific drug keywords (captagon, khat, etc.)
+  const drugQuery = DRUG_QUERIES[countryCode] || `"${crimeName}" (drug OR narcotic OR trafficking OR seizure)`;
+  await fetchAndCache(googleNewsUrl(drugQuery, 'en', config.gl), 'Google News Drugs');
 
   // Country-specific RSS feeds if defined
   if (country.newsFeed?.length) {

@@ -371,7 +371,8 @@ const helpers = {
   // News
   cacheNews: db.prepare(`INSERT OR IGNORE INTO news_cache (country_code, lang, source_name, title, description, url, lat, lng, published_at) VALUES (@country_code, @lang, @source_name, @title, @description, @url, @lat, @lng, @published_at)`),
   getNewsByCountry: (code, lang) => db.prepare(`SELECT * FROM news_cache WHERE country_code = ? AND lang = ? ORDER BY published_at DESC LIMIT 20`).all(code, lang || 'en'),
-  clearOldNews: db.prepare(`DELETE FROM news_cache WHERE cached_at < datetime('now', '-24 hours')`),
+  getNewsForCrime:  (code) => db.prepare(`SELECT title, published_at FROM news_cache WHERE country_code = ? AND cached_at > datetime('now', '-7 days') ORDER BY published_at DESC LIMIT 100`).all(code),
+  clearOldNews: db.prepare(`DELETE FROM news_cache WHERE cached_at < datetime('now', '-48 hours')`),
 
   // Emergency contacts
   getEmergencyContacts: db.prepare(`SELECT * FROM emergency_contacts WHERE user_id = ? AND active = 1`),

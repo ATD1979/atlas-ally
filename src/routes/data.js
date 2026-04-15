@@ -191,38 +191,141 @@ async function fetchAcled(countryName) {
   }
 }
 
-// ── Crime keyword classifier ──────────────────────────────────────────────────
+// ── Comprehensive crime keyword classifier ────────────────────────────────────
 const CRIME_CATEGORIES = [
-  { key:'violence', label:'Violence & Conflict', icon:'💥',
-    words:['attack','shoot','bomb','explos','kill','wound','airstrike','missile','murder','terror','dead','death','war','hostage','military','troops'] },
-  { key:'theft',    label:'Theft & Robbery',     icon:'🏪',
-    words:['theft','robbery','burgl','stolen','steal','pickpocket','carjack','loot','fraud','scam','heist'] },
-  { key:'unrest',   label:'Protests & Unrest',   icon:'✊',
-    words:['protest','riot','demonstrat','unrest','clash','strike','rally','uprising','march','coup','civil unrest'] },
-  { key:'drugs',    label:'Drug Crime',           icon:'💊',
-    words:['drug','narcotic','traffick','smuggl','cocaine','heroin','cannabis','seizure','cartel'] },
-  { key:'security', label:'Security & Safety',   icon:'🚨',
-    words:['arrest','detain','police','criminal','security','crime','sentence','convict','custody','wanted','suspect'] },
+  {
+    key: 'violence', label: 'Violence & Conflict', icon: '💥',
+    words: [
+      'attack','shoot','bomb','explos','kill','wound','airstrike','missile',
+      'murder','terror','massacre','assassin','execution','sniper','gunman',
+      'war','battle','clash','hostage','military operation','troops deploy',
+      'armed group','militant','insurgent','fatality','casualties','dead body',
+    ],
+  },
+  {
+    key: 'drugs', label: 'Drug Crime', icon: '💊',
+    words: [
+      // Generic
+      'drug','narcotic','traffick','smuggl','cocaine','heroin','cannabis',
+      'marijuana','hashish','amphetamine','methamphetamine','crystal meth',
+      'fentanyl','opioid','opium','ketamine','ecstasy','mdma',
+      // Region-specific
+      'captagon','tramadol','khat','qat','pills seizure','tablet seizure',
+      // Operations
+      'drug bust','drug ring','drug lord','drug cartel','drug kingpin',
+      'contraband','drug shipment','narco','drug seizure','seized drugs',
+      'drug trafficking route','drug haul','drug network','drug lab',
+      'cartel','gang drug','drug war','anti-narcotics',
+    ],
+  },
+  {
+    key: 'theft', label: 'Theft & Robbery', icon: '🏪',
+    words: [
+      'theft','robbery','burgl','stolen','steal','pickpocket','carjack',
+      'loot','fraud','scam','heist','shoplifting','armed robbery','break-in',
+      'home invasion','car theft','cybercrime','identity theft','embezzl',
+    ],
+  },
+  {
+    key: 'unrest', label: 'Protests & Unrest', icon: '✊',
+    words: [
+      'protest','riot','demonstrat','unrest','clash','strike','rally',
+      'uprising','march','coup','civil unrest','mob','crowd','tear gas',
+      'crackdown','dispersed','detained protesters','political unrest',
+    ],
+  },
+  {
+    key: 'security', label: 'Security & Safety', icon: '🚨',
+    words: [
+      'arrest','detain','police','criminal','security','crime','sentence',
+      'convict','custody','wanted','suspect','indictment','prosecution',
+      'smuggler arrested','border security','checkpoint','investigation',
+      'gang arrest','organized crime','trafficking bust','seized',
+    ],
+  },
 ];
 
-function classifyTitle(title) {
+// Country-specific drug keywords that boost drug classification
+const COUNTRY_DRUG_KEYS = {
+  JO: ['captagon','tramadol','hashish','jordan drug','amman drug'],
+  SY: ['captagon','hashish','syria drug'],
+  LB: ['captagon','hashish','lebanon drug'],
+  MX: ['cartel','sinaloa','jalisco','fentanyl','cocaine','drug war','narco'],
+  CO: ['cocaine','farc','drug','narco','cartel','trafficking'],
+  AF: ['heroin','opium','poppy','taliban drug','afghan drug'],
+  ET: ['khat','qat','ethiopia drug'],
+  KE: ['khat','heroin','kenya drug'],
+  SO: ['khat','somalia drug'],
+  BR: ['cocaine','drug','favela','gang','trafficking'],
+  PH: ['shabu','meth','drug war','duerte','philippines drug'],
+  TH: ['methamphetamine','ya ba','thailand drug','golden triangle'],
+  MM: ['heroin','methamphetamine','golden triangle','myanmar drug'],
+  IN: ['ganja','opium','drug','india drug'],
+  PK: ['heroin','opium','afghanistan border','pakistan drug'],
+  NG: ['heroin','cocaine','nigeria drug','drug trafficking'],
+};
+
+function classifyArticle(title, countryCode) {
   const t = (title || '').toLowerCase();
+
+  // Check country-specific drug keywords first (high-priority)
+  const countryDrugs = COUNTRY_DRUG_KEYS[countryCode] || [];
+  if (countryDrugs.some(w => t.includes(w))) return 'drugs';
+
+  // Standard category matching (first match wins, drugs before violence)
   for (const cat of CRIME_CATEGORIES) {
     if (cat.words.some(w => t.includes(w))) return cat.key;
   }
   return null;
 }
 
-function articleMonthIndex(dateStr, now) {
+function monthIndex(dateStr, now) {
   try {
     const d = new Date(dateStr);
     if (isNaN(d)) return -1;
-    const mDiff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    if (mDiff === 0) return 2;
-    if (mDiff === 1) return 1;
-    if (mDiff === 2) return 0;
-  } catch(e) {}
-  return -1;
+    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    return diff === 0 ? 2 : diff === 1 ? 1 : diff === 2 ? 0 : -1;
+  } catch { return -1; }
+}
+
+// ── Live Google News fetch for crime tab (fresh, not just cached) ─────────────
+async function fetchLiveCrimeNews(countryName, countryCode) {
+  const xml2js = require('xml2js');
+  const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
+  const gl     = countryCode.toUpperCase();
+
+  // Country-specific drug terms to add to query
+  const drugBoost = (COUNTRY_DRUG_KEYS[countryCode] || []).slice(0, 3).join(' OR ');
+  const queries = [
+    `"${countryName}" (crime OR murder OR robbery OR theft OR fraud)`,
+    `"${countryName}" (drug OR narcotic OR trafficking OR smuggling OR seizure${drugBoost ? ' OR ' + drugBoost : ''})`,
+    `"${countryName}" (arrest OR police OR convicted OR sentenced OR bust)`,
+    `"${countryName}" (protest OR riot OR unrest OR demonstration OR clash)`,
+  ];
+
+  const results = [];
+  for (const q of queries) {
+    try {
+      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en&gl=${gl}&ceid=${gl}:en`;
+      const r   = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      if (!r.ok) continue;
+      const xml  = await r.text();
+      const data = await parser.parseStringPromise(xml);
+      const items = data?.rss?.channel?.item || [];
+      const arr   = Array.isArray(items) ? items : [items];
+      for (const item of arr.slice(0, 12)) {
+        const raw   = String(item.title?._ || item.title || '');
+        const dash  = raw.lastIndexOf(' - ');
+        const title = dash > 10 ? raw.slice(0, dash).trim() : raw.trim();
+        let pub = new Date().toISOString();
+        try { pub = new Date(item.pubDate || '').toISOString(); } catch {}
+        const url2 = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+        if (title.length > 10) results.push({ title, published_at: pub, url: String(url2) });
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return results;
 }
 
 // ── /crime/trend — MUST be before /crime/:code ────────────────────────────────
@@ -238,29 +341,60 @@ router.get('/crime/trend', async (req, res) => {
   for (let m = 2; m >= 0; m--) {
     const d = new Date(now);
     d.setMonth(d.getMonth() - m);
-    monthLabels.push(d.toLocaleDateString('en-US', { month:'long' }));
+    monthLabels.push(d.toLocaleDateString('en-US', { month: 'long' }));
   }
 
-  // Use existing news cache
-  let articles = [];
-  try { articles = db.getNewsByCountry(code, 'en') || []; } catch(e) {}
-  if (!articles.length) {
-    try { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code).catch(()=>{}); } catch(e) {}
+  // ── Layer 1: Cached news articles ──────────────────────────────────────────
+  let cachedArticles = [];
+  try { cachedArticles = db.getNewsForCrime(code) || []; } catch(e) {}
+
+  // ── Layer 2: Events table (typed incidents) ────────────────────────────────
+  let events = [];
+  try {
+    events = db.db.prepare(`
+      SELECT type, created_at, title FROM events
+      WHERE country_code = ? AND status = 'approved' AND is_test = 0
+        AND created_at > datetime('now', '-90 days')
+      ORDER BY created_at DESC LIMIT 200
+    `).all(code);
+  } catch(e) {}
+
+  // ── Layer 3: Live Google News fetch ───────────────────────────────────────
+  let liveArticles = [];
+  try { liveArticles = await fetchLiveCrimeNews(countryName, code); } catch(e) {}
+
+  // Trigger background cache refresh
+  if (cachedArticles.length < 10) {
+    try { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code, 'en').catch(()=>{}); } catch(e) {}
   }
 
-  // Filter to last 90 days, classify and bucket
-  const cutoff = new Date(now - 90 * 24 * 3600 * 1000);
+  // ── Classify all sources ───────────────────────────────────────────────────
   const counts = {};
   CRIME_CATEGORIES.forEach(c => { counts[c.key] = [0, 0, 0]; });
-  let crimeCount = 0;
+  let total = 0;
 
-  articles.forEach(article => {
-    const pub = new Date(article.published_at || '');
-    if (isNaN(pub) || pub < cutoff) return;
-    const key = classifyTitle(article.title);
+  // From news cache + live fetch
+  [...cachedArticles, ...liveArticles].forEach(article => {
+    const key = classifyArticle(article.title, code);
     if (!key) return;
-    const mi = articleMonthIndex(article.published_at, now);
-    if (mi >= 0) { counts[key][mi]++; crimeCount++; }
+    const mi = monthIndex(article.published_at, now);
+    if (mi >= 0) { counts[key][mi]++; total++; }
+  });
+
+  // From events table — map event types to crime categories
+  const EVENT_TO_CAT = {
+    shooting:'violence', explosion:'violence', missile:'violence', drone:'violence',
+    siren:'violence',    bomb:'violence',       attack:'violence',
+    drug:'drugs',        crime:'security',
+    protest:'unrest',    riot:'unrest',         demonstration:'unrest',
+    theft:'theft',       robbery:'theft',
+    incident:'security', arrest:'security',
+  };
+  events.forEach(ev => {
+    const key = EVENT_TO_CAT[ev.type] || classifyArticle(ev.title || '', code);
+    if (!key) return;
+    const mi = monthIndex(ev.created_at, now);
+    if (mi >= 0) { counts[key][mi]++; total++; }
   });
 
   const catResults = CRIME_CATEGORIES.map(cat => ({
@@ -271,32 +405,33 @@ router.get('/crime/trend', async (req, res) => {
     total:  counts[cat.key].reduce((a, b) => a + b, 0),
   }));
 
-  const maxVal   = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
-  const violence = catResults.find(c => c.key === 'violence') || catResults[0];
-  const trend    = violence.months[2].count > violence.months[0].count * 1.15 ? 'rising'
-                 : violence.months[2].count < violence.months[0].count * 0.85 ? 'falling'
-                 : 'stable';
+  const maxVal = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
 
-  // Fetch World Bank and ACLED in parallel
+  // Trend based on all crime this month vs 2 months ago
+  const thisMonth = catResults.reduce((s, c) => s + c.months[2].count, 0);
+  const lastMonth = catResults.reduce((s, c) => s + c.months[0].count, 0);
+  const trend = thisMonth > lastMonth * 1.2 ? 'rising'
+              : thisMonth < lastMonth * 0.8 ? 'falling'
+              : 'stable';
+
   const [worldBank, acled] = await Promise.all([
     fetchWorldBank(code),
     fetchAcled(countryName),
   ]);
 
-  const sources = ['Google News (cached)'];
+  const sources = ['Google News', 'Security Events'];
   if (worldBank) sources.push('World Bank');
   if (unodc)     sources.push('UNODC');
   if (acled)     sources.push('ACLED');
 
-  console.log(`Crime trend ${code}: ${crimeCount}/${articles.length} crime articles, WB=${!!worldBank}, ACLED=${!!acled}`);
+  console.log(`Crime trend ${code}: ${total} incidents (${cachedArticles.length} cached + ${liveArticles.length} live + ${events.length} events)`);
 
   return res.json({
     country_code:   code,
     country_name:   countryName,
     categories:     catResults,
     months:         monthLabels,
-    grand_total:    crimeCount,
-    total_articles: articles.length,
+    grand_total:    total,
     max_val:        maxVal,
     trend,
     unodc_baseline: unodc,
@@ -424,25 +559,40 @@ router.get('/news', (req, res) => {
 // ── Events ────────────────────────────────────────────────────────────────────
 // ── Security keyword queries per language for Google News alerts ──────────────
 const SECURITY_QUERIES = {
-  en: 'attack OR explosion OR missile OR shooting OR protest OR security alert OR emergency',
-  ar: 'هجوم OR انفجار OR صاروخ OR إطلاق نار OR احتجاج OR تنبيه أمني OR طوارئ',
-  fr: 'attaque OR explosion OR missile OR fusillade OR manifestation OR alerte sécurité',
-  es: 'ataque OR explosión OR misil OR disparos OR protesta OR alerta de seguridad',
-  pt: 'ataque OR explosão OR míssil OR tiroteio OR protesto OR alerta de segurança',
-  ru: 'атака OR взрыв OR ракета OR стрельба OR протест OR предупреждение безопасности',
-  zh: '袭击 OR 爆炸 OR 导弹 OR 枪击 OR 抗议 OR 安全警报',
-  de: 'Angriff OR Explosion OR Rakete OR Schießerei OR Protest OR Sicherheitswarnung',
-  ja: '攻撃 OR 爆発 OR ミサイル OR 銃撃 OR 抗議 OR 安全警告',
-  ko: '공격 OR 폭발 OR 미사일 OR 총격 OR 시위 OR 보안 경보',
-  tr: 'saldırı OR patlama OR füze OR silahlı saldırı OR protesto OR güvenlik uyarısı',
-  hi: 'हमला OR विस्फोट OR मिसाइल OR गोलीबारी OR विरोध OR सुरक्षा चेतावनी',
+  en: 'security OR attack OR explosion OR missile OR shooting OR protest OR emergency OR incident OR crime OR warning',
+  ar: 'أمن OR هجوم OR انفجار OR صاروخ OR إطلاق نار OR احتجاج OR طوارئ OR حادث OR تحذير',
+  fr: 'sécurité OR attaque OR explosion OR missile OR fusillade OR manifestation OR urgence OR incident',
+  es: 'seguridad OR ataque OR explosión OR misil OR disparos OR protesta OR emergencia OR incidente',
+  pt: 'segurança OR ataque OR explosão OR míssil OR tiroteio OR protesto OR emergência OR incidente',
+  ru: 'безопасность OR атака OR взрыв OR ракета OR стрельба OR протест OR чрезвычайная OR инцидент',
+  zh: '安全 OR 袭击 OR 爆炸 OR 导弹 OR 枪击 OR 抗议 OR 紧急 OR 事件',
+  de: 'Sicherheit OR Angriff OR Explosion OR Rakete OR Schießerei OR Protest OR Notfall OR Vorfall',
+  ja: '安全 OR 攻撃 OR 爆発 OR ミサイル OR 銃撃 OR 抗議 OR 緊急 OR 事件',
+  ko: '보안 OR 공격 OR 폭발 OR 미사일 OR 총격 OR 시위 OR 비상 OR 사건',
+  tr: 'güvenlik OR saldırı OR patlama OR füze OR silahlı OR protesto OR acil OR olay',
+  hi: 'सुरक्षा OR हमला OR विस्फोट OR मिसाइल OR गोलीबारी OR विरोध OR आपातकाल OR घटना',
 };
+
+// English security terms for relevance checking regardless of UI language
+const SECURITY_TERMS_EN = [
+  'attack','explosion','missile','rocket','drone','bomb','blast','shooting',
+  'gunfire','siren','airstrike','military','armed','artillery','evacuation',
+  'emergency','conflict','killed','injured','protest','riot','arrest','police',
+  'security','crime','earthquake','flood','fire','crash','accident','warning',
+  'alert','incident','troops','soldiers','terror','threat','hostage','border',
+];
+
+function isSecurityArticle(title) {
+  const lower = (title || '').toLowerCase();
+  return SECURITY_TERMS_EN.some(k => lower.includes(k));
+}
 
 // Fetch security-relevant Google News in the user's language
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
-  const query    = `"${countryName}" (${SECURITY_QUERIES[lang] || SECURITY_QUERIES.en})`;
-  const gl       = countryCode.toUpperCase();
-  const url      = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
+  // Build query: country name + security terms in user's language
+  const query = `"${countryName}" (${SECURITY_QUERIES[lang] || SECURITY_QUERIES.en})`;
+  const gl    = countryCode.toUpperCase();
+  const url   = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
   try {
     const xml2js = require('xml2js');
     const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
@@ -452,30 +602,38 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     const data   = await parser.parseStringPromise(xml);
     const items  = data?.rss?.channel?.item || [];
     const arr    = Array.isArray(items) ? items : [items];
-    return arr.slice(0, 15).map(item => {
+
+    return arr.slice(0, 20).map(item => {
       const rawTitle = String(item.title?._ || item.title || '');
       const dashIdx  = rawTitle.lastIndexOf(' - ');
       const title    = dashIdx > 10 ? rawTitle.slice(0, dashIdx).trim() : rawTitle.trim();
       const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
-      const url      = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+      const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
       let published  = new Date().toISOString();
-      try { published = new Date(item.pubDate || item.published || '').toISOString(); } catch {}
-      return {
-        id:          `gnews-${Buffer.from(url).toString('base64').slice(0, 20)}`,
-        country_code: countryCode,
-        type:        'incident',
-        severity:    'warn',
-        title:       title.replace(/<[^>]*>/g, '').trim().slice(0, 200),
-        description: '',
-        location:    countryName,
-        lat:         null, lng: null,
-        source:      source,
-        source_url:  String(url).trim(),
-        created_at:  published,
-        status:      'approved',
-        is_gnews:    true,
-      };
-    }).filter(e => e.title.length > 10);
+      try { published = new Date(item.pubDate || '').toISOString(); } catch {}
+      return { title: title.replace(/<[^>]*>/g, '').trim().slice(0, 200), source, link: String(link).trim(), published };
+    })
+    .filter(e => {
+      if (e.title.length < 10) return false;
+      // For English, verify it's actually security-related (other langs trust Google's query matching)
+      if (lang === 'en' && !isSecurityArticle(e.title)) return false;
+      return true;
+    })
+    .map(e => ({
+      id:           `gnews-${Buffer.from(e.link).toString('base64').slice(0, 20)}`,
+      country_code:  countryCode,
+      type:         'incident',
+      severity:     'warn',
+      title:         e.title,
+      description:  '',
+      location:      countryName,
+      lat: null, lng: null,
+      source:        e.source,
+      source_url:    e.link,
+      created_at:    e.published,
+      status:       'approved',
+      is_gnews:     true,
+    }));
   } catch { return []; }
 }
 
