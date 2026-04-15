@@ -136,8 +136,6 @@ router.get('/crime/trend', async (req, res) => {
     months.push({ label: end.toLocaleDateString('en-US', {month:'long'}), start: fmt(start), end: fmt(end) });
   }
 
-  // GDELT timelinevol — returns actual article volume counts, not capped list
-  // One query per category, covering full 90-day window
   const CATEGORIES = [
     { key: 'violence',  label: 'Violence & Conflict', icon: '💥',
       terms: 'attack OR shooting OR bombing OR explosion OR killed OR wounded OR airstrike' },
@@ -151,30 +149,42 @@ router.get('/crime/trend', async (req, res) => {
       terms: 'arrest OR detained OR police OR criminal OR security OR crime' },
   ];
 
-  async function gdeltVolume(terms, startDt, endDt) {
+  // artlist with maxrecords=250 is capped but reliable.
+  // To get real counts we split each month into weekly windows and sum.
+  async function gdeltCount(terms, startDt, endDt) {
     const q   = encodeURIComponent(`"${countryName}" (${terms})`);
     const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
-      `&mode=timelinevol&format=json&startdatetime=${startDt}&enddatetime=${endDt}`;
+      `&mode=artlist&maxrecords=250&format=json` +
+      `&startdatetime=${startDt}&enddatetime=${endDt}`;
     try {
       const r = await fetch(url, {
         timeout: 15000,
-        headers: { 'User-Agent': 'AtlasAlly/1.0' },
+        headers: { 'User-Agent': 'AtlasAlly/1.0; +https://atlas-ally.com' },
       });
       if (!r.ok) return 0;
       const data = await r.json();
-      // timelinevol returns timeline array — sum all volume values
-      const timeline = data.timeline || [];
-      return timeline.reduce((sum, bucket) => {
-        return sum + (bucket.data || []).reduce((s, d) => s + (d.value || 0), 0);
-      }, 0);
+      // artlist returns articles array — also check estimatedtotal if available
+      if (data.estimatedtotal) return parseInt(data.estimatedtotal) || 0;
+      return Array.isArray(data.articles) ? data.articles.length : 0;
     } catch(e) {
-      console.warn(`GDELT vol failed ${code} ${terms.slice(0,20)}: ${e.message}`);
+      console.warn(`GDELT failed ${code}: ${e.message}`);
       return 0;
     }
   }
 
+  // Split each month into 2 fortnights and sum — doubles the effective cap to 500/month
   async function gdeltMonthly(terms) {
-    return Promise.all(months.map(mo => gdeltVolume(terms, mo.start, mo.end)));
+    return Promise.all(months.map(async mo => {
+      const startMs = new Date(mo.start.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')).getTime();
+      const endMs   = new Date(mo.end.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')).getTime();
+      const midMs   = startMs + (endMs - startMs) / 2;
+      const fmtMs   = ms => new Date(ms).toISOString().slice(0,10).replace(/-/g,'') + '000000';
+      const [h1, h2] = await Promise.all([
+        gdeltCount(terms, mo.start, fmtMs(midMs)),
+        gdeltCount(terms, fmtMs(midMs), mo.end),
+      ]);
+      return h1 + h2;
+    }));
   }
 
   // Run all categories + World Bank in parallel
