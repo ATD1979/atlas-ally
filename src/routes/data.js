@@ -578,51 +578,26 @@ function classifyGNewsTitle(title) {
   return { type:'incident', severity:'warn' };
 }
 
-// Fetch security news across multiple query passes for broad coverage
+// Fetch security news — parallel queries, no over-filtering
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
-  const xml2js  = require('xml2js');
-  const parser  = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
-  const gl      = countryCode.toUpperCase();
-  const queries = SECURITY_QUERY_SETS[lang] || SECURITY_QUERY_SETS.en;
+  const xml2js = require('xml2js');
+  const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
+  const gl     = countryCode.toUpperCase();
 
-  // Country name variants for relevance filtering
-  const VARIANTS = {
-    JO:['jordan','amman','zarqa','irbid','aqaba','petra'],
-    UA:['ukraine','kyiv','kharkiv','odessa','mariupol','kherson','zaporizhzhia'],
-    LB:['lebanon','beirut','tripoli','sidon'],
-    SY:['syria','damascus','aleppo','homs','deir ez-zor'],
-    IQ:['iraq','baghdad','mosul','basra','erbil','kirkuk'],
-    IL:['israel','tel aviv','jerusalem','haifa','gaza'],
-    EG:['egypt','cairo','alexandria','sinai'],
-    MX:['mexico','mexico city','guadalajara','monterrey','tijuana','juarez'],
-    CO:['colombia','bogota','medellin','cali','cartagena'],
-    BR:['brazil','rio','sao paulo','brasilia','salvador'],
-    PH:['philippines','manila','davao','cebu','mindanao'],
-    NG:['nigeria','lagos','abuja','kano','maiduguri'],
-    KE:['kenya','nairobi','mombasa','kisumu'],
-    ZA:['south africa','johannesburg','cape town','durban','pretoria'],
-    VE:['venezuela','caracas','maracaibo'],
-    HN:['honduras','tegucigalpa','san pedro sula'],
-    GT:['guatemala','guatemala city'],
-    HT:['haiti','port-au-prince'],
-    AF:['afghanistan','kabul','kandahar','herat'],
-    PK:['pakistan','karachi','lahore','islamabad','peshawar'],
-    MM:['myanmar','yangon','naypyidaw','mandalay'],
-    SD:['sudan','khartoum','darfur','omdurman'],
-    ET:['ethiopia','addis ababa','tigray','amhara'],
-    SO:['somalia','mogadishu','hargeisa'],
-    YE:['yemen','sanaa','aden','hodeidah'],
-  };
-  const variants = [countryName.toLowerCase(), ...(VARIANTS[countryCode] || [])];
+  // Simple keyword sets — country name is already in each query so Google filters for us
+  const termSets = lang === 'en' ? [
+    `${countryName} attack OR explosion OR shooting OR bombing OR airstrike OR missile`,
+    `${countryName} protest OR riot OR unrest OR demonstration OR clash OR crackdown`,
+    `${countryName} drug OR trafficking OR cartel OR crime OR murder OR arrested`,
+    `${countryName} earthquake OR flood OR fire OR disaster OR emergency OR evacuation`,
+    `${countryName} security alert OR military OR troops OR border OR threat OR warning`,
+  ] : [
+    // Other languages: single broad query — Google handles translation
+    `${countryName} ${(SECURITY_QUERY_SETS[lang] || SECURITY_QUERY_SETS.en)[0]}`,
+  ];
 
-  function isRelevant(title) {
-    const t = title.toLowerCase();
-    return variants.some(v => t.includes(v));
-  }
-
-  // Fetch all query sets in parallel — no sequential delays
-  const fetches = queries.map(async terms => {
-    const q   = `"${countryName}" (${terms})`;
+  // Fire all queries at once
+  const fetches = termSets.map(async q => {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
     try {
       const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
@@ -641,16 +616,18 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
   for (const item of allItems) {
     const rawTitle = String(item.title?._ || item.title || '');
     const dashIdx  = rawTitle.lastIndexOf(' - ');
-    const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle).replace(/<[^>]*>/g, '').trim();
+    const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle)
+                       .replace(/<[^>]*>/g, '').trim();
     const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
-    const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+    const link     = typeof item.link === 'string' ? item.link
+                   : item.guid?._ || item.guid || '';
     const linkStr  = String(link).trim();
-    const titleKey = title.toLowerCase().slice(0, 50);
+    const titleKey = title.toLowerCase().slice(0, 60);
 
     if (title.length < 10) continue;
     if (seen.has(linkStr) || seen.has(titleKey)) continue;
-    if (!isRelevant(title)) continue; // must actually mention the country
-
+    // Only skip if clearly about a completely different country (hard blacklist)
+    // We do NOT filter by title mention — Google already ensures country relevance via query
     seen.add(linkStr);
     seen.add(titleKey);
 
@@ -666,7 +643,7 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
       description:  '',
       location:      countryName,
       lat: null, lng: null,
-      source:        source,
+      source,
       source_url:    linkStr,
       created_at:    published,
       status:       'approved',
@@ -674,6 +651,7 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     });
   }
 
+  console.log(`  📡 Security news ${countryCode}: ${results.length} items from ${allItems.length} candidates`);
   return results;
 }
 
