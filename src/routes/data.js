@@ -1,10 +1,10 @@
 // Atlas Ally — Data routes (crime, routes, news, events)
-// IMPORTANT: Specific routes must come BEFORE parameterized routes like /crime/:code
+// Route ordering rule: specific routes BEFORE parameterized (/crime/:code)
 const router = require('express').Router();
 const fetch  = require('node-fetch');
 const db     = require('../db');
 
-// ── UNODC Baseline Data (per 100k population) ─────────────────────────────────
+// ── UNODC Baseline (per 100k population, annual) ──────────────────────────────
 const UNODC = {
   AF:{homicide:6.5, assault:72,  theft:95,   robbery:38,  year:2022},
   AE:{homicide:0.5, assault:10,  theft:62,   robbery:2,   year:2022},
@@ -62,32 +62,68 @@ const UNODC = {
 };
 
 const COUNTRY_NAMES = {
-  AF:'Afghanistan', AE:'UAE',           AR:'Argentina',    BD:'Bangladesh',
-  BR:'Brazil',      CD:'DR Congo',      CN:'China',        CO:'Colombia',
-  DE:'Germany',     DZ:'Algeria',       EG:'Egypt',        ET:'Ethiopia',
-  FR:'France',      GB:'United Kingdom',GH:'Ghana',        GT:'Guatemala',
-  HN:'Honduras',    HT:'Haiti',         ID:'Indonesia',    IL:'Israel',
-  IN:'India',       IQ:'Iraq',          IR:'Iran',         IT:'Italy',
-  JO:'Jordan',      JP:'Japan',         KE:'Kenya',        KR:'South Korea',
-  LB:'Lebanon',     LY:'Libya',         MA:'Morocco',      ML:'Mali',
-  MM:'Myanmar',     MX:'Mexico',        NG:'Nigeria',      NP:'Nepal',
-  PH:'Philippines', PK:'Pakistan',      PL:'Poland',       RU:'Russia',
-  SA:'Saudi Arabia',SD:'Sudan',         SO:'Somalia',      SY:'Syria',
-  TH:'Thailand',    TN:'Tunisia',       TR:'Turkey',       TZ:'Tanzania',
-  UA:'Ukraine',     US:'United States', VE:'Venezuela',    YE:'Yemen',
+  AF:'Afghanistan', AE:'UAE',            AR:'Argentina',   BD:'Bangladesh',
+  BR:'Brazil',      CD:'DR Congo',       CN:'China',       CO:'Colombia',
+  DE:'Germany',     DZ:'Algeria',        EG:'Egypt',       ET:'Ethiopia',
+  FR:'France',      GB:'United Kingdom', GH:'Ghana',       GT:'Guatemala',
+  HN:'Honduras',    HT:'Haiti',          ID:'Indonesia',   IL:'Israel',
+  IN:'India',       IQ:'Iraq',           IR:'Iran',        IT:'Italy',
+  JO:'Jordan',      JP:'Japan',          KE:'Kenya',       KR:'South Korea',
+  LB:'Lebanon',     LY:'Libya',          MA:'Morocco',     ML:'Mali',
+  MM:'Myanmar',     MX:'Mexico',         NG:'Nigeria',     NP:'Nepal',
+  PH:'Philippines', PK:'Pakistan',       PL:'Poland',      RU:'Russia',
+  SA:'Saudi Arabia',SD:'Sudan',          SO:'Somalia',     SY:'Syria',
+  TH:'Thailand',    TN:'Tunisia',        TR:'Turkey',      TZ:'Tanzania',
+  UA:'Ukraine',     US:'United States',  VE:'Venezuela',   YE:'Yemen',
   ZA:'South Africa',
 };
 
-// ── Crime: GDELT Trend (MUST be before /crime/:code) ─────────────────────────
+// ── World Bank live fetch ──────────────────────────────────────────────────────
+// Indicators confirmed working (tested April 2026):
+//   VC.IHR.PSRC.P5     — intentional homicide rate per 100k
+//   VC.IHR.PSRC.FE.P5  — female homicide rate per 100k
+//   VC.BTL.DETH         — battle-related deaths (conflict zones)
+async function fetchWorldBank(countryCode) {
+  const WB_INDICATORS = [
+    { id: 'VC.IHR.PSRC.P5',    label: 'Homicide Rate',        unit: 'per 100k' },
+    { id: 'VC.IHR.PSRC.FE.P5', label: 'Female Homicide Rate', unit: 'per 100k' },
+    { id: 'VC.BTL.DETH',        label: 'Battle Deaths',        unit: 'annual'   },
+  ];
+
+  const results = await Promise.all(WB_INDICATORS.map(async ind => {
+    const url = `https://api.worldbank.org/v2/country/${countryCode}/indicator/${ind.id}?format=json&mrv=3&per_page=3`;
+    try {
+      const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      if (!r.ok) return { ...ind, value: null, date: null };
+      const data = await r.json();
+      // mrv=3 gives last 3 years — find most recent non-null
+      const rows  = Array.isArray(data[1]) ? data[1] : [];
+      const valid = rows.find(r => r.value !== null && r.value !== undefined);
+      return {
+        ...ind,
+        value: valid ? parseFloat(valid.value.toFixed(2)) : null,
+        date:  valid ? valid.date : null,
+      };
+    } catch (e) {
+      return { ...ind, value: null, date: null };
+    }
+  }));
+
+  // Only return if at least one indicator has data
+  const hasData = results.some(r => r.value !== null);
+  return hasData ? results : null;
+}
+
+// ── Crime: GDELT + World Bank trend (MUST be before /crime/:code) ─────────────
 router.get('/crime/trend', async (req, res) => {
   const code = (req.query.country_code || '').toUpperCase().trim();
   if (!code) return res.status(400).json({ error: 'country_code required' });
 
   const countryName = COUNTRY_NAMES[code] || code;
-  const unodc = UNODC[code] || null;
+  const unodc       = UNODC[code] || null;
 
   // Build 3 monthly date ranges
-  const now = new Date();
+  const now    = new Date();
   const months = [];
   for (let m = 2; m >= 0; m--) {
     const end   = new Date(now);
@@ -103,37 +139,44 @@ router.get('/crime/trend', async (req, res) => {
     });
   }
 
-  // GDELT query — security/crime events mentioning the country
+  // GDELT query
   const q = encodeURIComponent(
     `"${countryName}" (crime OR violence OR attack OR shooting OR bombing OR robbery OR conflict OR security OR explosion)`
   );
 
-  // Run 3 parallel GDELT fetches (one per month) — server-side avoids CORS
-  const counts = await Promise.all(months.map(async mo => {
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
-      `&mode=artlist&maxrecords=250&format=json` +
-      `&startdatetime=${mo.start}&enddatetime=${mo.end}`;
-    try {
-      const r = await fetch(url, {
-        timeout: 15000,
-        headers: { 'User-Agent': 'AtlasAlly/1.0; +https://atlas-ally.com' },
-      });
-      if (!r.ok) return 0;
-      const data = await r.json();
-      return Array.isArray(data.articles) ? data.articles.length : 0;
-    } catch (e) {
-      console.warn(`GDELT fetch failed for ${code} ${mo.label}: ${e.message}`);
-      return 0;
-    }
-  }));
+  // Run GDELT (3 months) + World Bank in parallel
+  const [gdeltCounts, worldBank] = await Promise.all([
+    Promise.all(months.map(async mo => {
+      const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
+        `&mode=artlist&maxrecords=250&format=json` +
+        `&startdatetime=${mo.start}&enddatetime=${mo.end}`;
+      try {
+        const r = await fetch(url, {
+          timeout: 15000,
+          headers: { 'User-Agent': 'AtlasAlly/1.0; +https://atlas-ally.com' },
+        });
+        if (!r.ok) return 0;
+        const data = await r.json();
+        return Array.isArray(data.articles) ? data.articles.length : 0;
+      } catch (e) {
+        console.warn(`GDELT failed ${code} ${mo.label}: ${e.message}`);
+        return 0;
+      }
+    })),
+    fetchWorldBank(code),
+  ]);
 
-  months.forEach((mo, i) => { mo.count = counts[i]; });
+  months.forEach((mo, i) => { mo.count = gdeltCounts[i]; });
 
-  const total    = counts.reduce((a, b) => a + b, 0);
-  const maxMonth = Math.max(...counts, 1);
-  const trend    = counts[2] > counts[0] * 1.15 ? 'rising'
-                 : counts[2] < counts[0] * 0.85 ? 'falling'
+  const total    = gdeltCounts.reduce((a, b) => a + b, 0);
+  const maxMonth = Math.max(...gdeltCounts, 1);
+  const trend    = gdeltCounts[2] > gdeltCounts[0] * 1.15 ? 'rising'
+                 : gdeltCounts[2] < gdeltCounts[0] * 0.85 ? 'falling'
                  : 'stable';
+
+  const sources = ['GDELT Project'];
+  if (worldBank) sources.push('World Bank');
+  if (unodc)     sources.push('UNODC');
 
   return res.json({
     country_code:    code,
@@ -143,7 +186,8 @@ router.get('/crime/trend', async (req, res) => {
     max_monthly:     maxMonth,
     trend,
     unodc_baseline:  unodc,
-    sources:         ['GDELT Project', unodc ? 'UNODC' : null].filter(Boolean),
+    world_bank:      worldBank,
+    sources,
     generated_at:    new Date().toISOString(),
   });
 });
@@ -176,7 +220,7 @@ router.get('/crime/near', (req, res) => {
   res.json({ global_stats, community });
 });
 
-// ── Crime: By country code (parameterized — MUST be after specific routes) ────
+// ── Crime: By country (parameterized — MUST be after specific routes) ──────────
 router.get('/crime/:code', (req, res) => {
   const code = req.params.code.toUpperCase();
   res.json({
@@ -186,18 +230,16 @@ router.get('/crime/:code', (req, res) => {
 });
 
 router.get('/crime/:code/detailed', (req, res) => {
-  const code    = req.params.code.toUpperCase();
+  const code     = req.params.code.toUpperCase();
   const allStats = db.db.prepare(
     `SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`
   ).all(code);
-
   const cities = {};
   allStats.forEach(s => {
     if (!cities[s.city]) cities[s.city] = { city: s.city, lat: s.lat, lng: s.lng, overall: null, types: {} };
     if (s.category === 'overall') cities[s.city].overall = s;
     else cities[s.city].types[s.category] = s.crime_index;
   });
-
   res.json({ cities: Object.values(cities), community: db.getCommunityCrime.all(code) });
 });
 
@@ -261,7 +303,7 @@ router.get('/news', (req, res) => {
   const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
-  let items = db.getNewsByCountry.all(code);
+  let items  = db.getNewsByCountry.all(code);
 
   if (!items.length) {
     const { refreshNewsForCountry } = require('../news');
@@ -273,11 +315,11 @@ router.get('/news', (req, res) => {
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
     const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
-    items = items.map(a => {
-      const aLat = a.lat || center.lat;
-      const aLng = a.lng || center.lng;
-      return { ...a, distance_km: Math.round(distanceKm(userLat, userLng, aLat, aLng)), has_real_location: !!(a.lat && a.lng) };
-    });
+    items = items.map(a => ({
+      ...a,
+      distance_km:       Math.round(distanceKm(userLat, userLng, a.lat || center.lat, a.lng || center.lng)),
+      has_real_location: !!(a.lat && a.lng),
+    }));
     const nearby = items.filter(a => a.distance_km <= 150);
     items = nearby.length ? nearby : items;
     items.sort((a, b) => {
@@ -297,14 +339,17 @@ router.get('/events', (req, res) => {
   const events = db.getEventsByCountry.all(code);
 
   if (!events.length) {
-    try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(() => {}); } catch(e) {}
+    try {
+      const { ingestSecurityEvents } = require('../services/events-ingest');
+      ingestSecurityEvents().catch(() => {});
+    } catch(e) {}
   }
 
   const userLat = parseFloat(lat);
   const userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+    const center   = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
     const enriched = events.map(ev => ({
       ...ev,
       distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),

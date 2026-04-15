@@ -258,110 +258,148 @@
     var nb = document.getElementById('aa-feed-body');
     if (!nb) return;
     if (!country) { nb.innerHTML = noCountry('Choose a country to see the 3-month crime tracker.'); return; }
-    nb.innerHTML = loading('Building 3-month crime tracker for ' + country + '…');
+    nb.innerHTML = loading('Building 3-month crime tracker for ' + country + '\u2026');
 
-    var countryName = COUNTRY_NAMES[country] || country;
-    var unodc = UNODC[country] || null;
-
-    // Call our backend proxy — handles GDELT server-side (no CORS)
     fetch('/api/crime/trend?country_code=' + encodeURIComponent(country))
-      .then(function(r) { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
 
         var months   = data.months || [];
-        var counts   = months.map(function(m){return m.count;});
         var total    = data.total_incidents || 0;
-        var maxCount = data.max_monthly || 1;
+        var maxMonth = data.max_monthly || 1;
         var trend    = data.trend || 'stable';
-        var trendIcon  = {rising:'📈',falling:'📉',stable:'➡️'}[trend];
-        var trendColor = {rising:T.red,falling:T.green,stable:T.gold}[trend];
+        var unodc    = data.unodc_baseline || null;
+        var wb       = data.world_bank || null;
+        var sources  = (data.sources || []).join(' \u00b7 ');
+
+        var trendIcon  = {rising:'\uD83D\uDCC8', falling:'\uD83D\uDCC9', stable:'\u27A1\uFE0F'}[trend] || '\u27A1\uFE0F';
+        var trendColor = {rising:T.red, falling:T.green, stable:T.gold}[trend] || T.muted;
+        var trendLabel = trend.charAt(0).toUpperCase() + trend.slice(1);
 
         var html = '';
 
-        // Summary row
+        // ── Summary cards ──────────────────────────────────────────────
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
-        html += summaryCard('🔍','Total Reports',total,'Last 90 days',T.teal);
-        html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs prior period',trendColor);
-        html += summaryCard('📡','Sources',(data.sources||[]).join(' + '),'Data providers',T.muted);
+        html += summaryCard('\uD83D\uDD0D', 'Media Reports', total, 'Last 90 days', T.teal);
+        html += summaryCard(trendIcon, 'Trend', trendLabel, 'vs prior period', trendColor);
+        html += summaryCard('\uD83D\uDCE1', 'Sources', (data.sources||[]).length, 'Data providers', T.muted);
         html += '</div>';
 
-      // Monthly bars
-      html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
-      html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:16px;">3-MONTH INCIDENT REPORTS · GDELT</div>';
-      html += '<div style="display:flex;gap:10px;align-items:flex-end;height:110px;margin-bottom:6px;">';
-      months.forEach(function(mo) {
-        var pct = Math.round((mo.count / maxCount) * 100);
-        var h   = Math.max(pct, 4);
-        var col = pct > 70 ? T.red : pct > 35 ? T.gold : T.green;
-        html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
-        html += '<div style="font-size:11px;font-weight:700;color:'+T.text+';">'+mo.count+'</div>';
-        html += '<div style="width:100%;height:90px;background:'+T.border+';border-radius:6px 6px 0 0;display:flex;align-items:flex-end;">';
-        html += '<div style="width:100%;height:'+h+'%;background:'+col+';border-radius:6px 6px 0 0;"></div></div>';
-        html += '<div style="font-size:10px;color:'+T.muted+';text-align:center;">'+mo.label+'</div></div>';
-      });
-      html += '</div>';
-
-      // Risk level
-      var avgPerMonth = total / 3;
-      var risk = avgPerMonth > 200 ? 'VERY HIGH' : avgPerMonth > 100 ? 'HIGH' : avgPerMonth > 40 ? 'MODERATE' : 'LOW';
-      var riskCol = {HIGH:T.red,'VERY HIGH':T.red,MODERATE:T.gold,LOW:T.green}[risk];
-      html += '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px;background:'+T.bg+';border-radius:8px;">';
-      html += '<div style="font-size:11px;color:'+T.muted+';flex:1;">Media-reported security incidents per month (avg)</div>';
-      html += '<div style="padding:4px 10px;border-radius:100px;background:'+riskCol+';color:#fff;font-size:10px;font-weight:700;">'+risk+'</div>';
-      html += '</div>';
-      html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:8px;">Source: GDELT Project — media reports mentioning crime/security events · Updated hourly</div>';
-      html += '</div>';
-
-      // UNODC baseline
-      if (unodc) {
-        html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
-        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:4px;">UNODC OFFICIAL STATISTICS · '+unodc.year+'</div>';
-        html += '<div style="font-size:9px;color:'+T.subtle+';margin-bottom:12px;">Annual rates per 100,000 population</div>';
-        var stats = [
-          {icon:'🔴',label:'Homicide',    val:unodc.homicide, benchmark:5},
-          {icon:'⚠️',label:'Assault',     val:unodc.assault,  benchmark:100},
-          {icon:'🏪',label:'Theft',       val:unodc.theft,    benchmark:500},
-          {icon:'💰',label:'Robbery',     val:unodc.robbery,  benchmark:50}
-        ];
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
-        stats.forEach(function(s) {
-          var risk2 = s.val > s.benchmark*1.5 ? 'HIGH' : s.val > s.benchmark*0.5 ? 'MED' : 'LOW';
-          var rc = {HIGH:T.red,MED:T.gold,LOW:T.green}[risk2];
-          html += '<div style="background:'+T.bg+';border-radius:8px;padding:12px;">';
-          html += '<div style="font-size:18px;margin-bottom:4px;">'+s.icon+'</div>';
-          html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';margin-bottom:3px;">'+s.label+'</div>';
-          html += '<div style="font-size:18px;font-weight:800;color:'+rc+';">'+s.val.toFixed(1)+'</div>';
-          html += '<div style="font-size:9px;color:'+T.muted+';margin-bottom:4px;">per 100k</div>';
-          html += '<span style="padding:2px 8px;border-radius:100px;background:'+rc+';color:#fff;font-size:9px;font-weight:700;">'+risk2+'</span>';
+        // ── GDELT 3-month bar chart ────────────────────────────────────
+        html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';margin-bottom:16px;">3-MONTH SECURITY INCIDENT REPORTS \u00b7 GDELT</div>';
+        if (months.length) {
+          html += '<div style="display:flex;gap:10px;align-items:flex-end;height:110px;margin-bottom:8px;">';
+          months.forEach(function(mo) {
+            var pct = Math.round((mo.count / maxMonth) * 100);
+            var h   = Math.max(pct, 4);
+            var col = pct > 70 ? T.red : pct > 35 ? T.gold : T.green;
+            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
+            html += '<div style="font-size:12px;font-weight:700;color:' + T.text + ';">' + mo.count + '</div>';
+            html += '<div style="width:100%;height:90px;background:' + T.border + ';border-radius:6px 6px 0 0;display:flex;align-items:flex-end;">';
+            html += '<div style="width:100%;height:' + h + '%;background:' + col + ';border-radius:6px 6px 0 0;"></div></div>';
+            html += '<div style="font-size:10px;color:' + T.muted + ';text-align:center;">' + mo.label + '</div>';
+            html += '</div>';
+          });
           html += '</div>';
-        });
+          var avgPerMonth = total / 3;
+          var risk = avgPerMonth > 200 ? 'VERY HIGH' : avgPerMonth > 100 ? 'HIGH' : avgPerMonth > 40 ? 'MODERATE' : 'LOW';
+          var riskCol = {'VERY HIGH':T.red, HIGH:T.red, MODERATE:T.gold, LOW:T.green}[risk];
+          html += '<div style="display:flex;align-items:center;gap:10px;margin-top:4px;padding:10px;background:' + T.bg + ';border-radius:8px;">';
+          html += '<div style="font-size:11px;color:' + T.muted + ';flex:1;">Avg monthly reports: ' + Math.round(avgPerMonth) + '</div>';
+          html += '<div style="padding:4px 12px;border-radius:100px;background:' + riskCol + ';color:#fff;font-size:10px;font-weight:700;">' + risk + '</div>';
+          html += '</div>';
+        } else {
+          html += '<div style="padding:20px;text-align:center;color:' + T.muted + ';font-size:13px;">No GDELT data available</div>';
+        }
+        html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:8px;">GDELT Project \u00b7 media-reported security events \u00b7 updated hourly</div>';
         html += '</div>';
-        html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">Source: UNODC Global Study on Homicide & Crime Survey '+unodc.year+'</div>';
-        html += '</div>';
-      } else {
-        html += '<div style="margin:12px 12px 0;background:'+T.goldLight+';border:1px solid '+T.gold+';border-radius:12px;padding:14px;">';
-        html += '<div style="font-size:13px;font-weight:600;color:#92400E;">📊 No UNODC baseline data available for '+countryName+'</div>';
-        html += '<div style="font-size:12px;color:#92400E;margin-top:4px;">GDELT media tracking is still active above.</div>';
-        html += '</div>';
-      }
 
-      html += renderSafetyTips();
-      html += '<div style="height:20px;"></div>';
-      nb2.innerHTML = html;
+        // ── World Bank Live Data ───────────────────────────────────────
+        if (wb && wb.length) {
+          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';">WORLD BANK LIVE DATA</div>';
+          html += '<div style="font-size:9px;color:' + T.teal + ';font-weight:600;">\uD83C\uDF0D Official</div>';
+          html += '</div>';
+          html += '<div style="display:grid;grid-template-columns:repeat(' + Math.min(wb.length, 3) + ',1fr);gap:8px;">';
+          wb.forEach(function(ind) {
+            if (ind.value === null) return;
+            var isHigh = (ind.id === 'VC.IHR.PSRC.P5' && ind.value > 5) ||
+                         (ind.id === 'VC.IHR.PSRC.FE.P5' && ind.value > 3) ||
+                         (ind.id === 'VC.BTL.DETH' && ind.value > 100);
+            var isMed  = (ind.id === 'VC.IHR.PSRC.P5' && ind.value > 2) ||
+                         (ind.id === 'VC.IHR.PSRC.FE.P5' && ind.value > 1) ||
+                         (ind.id === 'VC.BTL.DETH' && ind.value > 10);
+            var col    = isHigh ? T.red : isMed ? T.gold : T.green;
+            var risk   = isHigh ? 'HIGH' : isMed ? 'MED' : 'LOW';
+            html += '<div style="background:' + T.bg + ';border-radius:10px;padding:12px;border:1px solid ' + T.border + ';">';
+            html += '<div style="font-size:11px;font-weight:600;color:' + T.text + ';margin-bottom:4px;line-height:1.3;">' + ind.label + '</div>';
+            html += '<div style="font-size:20px;font-weight:800;color:' + col + ';margin-bottom:2px;">' + ind.value.toFixed(ind.id === 'VC.BTL.DETH' ? 0 : 2) + '</div>';
+            html += '<div style="font-size:9px;color:' + T.muted + ';margin-bottom:6px;">' + ind.unit + (ind.date ? ' \u00b7 ' + ind.date : '') + '</div>';
+            html += '<span style="padding:2px 8px;border-radius:100px;background:' + col + ';color:#fff;font-size:9px;font-weight:700;">' + risk + '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+          html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:10px;">World Bank Open Data \u00b7 Most recent available year</div>';
+          html += '</div>';
+        }
 
+        // ── UNODC Baseline ────────────────────────────────────────────
+        if (unodc) {
+          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';">UNODC STATISTICS \u00b7 ' + unodc.year + '</div>';
+          html += '<div style="font-size:9px;color:' + T.muted + ';">per 100k population</div>';
+          html += '</div>';
+          var ustats = [
+            {icon:'\uD83D\uDD34', label:'Homicide',  val:unodc.homicide, bench:5},
+            {icon:'\u26A0\uFE0F', label:'Assault',   val:unodc.assault,  bench:100},
+            {icon:'\uD83C\uDFAA', label:'Theft',     val:unodc.theft,    bench:500},
+            {icon:'\uD83D\uDCB0', label:'Robbery',   val:unodc.robbery,  bench:50},
+          ];
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+          ustats.forEach(function(s) {
+            var risk = s.val > s.bench * 1.5 ? 'HIGH' : s.val > s.bench * 0.5 ? 'MED' : 'LOW';
+            var rc   = {HIGH:T.red, MED:T.gold, LOW:T.green}[risk];
+            html += '<div style="background:' + T.bg + ';border-radius:8px;padding:12px;">';
+            html += '<div style="font-size:18px;margin-bottom:4px;">' + s.icon + '</div>';
+            html += '<div style="font-size:11px;font-weight:600;color:' + T.text + ';margin-bottom:3px;">' + s.label + '</div>';
+            html += '<div style="font-size:18px;font-weight:800;color:' + rc + ';">' + s.val.toFixed(1) + '</div>';
+            html += '<div style="font-size:9px;color:' + T.muted + ';margin-bottom:4px;">per 100k</div>';
+            html += '<span style="padding:2px 8px;border-radius:100px;background:' + rc + ';color:#fff;font-size:9px;font-weight:700;">' + risk + '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+          html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:10px;">UNODC Global Study on Homicide ' + unodc.year + '</div>';
+          html += '</div>';
+        }
+
+        if (!wb && !unodc) {
+          html += '<div style="margin:12px;background:' + T.goldLight + ';border:1px solid ' + T.gold + ';border-radius:12px;padding:14px;">';
+          html += '<div style="font-size:13px;font-weight:600;color:#92400E;">No official statistics available for ' + (data.country_name || country) + '</div>';
+          html += '<div style="font-size:12px;color:#92400E;margin-top:4px;">GDELT media tracking is still active above.</div>';
+          html += '</div>';
+        }
+
+        html += renderSafetyTips();
+        html += '<div style="height:20px;"></div>';
+        nb2.innerHTML = html;
       })
       .catch(function(err) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
-        if (unodc) {
-          renderCrimeUNODCOnly(nb2, unodc, countryName);
-        } else {
-          nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ Could not load crime data: '+err.message+'</div>' + renderSafetyTips();
-        }
+        nb2.innerHTML = '<div style="padding:32px;text-align:center;">' +
+          '<div style="font-size:13px;color:' + T.red + ';margin-bottom:14px;">\u26A0\uFE0F ' + err.message + '</div>' +
+          '<button id="aa-retry-crime" style="padding:9px 22px;background:' + T.teal + ';color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;touch-action:manipulation;">Retry</button>' +
+          '</div>' + renderSafetyTips();
+        var btn = document.getElementById('aa-retry-crime');
+        if (btn) btn.addEventListener('click', function() { loadCrime(window.activeCountry); });
       });
   }
+
 
   function renderCrimeUNODCOnly(el, unodc, countryName) {
     var html = '<div style="margin:12px;background:'+T.goldLight+';border:1px solid '+T.gold+';border-radius:12px;padding:12px;margin-bottom:0;">';
