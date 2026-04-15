@@ -258,121 +258,122 @@
     var nb = document.getElementById('aa-feed-body');
     if (!nb) return;
     if (!country) { nb.innerHTML = noCountry('Choose a country to see the 3-month crime tracker.'); return; }
-    nb.innerHTML = loading('Building 3-month crime tracker for ' + country + '\u2026');
+    nb.innerHTML = loading('Building 3-month crime tracker\u2026');
 
     fetch('/api/crime/trend?country_code=' + encodeURIComponent(country))
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function(data) {
+      .then(function(d) {
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
 
-        var cats     = data.categories || [];
-        var months   = data.months || [];
-        var total    = data.grand_total || 0;
-        var maxMo    = data.max_monthly || 1;
-        var trend    = data.trend || 'stable';
-        var unodc    = data.unodc_baseline || null;
-        var wb       = data.world_bank || null;
+        var cats    = d.categories || [];
+        var months  = d.months || [];
+        var total   = d.grand_total || 0;
+        var maxVal  = d.max_val || 1;
+        var trend   = d.trend || 'stable';
+        var unodc   = d.unodc_baseline || null;
+        var wb      = d.world_bank || null;
 
-        var trendIcon  = {rising:'\uD83D\uDCC8', falling:'\uD83D\uDCC9', stable:'\u27A1\uFE0F'}[trend] || '\u27A1\uFE0F';
-        var trendColor = {rising:T.red, falling:T.green, stable:T.gold}[trend] || T.muted;
+        var trendIcon  = {rising:'\uD83D\uDCC8',falling:'\uD83D\uDCC9',stable:'\u27A1\uFE0F'}[trend]||'\u27A1\uFE0F';
+        var trendColor = {rising:T.red,falling:T.green,stable:T.gold}[trend]||T.muted;
 
         var html = '';
 
-        // ── Summary cards ──
+        // Summary cards
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
-        html += summaryCard('\uD83D\uDD0D', 'Total Reports', total, 'Last 90 days', T.teal);
-        html += summaryCard(trendIcon, 'Trend', trend.charAt(0).toUpperCase()+trend.slice(1), 'vs prior period', trendColor);
-        html += summaryCard('\uD83D\uDCE1', 'Sources', (data.sources||[]).length, 'Data providers', T.muted);
+        html += summaryCard('\uD83D\uDD0D','Total Reports',total,'Last 90 days',T.teal);
+        html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs prior period',trendColor);
+        html += summaryCard('\uD83D\uDCE1','Sources',(d.sources||[]).length,'Data providers',T.muted);
         html += '</div>';
 
-        // ── Category breakdown ──
-        if (cats.length) {
-          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
-          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';margin-bottom:14px;">3-MONTH BREAKDOWN BY CATEGORY \u00b7 GDELT</div>';
+        // Category breakdown table
+        if (cats.length && total > 0) {
+          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
+          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:14px;">3-MONTH BREAKDOWN \u00b7 GDELT</div>';
 
-          // Month labels header
-          html += '<div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 60px;gap:6px;margin-bottom:8px;padding:0 4px;">';
-          html += '<div style="font-size:9px;color:' + T.muted + ';">CATEGORY</div>';
+          // Header row
+          html += '<div style="display:grid;grid-template-columns:110px 1fr 1fr 1fr 52px;gap:4px;margin-bottom:8px;">';
+          html += '<div style="font-size:9px;font-weight:700;color:'+T.subtle+';">CATEGORY</div>';
           months.forEach(function(m) {
-            html += '<div style="font-size:9px;color:' + T.muted + ';text-align:center;">' + m + '</div>';
+            html += '<div style="font-size:9px;font-weight:700;color:'+T.subtle+';text-align:center;">'+m.slice(0,3).toUpperCase()+'</div>';
           });
-          html += '<div style="font-size:9px;color:' + T.muted + ';text-align:right;">TOTAL</div>';
+          html += '<div style="font-size:9px;font-weight:700;color:'+T.subtle+';text-align:right;">TOTAL</div>';
           html += '</div>';
 
           cats.forEach(function(cat) {
-            var catMax = Math.max.apply(null, cat.months.map(function(m){return m.count;})) || 1;
-            var pct    = Math.round((cat.total / (total || 1)) * 100);
-            var col    = pct > 30 ? T.red : pct > 15 ? T.gold : T.teal;
-
-            html += '<div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 60px;gap:6px;align-items:center;padding:8px 4px;border-top:1px solid ' + T.border + ';">';
-
-            // Category label
-            html += '<div style="display:flex;align-items:center;gap:6px;">';
-            html += '<span style="font-size:16px;">' + cat.icon + '</span>';
-            html += '<span style="font-size:11px;font-weight:600;color:' + T.text + ';line-height:1.2;">' + cat.label + '</span>';
+            var pct = total > 0 ? Math.round((cat.total/total)*100) : 0;
+            var col = pct > 35 ? T.red : pct > 20 ? T.gold : T.teal;
+            html += '<div style="display:grid;grid-template-columns:110px 1fr 1fr 1fr 52px;gap:4px;align-items:center;padding:8px 0;border-top:1px solid '+T.border+';">';
+            // Label
+            html += '<div style="display:flex;align-items:center;gap:5px;">';
+            html += '<span style="font-size:15px;">'+cat.icon+'</span>';
+            html += '<span style="font-size:10px;font-weight:600;color:'+T.text+';line-height:1.2;">'+cat.label+'</span>';
             html += '</div>';
-
             // Monthly bars
             cat.months.forEach(function(mo) {
-              var barPct = Math.round((mo.count / maxMo) * 100);
-              var barCol = barPct > 70 ? T.red : barPct > 35 ? T.gold : T.green;
-              html += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">';
-              html += '<div style="font-size:10px;font-weight:600;color:' + T.text + ';">' + (mo.count > 999 ? (mo.count/1000).toFixed(1)+'k' : mo.count) + '</div>';
-              html += '<div style="width:100%;height:28px;background:' + T.border + ';border-radius:4px;overflow:hidden;display:flex;align-items:flex-end;">';
-              html += '<div style="width:100%;height:' + Math.max(barPct,4) + '%;background:' + barCol + ';"></div>';
+              var h = maxVal > 0 ? Math.max(Math.round((mo.count/maxVal)*100),mo.count>0?8:0) : 0;
+              var bc = mo.count===0 ? T.border : (h>70?T.red:h>35?T.gold:T.green);
+              html += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">';
+              html += '<div style="font-size:10px;font-weight:600;color:'+T.text+';">'+mo.count+'</div>';
+              html += '<div style="width:100%;height:24px;background:'+T.border+';border-radius:3px;overflow:hidden;display:flex;align-items:flex-end;">';
+              if (h>0) html += '<div style="width:100%;height:'+h+'%;background:'+bc+';"></div>';
               html += '</div></div>';
             });
-
-            // Total + share
+            // Total
             html += '<div style="text-align:right;">';
-            html += '<div style="font-size:11px;font-weight:700;color:' + col + ';">' + (cat.total > 999 ? (cat.total/1000).toFixed(1)+'k' : cat.total) + '</div>';
-            html += '<div style="font-size:9px;color:' + T.muted + ';">' + pct + '%</div>';
-            html += '</div>';
-            html += '</div>';
+            html += '<div style="font-size:11px;font-weight:700;color:'+col+';">'+cat.total+'</div>';
+            html += '<div style="font-size:9px;color:'+T.muted+';">'+pct+'%</div>';
+            html += '</div></div>';
           });
 
-          html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:10px;">GDELT Project \u00b7 article volume by topic \u00b7 updated hourly</div>';
+          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">GDELT Project \u00b7 1 query, local bucketing \u00b7 updated hourly</div>';
+          html += '</div>';
+
+        } else if (total === 0) {
+          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:20px;text-align:center;">';
+          html += '<div style="font-size:32px;margin-bottom:8px;">\uD83D\uDCCA</div>';
+          html += '<div style="font-size:14px;font-weight:600;color:'+T.text+';margin-bottom:4px;">No GDELT data returned</div>';
+          html += '<div style="font-size:12px;color:'+T.muted+';">GDELT may be rate-limited. UNODC and World Bank data still shown below.</div>';
           html += '</div>';
         }
 
-        // ── World Bank Live ──
+        // World Bank
         if (wb && wb.length) {
-          var validWb = wb.filter(function(i){return i.value !== null;});
+          var validWb = wb.filter(function(i){return i.value!==null;});
           if (validWb.length) {
-            html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
+            html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
             html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
-            html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';">WORLD BANK LIVE DATA</div>';
-            html += '<div style="font-size:9px;color:' + T.teal + ';font-weight:600;">\uD83C\uDF0D Official</div>';
+            html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';">WORLD BANK LIVE DATA</div>';
+            html += '<div style="font-size:9px;color:'+T.teal+';font-weight:600;">\uD83C\uDF0D Official</div>';
             html += '</div>';
-            html += '<div style="display:grid;grid-template-columns:repeat(' + Math.min(validWb.length,3) + ',1fr);gap:8px;">';
+            html += '<div style="display:grid;grid-template-columns:repeat('+Math.min(validWb.length,3)+',1fr);gap:8px;">';
             validWb.forEach(function(ind) {
-              var isHigh = (ind.id==='VC.IHR.PSRC.P5'&&ind.value>5)||(ind.id==='VC.IHR.PSRC.FE.P5'&&ind.value>3)||(ind.id==='VC.BTL.DETH'&&ind.value>100);
-              var isMed  = (ind.id==='VC.IHR.PSRC.P5'&&ind.value>2)||(ind.id==='VC.IHR.PSRC.FE.P5'&&ind.value>1)||(ind.id==='VC.BTL.DETH'&&ind.value>10);
-              var col    = isHigh ? T.red : isMed ? T.gold : T.green;
-              var risk   = isHigh ? 'HIGH' : isMed ? 'MED' : 'LOW';
-              var dispVal = ind.id==='VC.BTL.DETH' ? Math.round(ind.value) : ind.value.toFixed(2);
-              html += '<div style="background:' + T.bg + ';border-radius:10px;padding:12px;border:1px solid ' + T.border + ';">';
-              html += '<div style="font-size:11px;font-weight:600;color:' + T.text + ';margin-bottom:4px;line-height:1.3;">' + ind.label + '</div>';
-              html += '<div style="font-size:20px;font-weight:800;color:' + col + ';margin-bottom:2px;">' + dispVal + '</div>';
-              html += '<div style="font-size:9px;color:' + T.muted + ';margin-bottom:6px;">' + ind.unit + (ind.date ? ' \u00b7 ' + ind.date : '') + '</div>';
-              html += '<span style="padding:2px 8px;border-radius:100px;background:' + col + ';color:#fff;font-size:9px;font-weight:700;">' + risk + '</span>';
+              var isHigh=(ind.id==='VC.IHR.PSRC.P5'&&ind.value>5)||(ind.id==='VC.IHR.PSRC.FE.P5'&&ind.value>3)||(ind.id==='VC.BTL.DETH'&&ind.value>100);
+              var isMed =(ind.id==='VC.IHR.PSRC.P5'&&ind.value>2)||(ind.id==='VC.IHR.PSRC.FE.P5'&&ind.value>1)||(ind.id==='VC.BTL.DETH'&&ind.value>10);
+              var col=isHigh?T.red:isMed?T.gold:T.green;
+              var risk=isHigh?'HIGH':isMed?'MED':'LOW';
+              var val=ind.id==='VC.BTL.DETH'?Math.round(ind.value):ind.value.toFixed(2);
+              html += '<div style="background:'+T.bg+';border-radius:10px;padding:12px;border:1px solid '+T.border+';">';
+              html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';margin-bottom:4px;line-height:1.3;">'+ind.label+'</div>';
+              html += '<div style="font-size:20px;font-weight:800;color:'+col+';margin-bottom:2px;">'+val+'</div>';
+              html += '<div style="font-size:9px;color:'+T.muted+';margin-bottom:6px;">'+ind.unit+(ind.date?' \u00b7 '+ind.date:'')+'</div>';
+              html += '<span style="padding:2px 8px;border-radius:100px;background:'+col+';color:#fff;font-size:9px;font-weight:700;">'+risk+'</span>';
               html += '</div>';
             });
             html += '</div>';
-            html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:10px;">World Bank Open Data \u00b7 Most recent available year</div>';
+            html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">World Bank Open Data \u00b7 Most recent available year</div>';
             html += '</div>';
           }
         }
 
-        // ── UNODC ──
+        // UNODC
         if (unodc) {
-          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:16px;">';
+          html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
           html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
-          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:' + T.muted + ';">UNODC STATISTICS \u00b7 ' + unodc.year + '</div>';
-          html += '<div style="font-size:9px;color:' + T.muted + ';">per 100k population</div>';
+          html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';">UNODC STATISTICS \u00b7 '+unodc.year+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';">per 100k pop.</div>';
           html += '</div>';
-          var ustats = [
+          var ustats=[
             {icon:'\uD83D\uDD34',label:'Homicide', val:unodc.homicide,bench:5},
             {icon:'\u26A0\uFE0F',label:'Assault',  val:unodc.assault, bench:100},
             {icon:'\uD83C\uDFAA',label:'Theft',    val:unodc.theft,   bench:500},
@@ -380,18 +381,18 @@
           ];
           html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
           ustats.forEach(function(s) {
-            var risk = s.val>s.bench*1.5?'HIGH':s.val>s.bench*0.5?'MED':'LOW';
-            var rc   = {HIGH:T.red,MED:T.gold,LOW:T.green}[risk];
-            html += '<div style="background:' + T.bg + ';border-radius:8px;padding:12px;">';
-            html += '<div style="font-size:18px;margin-bottom:4px;">' + s.icon + '</div>';
-            html += '<div style="font-size:11px;font-weight:600;color:' + T.text + ';margin-bottom:3px;">' + s.label + '</div>';
-            html += '<div style="font-size:18px;font-weight:800;color:' + rc + ';">' + s.val.toFixed(1) + '</div>';
-            html += '<div style="font-size:9px;color:' + T.muted + ';margin-bottom:4px;">per 100k</div>';
-            html += '<span style="padding:2px 8px;border-radius:100px;background:' + rc + ';color:#fff;font-size:9px;font-weight:700;">' + risk + '</span>';
+            var risk=s.val>s.bench*1.5?'HIGH':s.val>s.bench*0.5?'MED':'LOW';
+            var rc={HIGH:T.red,MED:T.gold,LOW:T.green}[risk];
+            html += '<div style="background:'+T.bg+';border-radius:8px;padding:12px;">';
+            html += '<div style="font-size:18px;margin-bottom:4px;">'+s.icon+'</div>';
+            html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';margin-bottom:3px;">'+s.label+'</div>';
+            html += '<div style="font-size:18px;font-weight:800;color:'+rc+';">'+s.val.toFixed(1)+'</div>';
+            html += '<div style="font-size:9px;color:'+T.muted+';margin-bottom:4px;">per 100k</div>';
+            html += '<span style="padding:2px 8px;border-radius:100px;background:'+rc+';color:#fff;font-size:9px;font-weight:700;">'+risk+'</span>';
             html += '</div>';
           });
           html += '</div>';
-          html += '<div style="font-size:9px;color:' + T.subtle + ';margin-top:10px;">UNODC Global Study on Homicide ' + unodc.year + '</div>';
+          html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">UNODC Global Study on Homicide '+unodc.year+'</div>';
           html += '</div>';
         }
 
@@ -403,11 +404,11 @@
         var nb2 = document.getElementById('aa-feed-body');
         if (!nb2) return;
         nb2.innerHTML = '<div style="padding:32px;text-align:center;">' +
-          '<div style="font-size:13px;color:' + T.red + ';margin-bottom:14px;">\u26A0\uFE0F ' + err.message + '</div>' +
-          '<button id="aa-retry-crime" style="padding:9px 22px;background:' + T.teal + ';color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;touch-action:manipulation;">Retry</button>' +
+          '<div style="font-size:13px;color:'+T.red+';margin-bottom:14px;">\u26A0\uFE0F '+err.message+'</div>' +
+          '<button id="aa-retry-crime" style="padding:9px 22px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;touch-action:manipulation;">Retry</button>' +
           '</div>' + renderSafetyTips();
         var btn = document.getElementById('aa-retry-crime');
-        if (btn) btn.addEventListener('click', function() { loadCrime(window.activeCountry); });
+        if (btn) btn.addEventListener('click', function(){ loadCrime(window.activeCountry); });
       });
   }
 

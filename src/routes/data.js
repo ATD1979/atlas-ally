@@ -1,10 +1,10 @@
-// Atlas Ally — Data routes (crime, routes, news, events)
-// Route ordering rule: specific routes BEFORE parameterized (/crime/:code)
+// Atlas Ally — Data routes
+// Rule: specific routes ALWAYS before parameterized (/crime/:code)
 const router = require('express').Router();
 const fetch  = require('node-fetch');
 const db     = require('../db');
 
-// ── UNODC Baseline (per 100k population, annual) ──────────────────────────────
+// ── UNODC Baseline per 100k population ───────────────────────────────────────
 const UNODC = {
   AF:{homicide:6.5, assault:72,  theft:95,   robbery:38,  year:2022},
   AE:{homicide:0.5, assault:10,  theft:62,   robbery:2,   year:2022},
@@ -78,175 +78,187 @@ const COUNTRY_NAMES = {
   ZA:'South Africa',
 };
 
-// ── World Bank live fetch ──────────────────────────────────────────────────────
-// Indicators confirmed working (tested April 2026):
-//   VC.IHR.PSRC.P5     — intentional homicide rate per 100k
-//   VC.IHR.PSRC.FE.P5  — female homicide rate per 100k
-//   VC.BTL.DETH         — battle-related deaths (conflict zones)
-async function fetchWorldBank(countryCode) {
-  const WB_INDICATORS = [
-    { id: 'VC.IHR.PSRC.P5',    label: 'Homicide Rate',        unit: 'per 100k' },
-    { id: 'VC.IHR.PSRC.FE.P5', label: 'Female Homicide Rate', unit: 'per 100k' },
-    { id: 'VC.BTL.DETH',        label: 'Battle Deaths',        unit: 'annual'   },
+// ── World Bank (3 confirmed indicators) ──────────────────────────────────────
+async function fetchWorldBank(code) {
+  const indicators = [
+    { id:'VC.IHR.PSRC.P5',    label:'Homicide Rate',        unit:'per 100k' },
+    { id:'VC.IHR.PSRC.FE.P5', label:'Female Homicide Rate', unit:'per 100k' },
+    { id:'VC.BTL.DETH',       label:'Battle Deaths',        unit:'annual'   },
   ];
-
-  const results = await Promise.all(WB_INDICATORS.map(async ind => {
-    const url = `https://api.worldbank.org/v2/country/${countryCode}/indicator/${ind.id}?format=json&mrv=3&per_page=3`;
+  const results = await Promise.all(indicators.map(async ind => {
     try {
-      const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
-      if (!r.ok) return { ...ind, value: null, date: null };
+      const url  = `https://api.worldbank.org/v2/country/${code}/indicator/${ind.id}?format=json&mrv=3&per_page=3`;
+      const r    = await fetch(url, { timeout: 8000, headers:{'User-Agent':'AtlasAlly/1.0'} });
+      if (!r.ok) return { ...ind, value:null, date:null };
       const data = await r.json();
-      // mrv=3 gives last 3 years — find most recent non-null
-      const rows  = Array.isArray(data[1]) ? data[1] : [];
-      const valid = rows.find(r => r.value !== null && r.value !== undefined);
-      return {
-        ...ind,
-        value: valid ? parseFloat(valid.value.toFixed(2)) : null,
-        date:  valid ? valid.date : null,
-      };
-    } catch (e) {
-      return { ...ind, value: null, date: null };
+      const rows = Array.isArray(data[1]) ? data[1] : [];
+      const hit  = rows.find(row => row.value !== null && row.value !== undefined);
+      return { ...ind, value: hit ? parseFloat(hit.value.toFixed(2)) : null, date: hit ? hit.date : null };
+    } catch(e) {
+      return { ...ind, value:null, date:null };
     }
   }));
-
-  // Only return if at least one indicator has data
-  const hasData = results.some(r => r.value !== null);
-  return hasData ? results : null;
+  return results.some(r => r.value !== null) ? results : null;
 }
 
-// ── Crime: GDELT + World Bank trend (MUST be before /crime/:code) ─────────────
+// ── GDELT safe fetch — ONE request, local bucketing ──────────────────────────
+// Key insight: one broad query avoids rate limiting entirely.
+// Articles are bucketed into categories by keyword matching their titles.
+async function fetchGDELT(countryName, start, end) {
+  const q   = encodeURIComponent(
+    '"' + countryName + '" (crime OR violence OR attack OR protest OR drug OR arrest OR robbery OR security OR shooting OR bomb)'
+  );
+  const url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + q +
+    '&mode=artlist&maxrecords=250&format=json&startdatetime=' + start + '&enddatetime=' + end;
+  try {
+    const r    = await fetch(url, { timeout: 20000, headers:{'User-Agent':'AtlasAlly/1.0'} });
+    if (!r.ok) { console.warn('GDELT HTTP ' + r.status + ' for ' + countryName); return []; }
+    const text = await r.text();
+    // GDELT returns plain text error pages when rate-limited — must check before parsing
+    if (!text || text.trimStart()[0] !== '{') {
+      console.warn('GDELT non-JSON response for ' + countryName + ': ' + text.slice(0,80));
+      return [];
+    }
+    const data = JSON.parse(text);
+    return Array.isArray(data.articles) ? data.articles : [];
+  } catch(e) {
+    console.warn('GDELT error for ' + countryName + ': ' + e.message);
+    return [];
+  }
+}
+
+// Category keyword sets
+const CATEGORIES = [
+  { key:'violence', label:'Violence & Conflict', icon:'💥',
+    words:['attack','shoot','bomb','explos','kill','wound','airstrike','missile','gun','murder','terror','dead','death'] },
+  { key:'theft',    label:'Theft & Robbery',     icon:'🏪',
+    words:['theft','robbery','burgl','stolen','steal','pickpocket','carjack','loot','fraud','scam','heist'] },
+  { key:'unrest',   label:'Protests & Unrest',   icon:'✊',
+    words:['protest','riot','demonstrat','unrest','clash','strike','rally','uprising','march','coup'] },
+  { key:'drugs',    label:'Drug Crime',           icon:'💊',
+    words:['drug','narcotic','traffick','smuggl','cocaine','heroin','cannabis','seizure','cartel'] },
+  { key:'security', label:'Security & Safety',   icon:'🚨',
+    words:['arrest','detain','police','criminal','security','crime','sentence','convict','custody','wanted'] },
+];
+
+function classifyArticle(title) {
+  const t = (title || '').toLowerCase();
+  for (const cat of CATEGORIES) {
+    if (cat.words.some(w => t.includes(w))) return cat.key;
+  }
+  return 'security';
+}
+
+function getMonthIndex(dateStr, now) {
+  // GDELT seendate format: YYYYMMDDTHHMMSSZ or ISO
+  try {
+    let d;
+    if (dateStr && dateStr.length === 16 && !dateStr.includes('-')) {
+      // GDELT format: 20260414T120000Z
+      d = new Date(
+        dateStr.slice(0,4) + '-' + dateStr.slice(4,6) + '-' + dateStr.slice(6,8) +
+        'T' + dateStr.slice(9,11) + ':' + dateStr.slice(11,13) + ':' + dateStr.slice(13,15) + 'Z'
+      );
+    } else {
+      d = new Date(dateStr);
+    }
+    if (isNaN(d)) return -1;
+    const mDiff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    if (mDiff === 0) return 2;  // this month
+    if (mDiff === 1) return 1;  // last month
+    if (mDiff === 2) return 0;  // 2 months ago
+    return -1;
+  } catch(e) { return -1; }
+}
+
+// ── /crime/trend — MUST be before /crime/:code ────────────────────────────────
 router.get('/crime/trend', async (req, res) => {
   const code = (req.query.country_code || '').toUpperCase().trim();
   if (!code) return res.status(400).json({ error: 'country_code required' });
 
   const countryName = COUNTRY_NAMES[code] || code;
   const unodc       = UNODC[code] || null;
+  const now         = new Date();
+  const fmt         = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
+  const start90     = fmt(new Date(now - 90 * 24 * 3600 * 1000));
+  const end90       = fmt(now);
 
-  // 3-month date range
-  const now   = new Date();
-  const fmt   = d => d.toISOString().slice(0,10).replace(/-/g,'') + '000000';
-  const end90 = fmt(now);
-  const start90 = fmt(new Date(now - 90 * 24 * 3600 * 1000));
-
-  // Monthly buckets for breakdown
-  const months = [];
+  // Month labels oldest → newest
+  const monthLabels = [];
   for (let m = 2; m >= 0; m--) {
-    const end   = new Date(now); end.setMonth(end.getMonth() - m);
-    const start = new Date(end); start.setMonth(start.getMonth() - 1);
-    months.push({ label: end.toLocaleDateString('en-US', {month:'long'}), start: fmt(start), end: fmt(end) });
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - m);
+    monthLabels.push(d.toLocaleDateString('en-US', { month:'long' }));
   }
 
-  const CATEGORIES = [
-    { key: 'violence',  label: 'Violence & Conflict', icon: '💥',
-      terms: 'attack OR shooting OR bombing OR explosion OR killed OR wounded OR airstrike' },
-    { key: 'theft',     label: 'Theft & Robbery',     icon: '🏪',
-      terms: 'theft OR robbery OR burglary OR stolen OR pickpocket OR carjacking' },
-    { key: 'unrest',    label: 'Protests & Unrest',   icon: '✊',
-      terms: 'protest OR riot OR demonstration OR unrest OR clashes OR crowd' },
-    { key: 'drugs',     label: 'Drug Crime',           icon: '💊',
-      terms: 'drug OR narcotics OR trafficking OR smuggling OR cocaine OR heroin' },
-    { key: 'security',  label: 'Security & Safety',   icon: '🚨',
-      terms: 'arrest OR detained OR police OR criminal OR security OR crime' },
-  ];
-
-  // artlist with maxrecords=250 is capped but reliable.
-  // To get real counts we split each month into weekly windows and sum.
-  async function gdeltCount(terms, startDt, endDt) {
-    const q   = encodeURIComponent(`"${countryName}" (${terms})`);
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}` +
-      `&mode=artlist&maxrecords=250&format=json` +
-      `&startdatetime=${startDt}&enddatetime=${endDt}`;
-    try {
-      const r = await fetch(url, {
-        timeout: 15000,
-        headers: { 'User-Agent': 'AtlasAlly/1.0; +https://atlas-ally.com' },
-      });
-      if (!r.ok) return 0;
-      const data = await r.json();
-      // artlist returns articles array — also check estimatedtotal if available
-      if (data.estimatedtotal) return parseInt(data.estimatedtotal) || 0;
-      return Array.isArray(data.articles) ? data.articles.length : 0;
-    } catch(e) {
-      console.warn(`GDELT failed ${code}: ${e.message}`);
-      return 0;
-    }
-  }
-
-  // Split each month into 2 fortnights and sum — doubles the effective cap to 500/month
-  async function gdeltMonthly(terms) {
-    return Promise.all(months.map(async mo => {
-      const startMs = new Date(mo.start.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')).getTime();
-      const endMs   = new Date(mo.end.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3')).getTime();
-      const midMs   = startMs + (endMs - startMs) / 2;
-      const fmtMs   = ms => new Date(ms).toISOString().slice(0,10).replace(/-/g,'') + '000000';
-      const [h1, h2] = await Promise.all([
-        gdeltCount(terms, mo.start, fmtMs(midMs)),
-        gdeltCount(terms, fmtMs(midMs), mo.end),
-      ]);
-      return h1 + h2;
-    }));
-  }
-
-  // Run all categories + World Bank in parallel
-  const [catResults, worldBank] = await Promise.all([
-    Promise.all(CATEGORIES.map(async cat => {
-      const monthlyCounts = await gdeltMonthly(cat.terms);
-      return {
-        key:    cat.key,
-        label:  cat.label,
-        icon:   cat.icon,
-        months: months.map((mo, i) => ({ label: mo.label, count: monthlyCounts[i] })),
-        total:  monthlyCounts.reduce((a, b) => a + b, 0),
-      };
-    })),
+  // Fire GDELT + World Bank in parallel — only 2 external calls total
+  const [articles, worldBank] = await Promise.all([
+    fetchGDELT(countryName, start90, end90),
     fetchWorldBank(code),
   ]);
 
-  const grandTotal = catResults.reduce((s, c) => s + c.total, 0);
-  const maxMonthly = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
+  // Initialise counts grid: category × 3 months
+  const counts = {};
+  CATEGORIES.forEach(c => { counts[c.key] = [0, 0, 0]; });
 
-  // Trend based on violence category (most meaningful)
-  const violence = catResults.find(c => c.key === 'violence') || catResults[0];
-  const v0 = violence.months[0].count, v2 = violence.months[2].count;
-  const trend = v2 > v0 * 1.15 ? 'rising' : v2 < v0 * 0.85 ? 'falling' : 'stable';
+  // Bucket each article
+  articles.forEach(article => {
+    const dateStr = article.seendate || article.pubdate || '';
+    const mi      = getMonthIndex(dateStr, now);
+    if (mi < 0) return;
+    const key = classifyArticle(article.title);
+    counts[key][mi]++;
+  });
+
+  const catResults = CATEGORIES.map(cat => ({
+    key:    cat.key,
+    label:  cat.label,
+    icon:   cat.icon,
+    months: monthLabels.map((label, i) => ({ label, count: counts[cat.key][i] })),
+    total:  counts[cat.key].reduce((a, b) => a + b, 0),
+  }));
+
+  const grandTotal = articles.length;
+  const maxVal     = Math.max(...catResults.flatMap(c => c.months.map(m => m.count)), 1);
+  const violence   = catResults.find(c => c.key === 'violence') || catResults[0];
+  const trend      = violence.months[2].count > violence.months[0].count * 1.15 ? 'rising'
+                   : violence.months[2].count < violence.months[0].count * 0.85 ? 'falling'
+                   : 'stable';
 
   const sources = ['GDELT Project'];
   if (worldBank) sources.push('World Bank');
   if (unodc)     sources.push('UNODC');
 
+  console.log(`Crime trend ${code}: ${grandTotal} articles, WB=${!!worldBank}, UNODC=${!!unodc}`);
+
   return res.json({
-    country_code:    code,
-    country_name:    countryName,
-    categories:      catResults,
-    months:          months.map(m => m.label),
-    grand_total:     grandTotal,
-    max_monthly:     maxMonthly,
+    country_code:   code,
+    country_name:   countryName,
+    categories:     catResults,
+    months:         monthLabels,
+    grand_total:    grandTotal,
+    max_val:        maxVal,
     trend,
-    unodc_baseline:  unodc,
-    world_bank:      worldBank,
+    unodc_baseline: unodc,
+    world_bank:     worldBank,
     sources,
-    generated_at:    new Date().toISOString(),
+    generated_at:   new Date().toISOString(),
   });
 });
 
-
-// ── Crime: Near location (MUST be before /crime/:code) ────────────────────────
+// ── /crime/near — MUST be before /crime/:code ─────────────────────────────────
 router.get('/crime/near', (req, res) => {
   const { lat, lng, radius = 100 } = req.query;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
-
   const latF  = parseFloat(lat);
   const lngF  = parseFloat(lng);
   const delta = parseFloat(radius) / 111;
-  const bbox  = [latF, latF, lngF, lngF, latF - delta, latF + delta, lngF - delta, lngF + delta];
-
+  const bbox  = [latF, latF, lngF, lngF, latF-delta, latF+delta, lngF-delta, lngF+delta];
   const global_stats = db.db.prepare(`
     SELECT *, ((lat-?)*(lat-?) + (lng-?)*(lng-?)) as dist_sq
-    FROM crime_stats
-    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
+    FROM crime_stats WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
     ORDER BY dist_sq ASC LIMIT 10
   `).all(...bbox);
-
   const community = db.db.prepare(`
     SELECT *, ((lat-?)*(lat-?) + (lng-?)*(lng-?)) as dist_sq
     FROM community_crime
@@ -254,27 +266,21 @@ router.get('/crime/near', (req, res) => {
       AND created_at > datetime('now', '-3 months')
     ORDER BY dist_sq ASC LIMIT 20
   `).all(...bbox);
-
   res.json({ global_stats, community });
 });
 
-// ── Crime: By country (parameterized — MUST be after specific routes) ──────────
+// ── /crime/:code — parameterized, MUST be last ────────────────────────────────
 router.get('/crime/:code', (req, res) => {
   const code = req.params.code.toUpperCase();
-  res.json({
-    global_stats: db.getCrimeStatsByCountry.all(code),
-    community:    db.getCommunityCrime.all(code),
-  });
+  res.json({ global_stats: db.getCrimeStatsByCountry.all(code), community: db.getCommunityCrime.all(code) });
 });
 
 router.get('/crime/:code/detailed', (req, res) => {
   const code     = req.params.code.toUpperCase();
-  const allStats = db.db.prepare(
-    `SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`
-  ).all(code);
-  const cities = {};
+  const allStats = db.db.prepare(`SELECT * FROM crime_stats WHERE country_code=? ORDER BY city, category`).all(code);
+  const cities   = {};
   allStats.forEach(s => {
-    if (!cities[s.city]) cities[s.city] = { city: s.city, lat: s.lat, lng: s.lng, overall: null, types: {} };
+    if (!cities[s.city]) cities[s.city] = { city:s.city, lat:s.lat, lng:s.lng, overall:null, types:{} };
     if (s.category === 'overall') cities[s.city].overall = s;
     else cities[s.city].types[s.category] = s.crime_index;
   });
@@ -283,116 +289,76 @@ router.get('/crime/:code/detailed', (req, res) => {
 
 router.post('/crime/community', (req, res) => {
   const { country_code, lat, lng, type, description, severity } = req.body;
-  if (!country_code || !lat || !lng || !type)
-    return res.status(400).json({ error: 'Missing required fields' });
+  if (!country_code || !lat || !lng || !type) return res.status(400).json({ error: 'Missing required fields' });
   db.addCommunityCrime.run({
     country_code: country_code.toUpperCase(), lat, lng, type,
-    description: description || null,
-    reported_by: req.user?.id || null,
-    severity:    severity || 'warn',
+    description: description || null, reported_by: req.user?.id || null, severity: severity || 'warn',
   });
   res.json({ ok: true });
 });
 
-// ── Route planning ─────────────────────────────────────────────────────────────
+// ── Route planning ────────────────────────────────────────────────────────────
 router.get('/route/autocomplete', async (req, res) => {
   const { q, lang = 'en', lat, lng } = req.query;
   if (!q || q.length < 2) return res.json([]);
   try {
     let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=${lang}`;
-    if (lat && lng)
-      url += `&viewbox=${parseFloat(lng)-2},${parseFloat(lat)+2},${parseFloat(lng)+2},${parseFloat(lat)-2}&bounded=0`;
-    const r    = await fetch(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' }, timeout: 5000 });
-    const data = await r.json();
-    res.json(data.map(p => ({
-      name: p.display_name, lat: parseFloat(p.lat), lng: parseFloat(p.lon),
-      type: p.type, category: p.class,
-    })));
+    if (lat && lng) url += `&viewbox=${parseFloat(lng)-2},${parseFloat(lat)+2},${parseFloat(lng)+2},${parseFloat(lat)-2}&bounded=0`;
+    const r = await fetch(url, { headers:{'User-Agent':'AtlasAlly/1.0'}, timeout:5000 });
+    const d = await r.json();
+    res.json(d.map(p => ({ name:p.display_name, lat:parseFloat(p.lat), lng:parseFloat(p.lon), type:p.type, category:p.class })));
   } catch { res.json([]); }
 });
 
 router.post('/route', async (req, res) => {
   const { from_lat, from_lng, to_lat, to_lng } = req.body;
-  if (!from_lat || !from_lng || !to_lat || !to_lng)
-    return res.status(400).json({ error: 'Coordinates required' });
+  if (!from_lat || !from_lng || !to_lat || !to_lng) return res.status(400).json({ error: 'Coordinates required' });
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from_lng},${from_lat};${to_lng},${to_lat}?overview=full&geometries=geojson&steps=true`;
-    const r   = await fetch(url, { timeout: 8000 });
+    const r   = await fetch(url, { timeout:8000 });
     const d   = await r.json();
     if (!d.routes?.[0]) return res.json({ error: 'No route found' });
     const route    = d.routes[0];
-    const events   = db.getEvents72h.all();
-    const warnings = events.filter(e => {
+    const warnings = db.getEvents72h.all().filter(e => {
       if (!e.lat || !e.lng) return false;
-      return (route.geometry?.coordinates || []).some(([lng, lat]) =>
-        Math.sqrt((lat - e.lat) ** 2 + (lng - e.lng) ** 2) < 0.5
-      );
+      return (route.geometry?.coordinates || []).some(([lng, lat]) => Math.sqrt((lat-e.lat)**2+(lng-e.lng)**2) < 0.5);
     });
-    res.json({
-      route, warnings,
-      distance_km:  Math.round(route.distance / 1000),
-      duration_min: Math.round(route.duration / 60),
-    });
+    res.json({ route, warnings, distance_km:Math.round(route.distance/1000), duration_min:Math.round(route.duration/60) });
   } catch { res.status(500).json({ error: 'Route service unavailable' }); }
 });
 
-// ── News ───────────────────────────────────────────────────────────────────────
+// ── News ──────────────────────────────────────────────────────────────────────
 router.get('/news', (req, res) => {
   const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
   let items  = db.getNewsByCountry.all(code);
-
-  if (!items.length) {
-    const { refreshNewsForCountry } = require('../news');
-    refreshNewsForCountry(code).catch(() => {});
-  }
-
-  const userLat = parseFloat(lat);
-  const userLng = parseFloat(lng);
+  if (!items.length) { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code).catch(()=>{}); }
+  const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
-    items = items.map(a => ({
-      ...a,
-      distance_km:       Math.round(distanceKm(userLat, userLng, a.lat || center.lat, a.lng || center.lng)),
-      has_real_location: !!(a.lat && a.lng),
-    }));
+    const center = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
+    items = items.map(a => ({ ...a, distance_km:Math.round(distanceKm(userLat,userLng,a.lat||center.lat,a.lng||center.lng)), has_real_location:!!(a.lat&&a.lng) }));
     const nearby = items.filter(a => a.distance_km <= 150);
     items = nearby.length ? nearby : items;
-    items.sort((a, b) => {
-      if (a.has_real_location && !b.has_real_location) return -1;
-      if (!a.has_real_location && b.has_real_location) return 1;
-      return a.distance_km - b.distance_km;
-    });
+    items.sort((a,b) => { if(a.has_real_location&&!b.has_real_location)return -1; if(!a.has_real_location&&b.has_real_location)return 1; return a.distance_km-b.distance_km; });
   }
   res.json(items);
 });
 
-// ── Events ─────────────────────────────────────────────────────────────────────
+// ── Events ────────────────────────────────────────────────────────────────────
 router.get('/events', (req, res) => {
   const { country_code, lat, lng } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code   = country_code.toUpperCase();
   const events = db.getEventsByCountry.all(code);
-
-  if (!events.length) {
-    try {
-      const { ingestSecurityEvents } = require('../services/events-ingest');
-      ingestSecurityEvents().catch(() => {});
-    } catch(e) {}
-  }
-
-  const userLat = parseFloat(lat);
-  const userLng = parseFloat(lng);
+  if (!events.length) { try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(()=>{}); } catch(e){} }
+  const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center   = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
-    const enriched = events.map(ev => ({
-      ...ev,
-      distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),
-    }));
-    enriched.sort((a, b) => a.distance_km - b.distance_km);
+    const center   = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
+    const enriched = events.map(ev => ({ ...ev, distance_km:Math.round(distanceKm(userLat,userLng,ev.lat||center.lat,ev.lng||center.lng)) }));
+    enriched.sort((a,b) => a.distance_km-b.distance_km);
     return res.json(enriched);
   }
   res.json(events);
