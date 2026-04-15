@@ -79,9 +79,33 @@
   ══════════════════════════════════════════════ */
   function buildFeed() {
     return hdr('📡 Live Feed') +
-      '<div id="aa-news" style="background:' + T.bg + ';min-height:200px;">' +
+      /* Tab bar */
+      '<div style="display:flex;background:#fff;border-bottom:2px solid ' + T.border + ';position:sticky;top:54px;z-index:1;">' +
+        '<button id="aa-tab-news"   onclick="window._aaFeedTab('news')"   style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:' + T.teal + ';border-bottom:2px solid ' + T.teal + ';margin-bottom:-2px;cursor:pointer;font-family:sans-serif;">📰 News</button>' +
+        '<button id="aa-tab-alerts" onclick="window._aaFeedTab('alerts')" style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:' + T.muted + ';border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:sans-serif;">⚠️ Alerts</button>' +
+        '<button id="aa-tab-crime"  onclick="window._aaFeedTab('crime')"  style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:' + T.muted + ';border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:sans-serif;">🔴 Crime</button>' +
+      '</div>' +
+      '<div id="aa-feed-body" style="background:' + T.bg + ';min-height:200px;">' +
         '<div style="padding:24px;text-align:center;color:' + T.muted + ';font-size:13px;">Loading…</div>' +
       '</div>';
+  }
+
+  var _currentFeedTab = 'news';
+
+  function setFeedTab(tab) {
+    _currentFeedTab = tab;
+    ['news','alerts','crime'].forEach(function(t) {
+      var btn = document.getElementById('aa-tab-' + t);
+      if (!btn) return;
+      var active = t === tab;
+      btn.style.color = active ? T.teal : T.muted;
+      btn.style.borderBottom = active ? ('2px solid ' + T.teal) : '2px solid transparent';
+      btn.style.fontWeight = active ? '700' : '600';
+    });
+    var country = window.activeCountry;
+    if (tab === 'news')   loadNews(country);
+    if (tab === 'alerts') loadAlerts(country);
+    if (tab === 'crime')  loadCrime(country);
   }
 
   function loadNews(country) {
@@ -148,6 +172,113 @@
             '<button onclick="window._aaReloadNews && window._aaReloadNews()" ' +
               'style="padding:9px 22px;background:' + T.teal + ';color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">Retry</button>' +
           '</div>';
+      });
+  }
+
+  function loadAlerts(country) {
+    var nb = document.getElementById('aa-feed-body');
+    if (!nb) return;
+    if (!country) {
+      nb.innerHTML = '<div style="padding:48px 24px;text-align:center;"><div style="font-size:52px;margin-bottom:14px;">🌍</div><div style="font-size:16px;font-weight:700;color:' + T.text + ';margin-bottom:8px;">Select a Country</div><div style="font-size:13px;color:' + T.muted + ';">Choose a country to see active alerts.</div></div>';
+      return;
+    }
+    nb.innerHTML = '<div style="padding:24px;text-align:center;color:' + T.muted + ';font-size:13px;">⏳ Loading alerts for ' + country + '…</div>';
+    fetch('/api/events?country_code=' + encodeURIComponent(country))
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(events) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        if (!events || !events.length) {
+          nb2.innerHTML = '<div style="padding:48px 24px;text-align:center;"><div style="font-size:40px;margin-bottom:12px;">✅</div><div style="font-size:15px;font-weight:700;color:' + T.text + ';margin-bottom:6px;">No Active Alerts</div><div style="font-size:13px;color:' + T.muted + ';">No incidents reported for ' + country + ' right now.</div></div>';
+          return;
+        }
+        var severityColor = function(s) { return s === 'critical' ? '#EF4444' : s === 'high' ? '#F59E0B' : s === 'medium' ? '#3B82F6' : '#6B7C93'; };
+        var severityBg = function(s) { return s === 'critical' ? '#FEF2F2' : s === 'high' ? '#FEF3C7' : s === 'medium' ? '#EFF6FF' : '#F8FAFB'; };
+        var typeIcon = function(t) { return {conflict:'💥',protest:'✊',accident:'🚧',weather:'🌪️',health:'🏥',crime:'🔴',incident:'⚠️'}[t] || '⚠️'; };
+        nb2.innerHTML = '<div style="padding:8px 16px;background:' + T.bg + ';font-size:11px;color:' + T.muted + ';font-weight:600;">' + events.length + ' ACTIVE ALERTS</div>' +
+          events.map(function(ev) {
+            var sc = severityColor(ev.severity);
+            var sb = severityBg(ev.severity);
+            var icon = typeIcon(ev.type);
+            var time = '';
+            try { time = new Date(ev.created_at || ev.published_at).toLocaleDateString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) {}
+            return '<div style="margin:8px 12px;border-radius:12px;overflow:hidden;border:1px solid ' + T.border + ';background:#fff;">' +
+              '<div style="background:' + sb + ';border-left:4px solid ' + sc + ';padding:12px 14px;display:flex;gap:10px;align-items:flex-start;">' +
+                '<div style="font-size:24px;flex-shrink:0;">' + icon + '</div>' +
+                '<div style="flex:1;">' +
+                  '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+                    '<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:100px;background:' + sc + ';color:#fff;">' + (ev.severity || 'INFO').toUpperCase() + '</span>' +
+                    '<span style="font-size:10px;color:' + T.muted + ';">' + time + '</span>' +
+                  '</div>' +
+                  '<div style="font-size:14px;font-weight:700;color:' + T.text + ';margin-bottom:4px;line-height:1.4;">' + (ev.title || 'Alert') + '</div>' +
+                  (ev.description ? '<div style="font-size:12px;color:' + T.muted + ';line-height:1.5;">' + ev.description.slice(0, 200) + (ev.description.length > 200 ? '…' : '') + '</div>' : '') +
+                  (ev.location ? '<div style="font-size:11px;color:' + T.teal + ';margin-top:5px;">📍 ' + ev.location + '</div>' : '') +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+      })
+      .catch(function(err) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (nb2) nb2.innerHTML = '<div style="padding:32px;text-align:center;"><div style="font-size:13px;color:' + T.red + ';">⚠️ ' + err.message + '</div></div>';
+      });
+  }
+
+  function loadCrime(country) {
+    var nb = document.getElementById('aa-feed-body');
+    if (!nb) return;
+    if (!country) {
+      nb.innerHTML = '<div style="padding:48px 24px;text-align:center;"><div style="font-size:52px;margin-bottom:14px;">🌍</div><div style="font-size:16px;font-weight:700;color:' + T.text + ';margin-bottom:8px;">Select a Country</div></div>';
+      return;
+    }
+    var pos = window.activeCountryPos || {lat:0,lng:0};
+    nb.innerHTML = '<div style="padding:24px;text-align:center;color:' + T.muted + ';font-size:13px;">⏳ Loading crime data…</div>';
+    fetch('/api/crime/near?lat=' + pos.lat + '&lng=' + pos.lng + '&radius=300')
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(data) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        var stats = (data && data.global_stats) || [];
+        var community = (data && data.community) || [];
+        if (!stats.length && !community.length) {
+          nb2.innerHTML =
+            '<div style="padding:48px 24px;text-align:center;">' +
+              '<div style="font-size:40px;margin-bottom:12px;">📊</div>' +
+              '<div style="font-size:15px;font-weight:700;color:' + T.text + ';margin-bottom:8px;">Crime Data</div>' +
+              '<div style="font-size:13px;color:' + T.muted + ';line-height:1.6;margin-bottom:20px;">No crime statistics available for this area yet.<br>Data is sourced from community reports and public safety databases.</div>' +
+              '<div style="background:#fff;border:1px solid ' + T.border + ';border-radius:12px;padding:16px;text-align:left;">' +
+                '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:' + T.muted + ';margin-bottom:12px;">GENERAL SAFETY TIPS</div>' +
+                ['🔒 Keep valuables out of sight in public', '🚕 Use registered taxis or ride-share apps', '🏧 Use ATMs in banks or well-lit areas', '📱 Keep emergency numbers saved locally', '🗺️ Share your itinerary with someone you trust'].map(function(tip) {
+                  return '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid ' + T.border + ';font-size:13px;color:' + T.text + ';">' + tip + '</div>';
+                }).join('') +
+              '</div>' +
+            '</div>';
+          return;
+        }
+        var html = '';
+        if (stats.length) {
+          html += '<div style="padding:8px 16px;background:' + T.bg + ';font-size:11px;color:' + T.muted + ';font-weight:600;">CRIME STATISTICS — 300KM RADIUS</div>';
+          html += stats.map(function(s) {
+            var score = parseFloat(s.safety_index) || 0;
+            var pct = Math.min(100, score);
+            var color = score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#EF4444';
+            return '<div style="margin:8px 12px;background:#fff;border-radius:12px;border:1px solid ' + T.border + ';padding:14px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+                '<div style="font-size:14px;font-weight:700;color:' + T.text + ';">' + (s.city || s.country || 'Area') + '</div>' +
+                '<div style="font-size:13px;font-weight:700;color:' + color + ';">' + score.toFixed(0) + '/100</div>' +
+              '</div>' +
+              '<div style="background:' + T.border + ';border-radius:100px;height:6px;overflow:hidden;">' +
+                '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:100px;"></div>' +
+              '</div>' +
+              '<div style="font-size:11px;color:' + T.muted + ';margin-top:6px;">Safety Index</div>' +
+            '</div>';
+          }).join('');
+        }
+        nb2.innerHTML = html;
+      })
+      .catch(function(err) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (nb2) nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:' + T.red + ';">⚠️ ' + err.message + '</div>';
       });
   }
 
@@ -306,6 +437,8 @@
     showOverlay(html);
 
     if (name === 'feed') {
+      _currentFeedTab = 'news';
+      window._aaFeedTab = setFeedTab;
       window._aaReloadNews = function () { loadNews(window.activeCountry); };
       loadNews(window.activeCountry);
     }
