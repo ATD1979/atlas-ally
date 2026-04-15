@@ -101,9 +101,97 @@ async function fetchWorldBank(code) {
   return results.some(r => r.value !== null) ? results : null;
 }
 
+// ── ACLED OAuth token cache ───────────────────────────────────────────────────
+let acledTokenCache = { token: null, expires: 0 };
+
+async function getAcledToken() {
+  if (acledTokenCache.token && Date.now() < acledTokenCache.expires) {
+    return acledTokenCache.token;
+  }
+  const email    = process.env.ACLED_EMAIL;
+  const password = process.env.ACLED_PASSWORD;
+  if (!email || !password) return null;
+
+  try {
+    const params = new URLSearchParams({
+      username:   email,
+      password:   password,
+      grant_type: 'password',
+      client_id:  'acled',
+    });
+    const r = await fetch('https://acleddata.com/oauth/token', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'AtlasAlly/1.0' },
+      body:    params.toString(),
+      timeout: 10000,
+    });
+    if (!r.ok) { console.warn('ACLED token request failed:', r.status); return null; }
+    const data = await r.json();
+    if (!data.access_token) { console.warn('ACLED no access_token in response'); return null; }
+    // Token valid for 24h (86400s), cache for 23h to be safe
+    acledTokenCache = { token: data.access_token, expires: Date.now() + 23 * 3600 * 1000 };
+    console.log('ACLED token obtained successfully');
+    return data.access_token;
+  } catch(e) {
+    console.warn('ACLED token error:', e.message);
+    return null;
+  }
+}
+
+// ── ACLED conflict data fetch ─────────────────────────────────────────────────
+async function fetchAcled(countryName) {
+  const token = await getAcledToken();
+  if (!token) return null;
+
+  try {
+    // Fetch last 90 days of events
+    const since = new Date(Date.now() - 90 * 24 * 3600 * 1000);
+    const dateStr = since.toISOString().slice(0, 10).replace(/-/g, '');
+    const url = `https://acleddata.com/api/acled/read?country=${encodeURIComponent(countryName)}&event_date=${dateStr}|${new Date().toISOString().slice(0,10).replace(/-/g,'')}&event_date_where=BETWEEN&limit=500&fields=event_date,event_type,sub_event_type,location,fatalities,notes&format=json`;
+
+    const r = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': 'AtlasAlly/1.0' },
+      timeout: 12000,
+    });
+    if (!r.ok) { console.warn('ACLED data fetch failed:', r.status); return null; }
+    const data = await r.json();
+    if (!data.data || !Array.isArray(data.data)) return null;
+
+    const events = data.data;
+    const totalFatalities = events.reduce((sum, e) => sum + (parseInt(e.fatalities) || 0), 0);
+
+    // Count by event type
+    const typeCounts = {};
+    events.forEach(e => {
+      const t = e.event_type || 'Other';
+      typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+    const eventTypes = Object.entries(typeCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => ({ type, count }));
+
+    // 5 most recent events
+    const recent = events
+      .sort((a, b) => new Date(b.event_date) - new Date(a.event_date))
+      .slice(0, 5)
+      .map(e => ({
+        date:          e.event_date,
+        event_type:    e.event_type,
+        sub_event_type:e.sub_event_type,
+        location:      e.location,
+        fatalities:    parseInt(e.fatalities) || 0,
+        notes:         (e.notes || '').slice(0, 200),
+      }));
+
+    console.log(`ACLED ${countryName}: ${events.length} events, ${totalFatalities} fatalities`);
+    return { total_events: events.length, total_fatalities: totalFatalities, event_types: eventTypes, recent_events: recent };
+  } catch(e) {
+    console.warn('ACLED fetch error:', e.message);
+    return null;
+  }
+}
+
 // ── Crime keyword classifier ──────────────────────────────────────────────────
-// Classifies news article titles into crime categories.
-// Uses existing news cache — zero external API calls, no rate limiting.
 const CRIME_CATEGORIES = [
   { key:'violence', label:'Violence & Conflict', icon:'💥',
     words:['attack','shoot','bomb','explos','kill','wound','airstrike','missile','murder','terror','dead','death','war','hostage','military','troops'] },
@@ -122,7 +210,7 @@ function classifyTitle(title) {
   for (const cat of CRIME_CATEGORIES) {
     if (cat.words.some(w => t.includes(w))) return cat.key;
   }
-  return null; // not crime-related
+  return null;
 }
 
 function articleMonthIndex(dateStr, now) {
@@ -153,7 +241,7 @@ router.get('/crime/trend', async (req, res) => {
     monthLabels.push(d.toLocaleDateString('en-US', { month:'long' }));
   }
 
-  // Use existing news cache — already populated by Google News RSS refresh
+  // Use existing news cache
   let articles = [];
   try { articles = db.getNewsByCountry.all(code) || []; } catch(e) {}
   if (!articles.length) {
@@ -189,12 +277,18 @@ router.get('/crime/trend', async (req, res) => {
                  : violence.months[2].count < violence.months[0].count * 0.85 ? 'falling'
                  : 'stable';
 
-  const worldBank = await fetchWorldBank(code);
-  const sources   = ['Google News (cached)'];
+  // Fetch World Bank and ACLED in parallel
+  const [worldBank, acled] = await Promise.all([
+    fetchWorldBank(code),
+    fetchAcled(countryName),
+  ]);
+
+  const sources = ['Google News (cached)'];
   if (worldBank) sources.push('World Bank');
   if (unodc)     sources.push('UNODC');
+  if (acled)     sources.push('ACLED');
 
-  console.log(`Crime trend ${code}: ${crimeCount}/${articles.length} crime articles, WB=${!!worldBank}`);
+  console.log(`Crime trend ${code}: ${crimeCount}/${articles.length} crime articles, WB=${!!worldBank}, ACLED=${!!acled}`);
 
   return res.json({
     country_code:   code,
@@ -207,6 +301,7 @@ router.get('/crime/trend', async (req, res) => {
     trend,
     unodc_baseline: unodc,
     world_bank:     worldBank,
+    acled,
     sources,
     generated_at:   new Date().toISOString(),
   });
