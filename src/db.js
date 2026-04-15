@@ -37,6 +37,7 @@ try {
     safeAddColumn('users', 'verified', 'INTEGER DEFAULT 0');
     safeAddColumn('users', 'last_login', 'TEXT');
     safeAddColumn('users', 'admin_password', 'TEXT');
+    safeAddColumn('users', 'language', "TEXT DEFAULT 'en'");
   }
   // Events table migrations
   const eventsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='events'`).get();
@@ -93,7 +94,8 @@ db.exec(`
     verified        INTEGER DEFAULT 0,
     created_at      TEXT DEFAULT (datetime('now')),
     last_login      TEXT,
-    active          INTEGER DEFAULT 1
+    active          INTEGER DEFAULT 1,
+    language        TEXT DEFAULT 'en'
   );
 
   CREATE TABLE IF NOT EXISTS otp_codes (
@@ -315,6 +317,7 @@ const helpers = {
   updateLastLogin: (id) => db.prepare(`UPDATE users SET last_login = datetime('now') WHERE id = ?`).run(id),
   updatePlan: (data) => db.prepare(`UPDATE users SET plan = @plan, stripe_id = @stripe_id WHERE id = @id`).run(data),
   updateRole: (role, id) => db.prepare(`UPDATE users SET role = ? WHERE id = ?`).run(role, id),
+  updateProfile: (data) => db.prepare(`UPDATE users SET country_origin = @country_origin, language = @language WHERE id = @id`).run(data),
   deactivateUser: (id) => db.prepare(`UPDATE users SET active = 0 WHERE id = ?`).run(id),
 
   isTrialActive: (user) => {

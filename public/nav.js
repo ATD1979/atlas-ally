@@ -93,6 +93,92 @@
   var overlay  = null;
   var modal    = null;
   var _feedTab = 'news';
+  var _lang    = localStorage.getItem('atlas_lang')   || 'en';
+  var _origin  = localStorage.getItem('atlas_origin') || '';
+
+  var LANGUAGES = [
+    { code:'en', label:'English' },
+    { code:'es', label:'Español' },
+    { code:'fr', label:'Français' },
+    { code:'ar', label:'العربية' },
+    { code:'pt', label:'Português' },
+    { code:'ru', label:'Русский' },
+    { code:'zh', label:'中文' },
+    { code:'de', label:'Deutsch' },
+    { code:'ja', label:'日本語' },
+    { code:'ko', label:'한국어' },
+    { code:'tr', label:'Türkçe' },
+    { code:'hi', label:'हिन्दी' },
+  ];
+
+  // UI label translations for core strings
+  var I18N = {
+    en:{ feed:'Live Feed', news:'News', alerts:'Alerts', crime:'Crime', pack:'Pack Assistant',
+         countries:'World Browser', account:'My Account', selectCountry:'Select a Country',
+         loading:'Loading', noNews:'No News Found', safeCheckin:'Safe Check-in',
+         language:'Language', homeCountry:'Home Country', save:'Save', cancel:'Cancel',
+         profile:'Profile & Language', profileSub:'Set your home country and language' },
+    es:{ feed:'Feed en Vivo', news:'Noticias', alerts:'Alertas', crime:'Crimen', pack:'Asistente de Equipaje',
+         countries:'Navegador Mundial', account:'Mi Cuenta', selectCountry:'Seleccionar País',
+         loading:'Cargando', noNews:'No se encontraron noticias', safeCheckin:'Check-in Seguro',
+         language:'Idioma', homeCountry:'País de Origen', save:'Guardar', cancel:'Cancelar',
+         profile:'Perfil e Idioma', profileSub:'Establece tu país de origen e idioma' },
+    fr:{ feed:'Fil en Direct', news:'Actualités', alerts:'Alertes', crime:'Criminalité', pack:'Assistant Bagages',
+         countries:'Navigateur Mondial', account:'Mon Compte', selectCountry:'Sélectionner un Pays',
+         loading:'Chargement', noNews:'Aucune actualité trouvée', safeCheckin:'Check-in Sécurisé',
+         language:'Langue', homeCountry:'Pays d\'origine', save:'Enregistrer', cancel:'Annuler',
+         profile:'Profil & Langue', profileSub:'Définissez votre pays d\'origine et langue' },
+    ar:{ feed:'البث المباشر', news:'أخبار', alerts:'تنبيهات', crime:'جريمة', pack:'مساعد الحقيبة',
+         countries:'متصفح العالم', account:'حسابي', selectCountry:'اختر دولة',
+         loading:'جار التحميل', noNews:'لا توجد أخبار', safeCheckin:'تسجيل وصول آمن',
+         language:'اللغة', homeCountry:'بلد الأصل', save:'حفظ', cancel:'إلغاء',
+         profile:'الملف الشخصي واللغة', profileSub:'حدد بلد أصلك ولغتك' },
+    pt:{ feed:'Feed ao Vivo', news:'Notícias', alerts:'Alertas', crime:'Crime', pack:'Assistente de Mala',
+         countries:'Navegador Mundial', account:'Minha Conta', selectCountry:'Selecionar País',
+         loading:'Carregando', noNews:'Nenhuma notícia encontrada', safeCheckin:'Check-in Seguro',
+         language:'Idioma', homeCountry:'País de Origem', save:'Salvar', cancel:'Cancelar',
+         profile:'Perfil e Idioma', profileSub:'Defina seu país de origem e idioma' },
+    ru:{ feed:'Лента', news:'Новости', alerts:'Оповещения', crime:'Преступность', pack:'Помощник по упаковке',
+         countries:'Обозреватель мира', account:'Мой аккаунт', selectCountry:'Выбрать страну',
+         loading:'Загрузка', noNews:'Новости не найдены', safeCheckin:'Регистрация безопасности',
+         language:'Язык', homeCountry:'Страна происхождения', save:'Сохранить', cancel:'Отмена',
+         profile:'Профиль и язык', profileSub:'Укажите страну происхождения и язык' },
+    zh:{ feed:'实时动态', news:'新闻', alerts:'警报', crime:'犯罪', pack:'行李助手',
+         countries:'世界浏览器', account:'我的账户', selectCountry:'选择国家',
+         loading:'加载中', noNews:'未找到新闻', safeCheckin:'安全签到',
+         language:'语言', homeCountry:'原籍国', save:'保存', cancel:'取消',
+         profile:'个人资料和语言', profileSub:'设置您的原籍国和语言' },
+    de:{ feed:'Live-Feed', news:'Nachrichten', alerts:'Warnungen', crime:'Kriminalität', pack:'Packassistent',
+         countries:'Weltbrowser', account:'Mein Konto', selectCountry:'Land auswählen',
+         loading:'Laden', noNews:'Keine Nachrichten gefunden', safeCheckin:'Sicher einchecken',
+         language:'Sprache', homeCountry:'Heimatland', save:'Speichern', cancel:'Abbrechen',
+         profile:'Profil & Sprache', profileSub:'Heimatland und Sprache festlegen' },
+    ja:{ feed:'ライブフィード', news:'ニュース', alerts:'アラート', crime:'犯罪', pack:'パックアシスタント',
+         countries:'ワールドブラウザ', account:'マイアカウント', selectCountry:'国を選択',
+         loading:'読み込み中', noNews:'ニュースが見つかりません', safeCheckin:'安全チェックイン',
+         language:'言語', homeCountry:'出身国', save:'保存', cancel:'キャンセル',
+         profile:'プロフィールと言語', profileSub:'出身国と言語を設定' },
+    ko:{ feed:'라이브 피드', news:'뉴스', alerts:'알림', crime:'범죄', pack:'짐 도우미',
+         countries:'세계 브라우저', account:'내 계정', selectCountry:'국가 선택',
+         loading:'로딩 중', noNews:'뉴스 없음', safeCheckin:'안전 체크인',
+         language:'언어', homeCountry:'출신 국가', save:'저장', cancel:'취소',
+         profile:'프로필 및 언어', profileSub:'출신 국가와 언어를 설정하세요' },
+    tr:{ feed:'Canlı Akış', news:'Haberler', alerts:'Uyarılar', crime:'Suç', pack:'Bavul Asistanı',
+         countries:'Dünya Tarayıcı', account:'Hesabım', selectCountry:'Ülke Seç',
+         loading:'Yükleniyor', noNews:'Haber bulunamadı', safeCheckin:'Güvenli Giriş',
+         language:'Dil', homeCountry:'Menşei Ülke', save:'Kaydet', cancel:'İptal',
+         profile:'Profil ve Dil', profileSub:'Ana ülkenizi ve dilinizi ayarlayın' },
+    hi:{ feed:'लाइव फ़ीड', news:'समाचार', alerts:'अलर्ट', crime:'अपराध', pack:'पैक सहायक',
+         countries:'विश्व ब्राउज़र', account:'मेरा खाता', selectCountry:'देश चुनें',
+         loading:'लोड हो रहा है', noNews:'कोई समाचार नहीं', safeCheckin:'सुरक्षित चेक-इन',
+         language:'भाषा', homeCountry:'मूल देश', save:'सहेजें', cancel:'रद्द करें',
+         profile:'प्रोफ़ाइल और भाषा', profileSub:'अपना मूल देश और भाषा सेट करें' },
+  };
+
+  function t(key) {
+    var strings = I18N[_lang] || I18N['en'];
+    return strings[key] || I18N['en'][key] || key;
+  }
 
   /* ─────────────────────────────────────────
      OVERLAY
@@ -176,7 +262,7 @@
     if(!nb) return;
     if(!country){nb.innerHTML=noCountry('Tap the flag in the header to choose a country and see live news.');return;}
     nb.innerHTML=loading('Loading news for '+country+'…');
-    fetch('/api/news?country_code='+encodeURIComponent(country))
+    fetch('/api/news?country_code='+encodeURIComponent(country)+'&lang='+encodeURIComponent(_lang))
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
       .then(function(articles){
         var nb2=document.getElementById('aa-feed-body');
@@ -729,6 +815,7 @@
           '</div>'+
         '</div>'+
         '<div style="margin:16px;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">'+
+          arow('🌍',t('profile'),t('profileSub'),'profile')+
           arow('✅','Safe Check-in','Let your circle know you\'re safe','checkin')+
           arow('🔔','Notifications','Manage safety alerts and push notifications','notifications')+
           arow('📍','Saved Countries','Manage your monitored countries','countries')+
@@ -752,6 +839,7 @@
         var row=e.target.closest('.aa-arow');
         if(!row) return;
         var a=row.dataset.action;
+        if(a==='profile')       showProfileSettings();
         if(a==='checkin')       showCheckin();
         if(a==='notifications') showInfoModal('Notifications','Push notification management coming soon.\n\nYou will be able to set alert thresholds for safety events in your monitored countries.');
         if(a==='countries')     switchTab('countries');
@@ -762,6 +850,122 @@
     }
     var so=document.getElementById('aa-signout');
     if(so) so.addEventListener('click',function(){showToast('👋 Sign out coming soon','ok');});
+  }
+
+  /* ═══════════════════════════════════════════
+     PROFILE & LANGUAGE SETTINGS
+  ═══════════════════════════════════════════ */
+  function buildProfileHTML(isOnboarding) {
+    var countryOptions = Object.keys(COUNTRY_NAMES).map(function(code) {
+      return '<option value="'+code+'"'+(code===_origin?' selected':'')+'>'+COUNTRY_NAMES[code]+'</option>';
+    }).join('');
+    var langOptions = LANGUAGES.map(function(l) {
+      return '<option value="'+l.code+'"'+(l.code===_lang?' selected':'')+'>'+l.label+'</option>';
+    }).join('');
+
+    return '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;'+
+      'padding:24px 24px 40px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">'+
+      '<div style="width:40px;height:4px;background:'+T.border+';border-radius:2px;margin:0 auto 20px;"></div>'+
+      (isOnboarding ?
+        '<div style="text-align:center;margin-bottom:20px;">'+
+        '<div style="font-size:40px;margin-bottom:10px;">🌍</div>'+
+        '<div style="font-size:20px;font-weight:800;color:'+T.text+';margin-bottom:6px;font-family:-apple-system,sans-serif;">Welcome to Atlas Ally</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';line-height:1.5;">Tell us where you\'re from and your preferred language to personalise your experience.</div>'+
+        '</div>'
+        :
+        '<div style="font-size:20px;font-weight:800;color:'+T.text+';margin-bottom:6px;font-family:-apple-system,sans-serif;">🌍 '+t('profile')+'</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:20px;">'+t('profileSub')+'</div>'
+      )+
+      '<div style="margin-bottom:16px;">'+
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+t('homeCountry')+'</div>'+
+        '<select id="aa-prof-origin" style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;'+
+          'padding:10px 12px;font-size:14px;color:'+T.text+';background:#fff;outline:none;'+
+          'box-sizing:border-box;font-family:-apple-system,sans-serif;appearance:none;'+
+          'background-image:url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%236B7C93\' fill=\'none\' stroke-width=\'2\'/%3E%3C/svg%3E\");'+
+          'background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;">'+
+          '<option value="">— Select your home country —</option>'+
+          countryOptions+
+        '</select>'+
+      '</div>'+
+      '<div style="margin-bottom:24px;">'+
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+t('language')+'</div>'+
+        '<select id="aa-prof-lang" style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;'+
+          'padding:10px 12px;font-size:14px;color:'+T.text+';background:#fff;outline:none;'+
+          'box-sizing:border-box;font-family:-apple-system,sans-serif;appearance:none;'+
+          'background-image:url(\"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'8\'%3E%3Cpath d=\'M1 1l5 5 5-5\' stroke=\'%236B7C93\' fill=\'none\' stroke-width=\'2\'/%3E%3C/svg%3E\");'+
+          'background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;">'+
+          langOptions+
+        '</select>'+
+      '</div>'+
+      '<button id="aa-prof-save" style="width:100%;padding:14px;background:'+T.teal+';color:#fff;'+
+        'border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;'+
+        'touch-action:manipulation;font-family:-apple-system,sans-serif;margin-bottom:10px;">'+
+        (isOnboarding ? '🚀 Get Started' : '✅ '+t('save'))+
+      '</button>'+
+      (!isOnboarding ? '<button id="aa-prof-cancel" style="width:100%;padding:12px;background:none;color:'+T.muted+';'+
+        'border:none;font-size:14px;cursor:pointer;touch-action:manipulation;">'+t('cancel')+'</button>' : '')+
+      '</div>';
+  }
+
+  function wireProfileSave(isOnboarding) {
+    var saveBtn = document.getElementById('aa-prof-save');
+    if (!saveBtn) return;
+    saveBtn.addEventListener('click', function() {
+      var originSel = document.getElementById('aa-prof-origin');
+      var langSel   = document.getElementById('aa-prof-lang');
+      var newOrigin = originSel ? originSel.value : _origin;
+      var newLang   = langSel   ? langSel.value   : _lang;
+
+      _origin = newOrigin;
+      _lang   = newLang;
+      localStorage.setItem('atlas_origin', _origin);
+      localStorage.setItem('atlas_lang',   _lang);
+      localStorage.setItem('atlas_setup_done', '1');
+
+      // Save to server if possible
+      var token = localStorage.getItem('atlas_token');
+      if (token) {
+        fetch('/api/user/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+          body: JSON.stringify({ country_origin: _origin, language: _lang }),
+        }).catch(function(){});
+      }
+
+      closeModal();
+      showToast('✅ Preferences saved', 'ok');
+
+      if (isOnboarding) {
+        // Re-render account tab labels with new language
+        if (overlay && overlay.style.display !== 'none') {
+          switchTab('account');
+        }
+      }
+    });
+    var cancelBtn = document.getElementById('aa-prof-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  }
+
+  function showProfileSettings() {
+    closeModal();
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);'+
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+    modal.innerHTML = buildProfileHTML(false);
+    document.body.appendChild(modal);
+    wireProfileSave(false);
+    modal.addEventListener('click', function(e){ if(e.target===modal) closeModal(); });
+  }
+
+  function showOnboarding() {
+    closeModal();
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.75);'+
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+    modal.innerHTML = buildProfileHTML(true);
+    document.body.appendChild(modal);
+    wireProfileSave(true);
+    // No dismiss on backdrop click for onboarding — must complete it
   }
 
   /* ═══════════════════════════════════════════
@@ -956,6 +1160,11 @@
     };
 
     switchTab('map');
+
+    // Show onboarding if first time or profile not set
+    if (!localStorage.getItem('atlas_setup_done')) {
+      setTimeout(showOnboarding, 800);
+    }
   }
 
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}

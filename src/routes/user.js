@@ -89,6 +89,22 @@ router.delete('/delete', (req, res) => {
   }
 });
 
+// ── Language & origin preference ─────────────────────────────────────────────
+
+router.patch('/profile', (req, res) => {
+  const { country_origin, language } = req.body;
+  const allowed = ['en','es','fr','ar','pt','ru','zh','de','ja','ko','tr','hi'];
+  if (language && !allowed.includes(language))
+    return res.status(400).json({ error: 'Invalid language code' });
+  db.db.prepare(`
+    UPDATE users
+    SET country_origin = COALESCE(?, country_origin),
+        language       = COALESCE(?, language)
+    WHERE id = ?
+  `).run(country_origin || null, language || null, req.user.id);
+  res.json({ ok: true });
+});
+
 module.exports = router;
 
 // ── Standalone handlers (mounted directly in server.js) ───────────────────────
