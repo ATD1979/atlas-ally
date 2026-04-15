@@ -34,10 +34,13 @@
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
 <style>
-/* Panel z-index fix — panels cover full screen, tab bar floats above */
-#main-tab-bar { z-index: 300000 !important; pointer-events: all !important; }
+/* Atlas Ally layout — overlay approach, no panel CSS fighting */
+#main-tab-bar { z-index: 600000 !important; pointer-events: all !important; }
 #main-tab-bar * { pointer-events: all !important; }
-#hdr { z-index: 100 !important; } /* header sits behind panels */
+/* Panels are bypassed — overlay div is created by nav.js */
+.panel { display: none !important; }
+/* Map overlay buttons always tappable */
+.map-locate, #heatmap-toggle, #crime-toggle, #filter-72h { pointer-events: auto !important; z-index: 100 !important; }
 </style>
 </head>
 <body>
@@ -667,69 +670,26 @@
 
 
 <script>
-// Atlas Ally — button wiring (runs after all scripts are loaded)
+// Atlas Ally — minimal init (nav.js handles all navigation)
+window.openReport     = window.openReport     || function(){ if(window.toast) window.toast('Report feature coming soon','ok'); };
+window.openCheckin    = window.openCheckin    || function(){ if(window.toast) window.toast('Check-in sent ✅','ok'); };
+window.openRouteSheet = window.openRouteSheet || function(){ window.switchTab && window.switchTab('map'); };
+window.toggleJourney  = window.toggleJourney  || function(){ var b=document.getElementById('journey-toggle'); if(b) b.textContent=b.textContent==='Start'?'Stop':'Start'; };
+window.locateUser     = window.locateUser     || function(){ navigator.geolocation && navigator.geolocation.getCurrentPosition(function(p){ window.map && window.map.setView([p.coords.latitude,p.coords.longitude],12); }); };
+window.toggleCrimeLayer = window.toggleCrimeLayer || function(){ var b=document.getElementById('crime-toggle'); if(b) b.style.opacity=b.style.opacity==='0.4'?'1':'0.4'; };
+window.toggleHeatmap  = window.toggleHeatmap  || function(){ if(window.handleFlameBtn) window.handleFlameBtn(); };
+// Map overlay button wiring (pointer-events fix)
 (function(){
-  // Surface JS errors as toasts so we can see them on mobile
-  window.addEventListener('error', function(e) {
-    console.error('[Atlas] JS Error:', e.message, 'in', e.filename, 'line', e.lineno);
-    if (window.toast) window.toast('JS Error: ' + (e.message||'').slice(0,60), 'err');
+  ['heatmap-toggle','crime-toggle','filter-72h'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('click', function(e){ e.stopPropagation(); var fn = {
+      'heatmap-toggle': function(){ window.toggleHeatmap && window.toggleHeatmap(); },
+      'crime-toggle':   function(){ window.toggleCrimeLayer && window.toggleCrimeLayer(); },
+      'filter-72h':     function(){ window.toggle72h && window.toggle72h(); }
+    }[id]; fn && fn(); });
   });
-
-  // Ensure critical functions always exist (fallbacks if app.js had an error)
-  window.openReport     = window.openReport     || function(){ var s=document.getElementById('rsheet'); if(s) s.classList.add('open'); };
-  window.openCheckin    = window.openCheckin    || function(){ var s=document.getElementById('checkin-sheet'); if(s) s.classList.add('open'); };
-  window.openRouteSheet = window.openRouteSheet || function(){ var s=document.getElementById('route-sheet'); if(s) s.classList.add('open'); };
-  window.toggleJourney  = window.toggleJourney  || function(){ var b=document.getElementById('journey-toggle'); if(b) b.textContent=b.textContent==='Start'?'Stop':'Start'; };
-  window.locateUser     = window.locateUser     || function(){ navigator.geolocation && navigator.geolocation.getCurrentPosition(function(p){ window.map && window.map.setView([p.coords.latitude,p.coords.longitude],12); }); };
-  window.toggleCrimeLayer = window.toggleCrimeLayer || function(){ var b=document.getElementById('crime-toggle'); if(b) b.style.opacity=b.style.opacity==='0.4'?'1':'0.4'; };
-  window.toggleHeatmap  = window.toggleHeatmap  || function(){ if(window.handleFlameBtn) window.handleFlameBtn(); };
-
-  function runOnclick(el) {
-    var oc = el && el.getAttribute('onclick');
-    if (!oc) return;
-    try { (new Function(oc))(); }
-    catch(err) {
-      console.error('[Atlas] onclick error on', el.id||el.className, ':', err.message);
-      if (window.toast) window.toast('Error: ' + err.message.slice(0,50), 'err');
-    }
-  }
-
-  // DOM is already ready (script is at bottom of body) — run immediately
-  (function() {
-    // Wire map overlay buttons explicitly (Android pointer-events fix)
-    var mapBtns = [
-      { id: 'heatmap-toggle', fn: function(){ window.toggleHeatmap && window.toggleHeatmap(); } },
-      { id: 'crime-toggle',   fn: function(){ window.toggleCrimeLayer && window.toggleCrimeLayer(); } },
-      { id: 'filter-72h',     fn: function(){ window.toggle72h && window.toggle72h(); } }
-    ];
-    mapBtns.forEach(function(cfg){
-      var el = document.getElementById(cfg.id);
-      if (el) el.addEventListener('click', function(e){ e.stopPropagation(); cfg.fn(); });
-    });
-    var locateEl = document.querySelector('.map-locate');
-    if (locateEl) locateEl.addEventListener('click', function(e){ e.stopPropagation(); window.locateUser && window.locateUser(); });
-
-    // Wire tab buttons — belt and suspenders backup for onclick attributes
-    var tabMap = ['map','feed','pack','countries','account'];
-    document.querySelectorAll('.main-tab').forEach(function(btn, i){
-      btn.addEventListener('click', function(e){ e.stopPropagation(); if(window.switchTab) window.switchTab(tabMap[i]); });
-    });
-
-    // Wire nav items
-    document.querySelectorAll('.nav-item, .nav-action-btn').forEach(function(el){
-      el.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(el); });
-    });
-
-    // Wire panel close buttons
-    document.querySelectorAll('.pclose').forEach(function(btn){
-      btn.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(btn); });
-    });
-
-    // Wire feed sub-tabs
-    document.querySelectorAll('.ftab').forEach(function(btn){
-      btn.addEventListener('click', function(e){ e.stopPropagation(); runOnclick(btn); });
-    });
-  })();
+  var loc = document.querySelector('.map-locate');
+  if(loc) loc.addEventListener('click', function(e){ e.stopPropagation(); window.locateUser && window.locateUser(); });
 })();
 </script>
 
