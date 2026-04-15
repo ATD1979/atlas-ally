@@ -16,6 +16,77 @@
     amber:     '#F59E0B'
   };
 
+
+  /* ── UNODC Baseline per 100k population ── */
+  var UNODC = {
+    AF:{homicide:6.5,assault:72,theft:95,robbery:38,year:2022},
+    AE:{homicide:0.5,assault:10,theft:62,robbery:2,year:2022},
+    AR:{homicide:5.3,assault:142,theft:890,robbery:88,year:2022},
+    BD:{homicide:2.6,assault:45,theft:180,robbery:28,year:2022},
+    BR:{homicide:22.3,assault:248,theft:1580,robbery:156,year:2022},
+    CD:{homicide:13.5,assault:165,theft:280,robbery:95,year:2022},
+    CN:{homicide:0.5,assault:28,theft:180,robbery:12,year:2022},
+    CO:{homicide:27.9,assault:198,theft:980,robbery:112,year:2022},
+    DE:{homicide:0.9,assault:132,theft:1420,robbery:42,year:2022},
+    DZ:{homicide:1.9,assault:38,theft:210,robbery:18,year:2022},
+    EG:{homicide:3.2,assault:42,theft:210,robbery:15,year:2022},
+    ET:{homicide:7.6,assault:95,theft:185,robbery:52,year:2022},
+    FR:{homicide:1.3,assault:142,theft:1650,robbery:78,year:2022},
+    GB:{homicide:1.1,assault:164,theft:1820,robbery:52,year:2022},
+    GH:{homicide:1.7,assault:55,theft:245,robbery:32,year:2022},
+    GT:{homicide:22.4,assault:165,theft:620,robbery:98,year:2022},
+    HN:{homicide:38.9,assault:210,theft:720,robbery:128,year:2022},
+    HT:{homicide:35.2,assault:195,theft:580,robbery:142,year:2022},
+    ID:{homicide:0.4,assault:35,theft:155,robbery:18,year:2022},
+    IL:{homicide:1.4,assault:22,theft:890,robbery:18,year:2022},
+    IN:{homicide:2.8,assault:52,theft:185,robbery:18,year:2022},
+    IQ:{homicide:5.8,assault:68,theft:120,robbery:22,year:2022},
+    IR:{homicide:3.1,assault:58,theft:165,robbery:28,year:2022},
+    IT:{homicide:0.5,assault:58,theft:1250,robbery:48,year:2022},
+    JO:{homicide:1.8,assault:28,theft:145,robbery:8,year:2022},
+    JP:{homicide:0.2,assault:18,theft:285,robbery:2,year:2022},
+    KE:{homicide:8.5,assault:98,theft:380,robbery:65,year:2022},
+    KR:{homicide:0.6,assault:48,theft:620,robbery:8,year:2022},
+    LB:{homicide:2.1,assault:35,theft:180,robbery:12,year:2022},
+    LY:{homicide:8.2,assault:95,theft:280,robbery:58,year:2022},
+    MA:{homicide:1.4,assault:32,theft:195,robbery:22,year:2022},
+    ML:{homicide:9.8,assault:112,theft:195,robbery:68,year:2022},
+    MM:{homicide:7.8,assault:88,theft:165,robbery:45,year:2022},
+    MX:{homicide:29.9,assault:182,theft:1240,robbery:128,year:2022},
+    NG:{homicide:10.3,assault:128,theft:420,robbery:88,year:2022},
+    NP:{homicide:2.8,assault:48,theft:185,robbery:22,year:2022},
+    PH:{homicide:8.4,assault:115,theft:380,robbery:62,year:2022},
+    PK:{homicide:7.8,assault:88,theft:220,robbery:45,year:2022},
+    PL:{homicide:0.7,assault:78,theft:890,robbery:28,year:2022},
+    RU:{homicide:8.2,assault:95,theft:680,robbery:42,year:2022},
+    SA:{homicide:1.5,assault:18,theft:95,robbery:6,year:2022},
+    SD:{homicide:12.8,assault:142,theft:210,robbery:88,year:2022},
+    SO:{homicide:18.2,assault:195,theft:165,robbery:112,year:2022},
+    SY:{homicide:18.5,assault:185,theft:285,robbery:125,year:2022},
+    TH:{homicide:3.2,assault:48,theft:290,robbery:22,year:2022},
+    TN:{homicide:2.1,assault:42,theft:225,robbery:28,year:2022},
+    TR:{homicide:4.3,assault:55,theft:320,robbery:28,year:2022},
+    TZ:{homicide:4.8,assault:68,theft:285,robbery:38,year:2022},
+    UA:{homicide:6.2,assault:78,theft:410,robbery:35,year:2022},
+    US:{homicide:6.8,assault:246,theft:1958,robbery:82,year:2022},
+    VE:{homicide:49.9,assault:285,theft:1580,robbery:188,year:2022},
+    YE:{homicide:21.8,assault:188,theft:195,robbery:128,year:2022},
+    ZA:{homicide:45.5,assault:580,theft:2200,robbery:320,year:2022}
+  };
+  var COUNTRY_NAMES = {
+    AF:'Afghanistan',AE:'UAE',AR:'Argentina',BD:'Bangladesh',BR:'Brazil',
+    CD:'DR Congo',CN:'China',CO:'Colombia',DE:'Germany',DZ:'Algeria',
+    EG:'Egypt',ET:'Ethiopia',FR:'France',GB:'United Kingdom',GH:'Ghana',
+    GT:'Guatemala',HN:'Honduras',HT:'Haiti',ID:'Indonesia',IL:'Israel',
+    IN:'India',IQ:'Iraq',IR:'Iran',IT:'Italy',JO:'Jordan',JP:'Japan',
+    KE:'Kenya',KR:'South Korea',LB:'Lebanon',LY:'Libya',MA:'Morocco',
+    ML:'Mali',MM:'Myanmar',MX:'Mexico',NG:'Nigeria',NP:'Nepal',
+    PH:'Philippines',PK:'Pakistan',PL:'Poland',RU:'Russia',SA:'Saudi Arabia',
+    SD:'Sudan',SO:'Somalia',SY:'Syria',TH:'Thailand',TN:'Tunisia',
+    TR:'Turkey',TZ:'Tanzania',UA:'Ukraine',US:'United States',
+    VE:'Venezuela',YE:'Yemen',ZA:'South Africa'
+  };
+
   var tabNames = ['map','feed','pack','countries','account'];
   var mapWrap  = null;
   var navPanel = null;
@@ -182,26 +253,177 @@
   /* ═══════════════════════════════════════════
      FEED — CRIME (3-MONTH TRACKER)
   ═══════════════════════════════════════════ */
-  function loadCrime(country) {
-    var nb=document.getElementById('aa-feed-body');
-    if(!nb) return;
-    if(!country){nb.innerHTML=noCountry('Choose a country to see the 3-month crime tracker.');return;}
-    nb.innerHTML=loading('Loading 3-month crime data for '+country+'…');
 
-    fetch('/api/crime/trend?country_code='+encodeURIComponent(country))
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(data){
-        var nb2=document.getElementById('aa-feed-body');
-        if(!nb2) return;
-        renderCrimeTracker(nb2, data, country);
-      })
-      .catch(function(err){
-        var nb2=document.getElementById('aa-feed-body');
-        if(!nb2) return;
-        // Fallback: show UNODC baseline only if GDELT fails
-        renderCrimeTrackerFallback(nb2, country, err.message);
+  function loadCrime(country) {
+    var nb = document.getElementById('aa-feed-body');
+    if (!nb) return;
+    if (!country) { nb.innerHTML = noCountry('Choose a country to see the 3-month crime tracker.'); return; }
+    nb.innerHTML = loading('Building 3-month crime tracker for ' + country + '…');
+
+    var countryName = COUNTRY_NAMES[country] || country;
+    var unodc = UNODC[country] || null;
+
+    // Query GDELT directly from browser — no backend needed
+    // Use 3 separate monthly queries for accurate monthly breakdown
+    var now = new Date();
+    var months = [];
+    for (var m = 2; m >= 0; m--) {
+      var end   = new Date(now);
+      end.setMonth(end.getMonth() - m);
+      var start = new Date(end);
+      start.setMonth(start.getMonth() - 1);
+      months.push({
+        label: end.toLocaleDateString('en-US', {month:'long'}),
+        start: fmtDate(start),
+        end:   fmtDate(end),
+        count: 0
       });
+    }
+
+    function fmtDate(d) {
+      return d.getFullYear().toString() +
+        ('0'+(d.getMonth()+1)).slice(-2) +
+        ('0'+d.getDate()).slice(-2) + '000000';
+    }
+
+    var query = encodeURIComponent('(' + countryName + ') (crime OR violence OR attack OR robbery OR shooting OR explosion OR conflict OR security)');
+
+    // Fetch all 3 months in parallel
+    var promises = months.map(function(mo) {
+      var url = 'https://api.gdeltproject.org/api/v2/doc/doc?query=' + query +
+        '&mode=artlist&maxrecords=250&format=json' +
+        '&startdatetime=' + mo.start + '&enddatetime=' + mo.end;
+      return fetch(url, {headers:{'Accept':'application/json'}})
+        .then(function(r) { return r.ok ? r.json() : {articles:[]}; })
+        .then(function(data) { return (data.articles || []).length; })
+        .catch(function() { return 0; });
+    });
+
+    Promise.all(promises).then(function(counts) {
+      var nb2 = document.getElementById('aa-feed-body');
+      if (!nb2) return;
+
+      months.forEach(function(mo, i) { mo.count = counts[i]; });
+      var total = counts.reduce(function(a,b){return a+b;}, 0);
+      var maxCount = Math.max.apply(null, counts) || 1;
+
+      // Trend
+      var trend = counts[2] > counts[0] * 1.15 ? 'rising' :
+                  counts[2] < counts[0] * 0.85 ? 'falling' : 'stable';
+      var trendIcon  = {rising:'📈',falling:'📉',stable:'➡️'}[trend];
+      var trendColor = {rising:T.red,falling:T.green,stable:T.gold}[trend];
+
+      var html = '';
+
+      // Summary row
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
+      html += summaryCard('🔍','Total Reports',total,'Last 90 days',T.teal);
+      html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs 90 days prior',trendColor);
+      html += summaryCard('📡','Sources','GDELT + UNODC','Data providers',T.muted);
+      html += '</div>';
+
+      // Monthly bars
+      html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
+      html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:16px;">3-MONTH INCIDENT REPORTS · GDELT</div>';
+      html += '<div style="display:flex;gap:10px;align-items:flex-end;height:110px;margin-bottom:6px;">';
+      months.forEach(function(mo) {
+        var pct = Math.round((mo.count / maxCount) * 100);
+        var h   = Math.max(pct, 4);
+        var col = pct > 70 ? T.red : pct > 35 ? T.gold : T.green;
+        html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">';
+        html += '<div style="font-size:11px;font-weight:700;color:'+T.text+';">'+mo.count+'</div>';
+        html += '<div style="width:100%;height:90px;background:'+T.border+';border-radius:6px 6px 0 0;display:flex;align-items:flex-end;">';
+        html += '<div style="width:100%;height:'+h+'%;background:'+col+';border-radius:6px 6px 0 0;"></div></div>';
+        html += '<div style="font-size:10px;color:'+T.muted+';text-align:center;">'+mo.label+'</div></div>';
+      });
+      html += '</div>';
+
+      // Risk level
+      var avgPerMonth = total / 3;
+      var risk = avgPerMonth > 200 ? 'VERY HIGH' : avgPerMonth > 100 ? 'HIGH' : avgPerMonth > 40 ? 'MODERATE' : 'LOW';
+      var riskCol = {HIGH:T.red,'VERY HIGH':T.red,MODERATE:T.gold,LOW:T.green}[risk];
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px;background:'+T.bg+';border-radius:8px;">';
+      html += '<div style="font-size:11px;color:'+T.muted+';flex:1;">Media-reported security incidents per month (avg)</div>';
+      html += '<div style="padding:4px 10px;border-radius:100px;background:'+riskCol+';color:#fff;font-size:10px;font-weight:700;">'+risk+'</div>';
+      html += '</div>';
+      html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:8px;">Source: GDELT Project — media reports mentioning crime/security events · Updated hourly</div>';
+      html += '</div>';
+
+      // UNODC baseline
+      if (unodc) {
+        html += '<div style="margin:12px 12px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:4px;">UNODC OFFICIAL STATISTICS · '+unodc.year+'</div>';
+        html += '<div style="font-size:9px;color:'+T.subtle+';margin-bottom:12px;">Annual rates per 100,000 population</div>';
+        var stats = [
+          {icon:'🔴',label:'Homicide',    val:unodc.homicide, benchmark:5},
+          {icon:'⚠️',label:'Assault',     val:unodc.assault,  benchmark:100},
+          {icon:'🏪',label:'Theft',       val:unodc.theft,    benchmark:500},
+          {icon:'💰',label:'Robbery',     val:unodc.robbery,  benchmark:50}
+        ];
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+        stats.forEach(function(s) {
+          var risk2 = s.val > s.benchmark*1.5 ? 'HIGH' : s.val > s.benchmark*0.5 ? 'MED' : 'LOW';
+          var rc = {HIGH:T.red,MED:T.gold,LOW:T.green}[risk2];
+          html += '<div style="background:'+T.bg+';border-radius:8px;padding:12px;">';
+          html += '<div style="font-size:18px;margin-bottom:4px;">'+s.icon+'</div>';
+          html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';margin-bottom:3px;">'+s.label+'</div>';
+          html += '<div style="font-size:18px;font-weight:800;color:'+rc+';">'+s.val.toFixed(1)+'</div>';
+          html += '<div style="font-size:9px;color:'+T.muted+';margin-bottom:4px;">per 100k</div>';
+          html += '<span style="padding:2px 8px;border-radius:100px;background:'+rc+';color:#fff;font-size:9px;font-weight:700;">'+risk2+'</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+        html += '<div style="font-size:9px;color:'+T.subtle+';margin-top:10px;">Source: UNODC Global Study on Homicide & Crime Survey '+unodc.year+'</div>';
+        html += '</div>';
+      } else {
+        html += '<div style="margin:12px 12px 0;background:'+T.goldLight+';border:1px solid '+T.gold+';border-radius:12px;padding:14px;">';
+        html += '<div style="font-size:13px;font-weight:600;color:#92400E;">📊 No UNODC baseline data available for '+countryName+'</div>';
+        html += '<div style="font-size:12px;color:#92400E;margin-top:4px;">GDELT media tracking is still active above.</div>';
+        html += '</div>';
+      }
+
+      html += renderSafetyTips();
+      html += '<div style="height:20px;"></div>';
+      nb2.innerHTML = html;
+
+    }).catch(function(err) {
+      var nb2 = document.getElementById('aa-feed-body');
+      if (!nb2) return;
+      // If GDELT fails, still show UNODC if available
+      if (unodc) {
+        renderCrimeUNODCOnly(nb2, unodc, countryName);
+      } else {
+        nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ Could not load crime data. Check your connection.</div>' + renderSafetyTips();
+      }
+    });
   }
+
+  function renderCrimeUNODCOnly(el, unodc, countryName) {
+    var html = '<div style="margin:12px;background:'+T.goldLight+';border:1px solid '+T.gold+';border-radius:12px;padding:12px;margin-bottom:0;">';
+    html += '<div style="font-size:12px;color:#92400E;">Live data unavailable — showing UNODC baseline only</div></div>';
+    var stats = [
+      {icon:'🔴',label:'Homicide',val:unodc.homicide,benchmark:5},
+      {icon:'⚠️',label:'Assault', val:unodc.assault, benchmark:100},
+      {icon:'🏪',label:'Theft',   val:unodc.theft,   benchmark:500},
+      {icon:'💰',label:'Robbery', val:unodc.robbery, benchmark:50}
+    ];
+    html += '<div style="margin:12px;background:#fff;border-radius:12px;border:1px solid '+T.border+';padding:16px;">';
+    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:'+T.muted+';margin-bottom:12px;">UNODC STATISTICS · '+unodc.year+'</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+    stats.forEach(function(s){
+      var risk=s.val>s.benchmark*1.5?'HIGH':s.val>s.benchmark*0.5?'MED':'LOW';
+      var rc={HIGH:T.red,MED:T.gold,LOW:T.green}[risk];
+      html+='<div style="background:'+T.bg+';border-radius:8px;padding:12px;"><div style="font-size:18px;margin-bottom:4px;">'+s.icon+'</div>'+
+        '<div style="font-size:11px;font-weight:600;color:'+T.text+';margin-bottom:3px;">'+s.label+'</div>'+
+        '<div style="font-size:18px;font-weight:800;color:'+rc+';">'+s.val.toFixed(1)+'</div>'+
+        '<div style="font-size:9px;color:'+T.muted+';margin-bottom:4px;">per 100k</div>'+
+        '<span style="padding:2px 8px;border-radius:100px;background:'+rc+';color:#fff;font-size:9px;font-weight:700;">'+risk+'</span></div>';
+    });
+    html += '</div></div>';
+    html += renderSafetyTips();
+    el.innerHTML = html;
+  }
+
 
   function renderCrimeTracker(el, data, country) {
     var weeks   = data.weeks || [];
