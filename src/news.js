@@ -159,37 +159,51 @@ async function refreshNewsForCountry(countryCode, langOverride) {
   if (!country) return 0;
 
   const config = GOOGLE_NEWS_CONFIG[countryCode] || {
-    lang: 'en', gl: countryCode, query: `${country.name} news safety travel`
+    lang: 'en', gl: countryCode, query: `"${country.name}" news safety travel`
   };
 
   const lang = langOverride || config.lang || 'en';
   let count  = 0;
   const seen = new Set();
 
-  // Primary: Google News RSS — lang-aware
-  const gnItems = await fetchRSS(googleNewsUrl(config.query, lang, config.gl));
-  for (const raw of gnItems.slice(0, 15)) {
-    const item = extractItem(raw);
-    if (!item.title || item.title.length < 10) continue;
-    if (isRemoteSource(item)) continue;
-    const titleKey = item.title.toLowerCase().slice(0, 60);
-    if (seen.has(item.url) || seen.has(titleKey)) continue;
-    seen.add(item.url); seen.add(titleKey);
-    try {
-      const loc = extractLocation(item.title + ' ' + item.description, countryCode);
-      db.cacheNews.run({
-        country_code: countryCode, lang,
-        source_name:  item.sourceDomain || 'Google News',
-        title:        item.title, description: item.description,
-        url:          item.url,
-        lat: loc?.lat || null, lng: loc?.lng || null,
-        published_at: item.published_at,
-      });
-      count++;
-    } catch (e) { /* duplicate */ }
+  // Helper to fetch and cache a batch of RSS items
+  async function fetchAndCache(gnUrl, label) {
+    const items = await fetchRSS(gnUrl);
+    for (const raw of items.slice(0, 15)) {
+      const item = extractItem(raw);
+      if (!item.title || item.title.length < 10) continue;
+      if (isRemoteSource(item)) continue;
+      const titleKey = item.title.toLowerCase().slice(0, 60);
+      if (seen.has(item.url) || seen.has(titleKey)) continue;
+      seen.add(item.url); seen.add(titleKey);
+      try {
+        const loc = extractLocation(item.title + ' ' + item.description, countryCode);
+        db.cacheNews.run({
+          country_code: countryCode, lang,
+          source_name:  item.sourceDomain || label,
+          title:        item.title, description: item.description,
+          url:          item.url,
+          lat: loc?.lat || null, lng: loc?.lng || null,
+          published_at: item.published_at,
+        });
+        count++;
+      } catch (e) { /* duplicate */ }
+    }
   }
 
-  // Secondary: country-specific RSS feeds
+  // Primary: general safety/security news in user's language
+  await fetchAndCache(googleNewsUrl(config.query, lang, config.gl), 'Google News');
+
+  // Secondary: crime & drug focused query (always English for classifier accuracy)
+  const crimeName = country.name;
+  const crimeQuery = `"${crimeName}" (drug trafficking OR narcotics OR cartel OR crime OR murder OR gang OR smuggling OR seizure OR arrest OR robbery)`;
+  await fetchAndCache(googleNewsUrl(crimeQuery, 'en', config.gl), 'Google News Crime');
+
+  // Tertiary: conflict/violence query
+  const conflictQuery = `"${crimeName}" (attack OR explosion OR conflict OR violence OR protest OR military OR troops OR airstrike)`;
+  await fetchAndCache(googleNewsUrl(conflictQuery, 'en', config.gl), 'Google News Conflict');
+
+  // Country-specific RSS feeds if defined
   if (country.newsFeed?.length) {
     for (const feed of country.newsFeed) {
       const items = await fetchRSS(feed.url);
