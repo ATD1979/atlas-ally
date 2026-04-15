@@ -101,92 +101,55 @@ async function fetchWorldBank(code) {
   return results.some(r => r.value !== null) ? results : null;
 }
 
-// ── ACLED OAuth token cache ───────────────────────────────────────────────────
-let acledTokenCache = { token: null, expires: 0 };
+// ── UCDP conflict data (Uppsala University — free, no key needed) ─────────────
+// Same GPS-tagged conflict data as ACLED but fully open access
+const UCDP_GW_CODES = {
+  JO:116, UA:369, LB:660, SY:652, IQ:645, YE:678, SO:520, SD:625,
+  LY:620, AF:700, PK:770, MM:775, PH:840, NG:475, CD:490, ET:530,
+  KE:501, ML:432, MX:70,  CO:100, VE:101, BR:140, IN:750, TR:640,
+  IL:666, EG:651, MA:600, HT:41,  HN:91,  GT:90,
+};
 
-async function getAcledToken() {
-  if (acledTokenCache.token && Date.now() < acledTokenCache.expires) {
-    return acledTokenCache.token;
-  }
-  const email    = process.env.ACLED_EMAIL;
-  const password = process.env.ACLED_PASSWORD;
-  if (!email || !password) return null;
+async function fetchUCDP(countryName, countryCode) {
+  const gwCode = UCDP_GW_CODES[countryCode];
+  if (!gwCode) return null;
 
-  try {
-    const params = new URLSearchParams({
-      username:   email,
-      password:   password,
-      grant_type: 'password',
-      client_id:  'acled',
-    });
-    const r = await fetch('https://acleddata.com/oauth/token', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'AtlasAlly/1.0' },
-      body:    params.toString(),
-      timeout: 10000,
-    });
-    if (!r.ok) { console.warn('ACLED token request failed:', r.status); return null; }
-    const data = await r.json();
-    if (!data.access_token) { console.warn('ACLED no access_token in response'); return null; }
-    // Token valid for 24h (86400s), cache for 23h to be safe
-    acledTokenCache = { token: data.access_token, expires: Date.now() + 23 * 3600 * 1000 };
-    console.log('ACLED token obtained successfully');
-    return data.access_token;
-  } catch(e) {
-    console.warn('ACLED token error:', e.message);
-    return null;
-  }
-}
-
-// ── ACLED conflict data fetch ─────────────────────────────────────────────────
-async function fetchAcled(countryName) {
-  const token = await getAcledToken();
-  if (!token) return null;
+  const since = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  const url   = `https://ucdpapi.pcr.uu.se/api/gedevents/23.1?pagesize=100&StartDate=${since}&country=${gwCode}`;
 
   try {
-    // Fetch last 90 days of events
-    const since = new Date(Date.now() - 90 * 24 * 3600 * 1000);
-    const dateStr = since.toISOString().slice(0, 10).replace(/-/g, '');
-    const url = `https://acleddata.com/api/acled/read?country=${encodeURIComponent(countryName)}&event_date=${dateStr}|${new Date().toISOString().slice(0,10).replace(/-/g,'')}&event_date_where=BETWEEN&limit=500&fields=event_date,event_type,sub_event_type,location,fatalities,notes&format=json`;
+    const r = await fetch(url, { timeout: 10000, headers: { 'User-Agent': 'AtlasAlly/1.0', Accept: 'application/json' } });
+    if (!r.ok) return null;
+    const data   = await r.json();
+    const events = data.Result || [];
+    if (!events.length) return null;
 
-    const r = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': 'AtlasAlly/1.0' },
-      timeout: 12000,
-    });
-    if (!r.ok) { console.warn('ACLED data fetch failed:', r.status); return null; }
-    const data = await r.json();
-    if (!data.data || !Array.isArray(data.data)) return null;
+    const totalFatalities = events.reduce((s, e) => s + (parseInt(e.best) || 0), 0);
 
-    const events = data.data;
-    const totalFatalities = events.reduce((sum, e) => sum + (parseInt(e.fatalities) || 0), 0);
-
-    // Count by event type
     const typeCounts = {};
     events.forEach(e => {
-      const t = e.event_type || 'Other';
-      typeCounts[t] = (typeCounts[t] || 0) + 1;
+      const label = e.type_of_violence === 1 ? 'State-based conflict'
+                  : e.type_of_violence === 2 ? 'Non-state conflict'
+                  : 'One-sided violence';
+      typeCounts[label] = (typeCounts[label] || 0) + 1;
     });
     const eventTypes = Object.entries(typeCounts)
       .sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({ type, count }));
 
-    // 5 most recent events
     const recent = events
-      .sort((a, b) => new Date(b.event_date) - new Date(a.event_date))
+      .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))
       .slice(0, 5)
       .map(e => ({
-        date:          e.event_date,
-        event_type:    e.event_type,
-        sub_event_type:e.sub_event_type,
-        location:      e.location,
-        fatalities:    parseInt(e.fatalities) || 0,
-        notes:         (e.notes || '').slice(0, 200),
+        date:       e.date_start,
+        event_type: e.type_of_violence === 1 ? 'State-based conflict' : e.type_of_violence === 2 ? 'Non-state conflict' : 'One-sided violence',
+        location:   e.where_description || e.adm_2 || e.adm_1 || countryName,
+        fatalities: parseInt(e.best) || 0,
+        notes:      (e.source_headline || '').slice(0, 200),
       }));
 
-    console.log(`ACLED ${countryName}: ${events.length} events, ${totalFatalities} fatalities`);
-    return { total_events: events.length, total_fatalities: totalFatalities, event_types: eventTypes, recent_events: recent };
+    return { total_events: events.length, total_fatalities: totalFatalities, event_types: eventTypes, recent_events: recent, source: 'UCDP / Uppsala University' };
   } catch(e) {
-    console.warn('ACLED fetch error:', e.message);
     return null;
   }
 }
@@ -414,15 +377,15 @@ router.get('/crime/trend', async (req, res) => {
               : thisMonth < lastMonth * 0.8 ? 'falling'
               : 'stable';
 
-  const [worldBank, acled] = await Promise.all([
+  const [worldBank, ucdp] = await Promise.all([
     fetchWorldBank(code),
-    fetchAcled(countryName),
+    fetchUCDP(countryName, code),
   ]);
 
   const sources = ['Google News', 'Security Events'];
   if (worldBank) sources.push('World Bank');
   if (unodc)     sources.push('UNODC');
-  if (acled)     sources.push('ACLED');
+  if (ucdp)      sources.push('UCDP');
 
   console.log(`Crime trend ${code}: ${total} incidents (${cachedArticles.length} cached + ${liveArticles.length} live + ${events.length} events)`);
 
@@ -436,7 +399,7 @@ router.get('/crime/trend', async (req, res) => {
     trend,
     unodc_baseline: unodc,
     world_bank:     worldBank,
-    acled,
+    acled:          ucdp,
     sources,
     generated_at:   new Date().toISOString(),
   });

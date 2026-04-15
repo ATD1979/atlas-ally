@@ -576,7 +576,6 @@ async function ingestACLED() {
 // ── Startup purge of non-English events ──────────────────────────────────────
 function purgeNonEnglish() {
   try {
-    // Arabic and other non-Latin characters
     ['ا','ي','ة','و','ن','م','ل','ه','ر','ب','ت','ع','د','س','ك','ف','ق','ح','ج','ص','ط','خ','ذ','ض','ظ','غ','ز','ش','ث','ئ','ء'].forEach(ch => {
       try { db.db.prepare(`DELETE FROM events WHERE submitted_by='auto-ingest' AND title LIKE '%${ch}%'`).run(); } catch {}
     });
@@ -589,20 +588,17 @@ async function ingestSecurityEvents() {
   purgeNonEnglish();
   let total = 0;
 
-  // 1. US Embassy — highest signal
+  // 1. US Embassy — highest signal, real shelter-in-place/missile alerts
   const e1 = await ingestEmbassyAlerts();
   if (e1) console.log(`  🏛  Embassy: +${e1}`);
   total += e1;
 
-  // 2. UK FCDO
+  // 2. UK FCDO travel alerts
   const e2 = await ingestFCDO();
   if (e2) console.log(`  🇬🇧 FCDO: +${e2}`);
   total += e2;
 
-  // 3. ACLED (if key approved)
-  total += await ingestACLED();
-
-  // 4. UCDP — academic conflict data, GPS-tagged
+  // 3. UCDP — free academic conflict data, GPS-tagged, no approval needed
   for (const code of Object.keys(UCDP_COUNTRIES)) {
     const n = await ingestUCDP(code);
     total += n;
