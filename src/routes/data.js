@@ -243,7 +243,7 @@ router.get('/crime/trend', async (req, res) => {
 
   // Use existing news cache
   let articles = [];
-  try { articles = db.getNewsByCountry.all(code) || []; } catch(e) {}
+  try { articles = db.getNewsByCountry(code, 'en') || []; } catch(e) {}
   if (!articles.length) {
     try { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code).catch(()=>{}); } catch(e) {}
   }
@@ -390,11 +390,18 @@ router.post('/route', async (req, res) => {
 
 // ── News ──────────────────────────────────────────────────────────────────────
 router.get('/news', (req, res) => {
-  const { country_code, lat, lng, lang } = req.query;
+  const { country_code, lat, lng, lang = 'en' } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
   const code = country_code.toUpperCase();
-  let items  = db.getNewsByCountry.all(code);
-  if (!items.length) { const { refreshNewsForCountry } = require('../news'); refreshNewsForCountry(code, lang || 'en').catch(()=>{}); }
+
+  // getNewsByCountry is now a function (lang-aware), not a prepared statement
+  let items = db.getNewsByCountry(code, lang);
+
+  // If nothing cached for this lang, trigger a background fetch then return empty
+  if (!items.length) {
+    const { refreshNewsForCountry } = require('../news');
+    refreshNewsForCountry(code, lang).catch(() => {});
+  }
   const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');

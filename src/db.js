@@ -37,7 +37,6 @@ try {
     safeAddColumn('users', 'verified', 'INTEGER DEFAULT 0');
     safeAddColumn('users', 'last_login', 'TEXT');
     safeAddColumn('users', 'admin_password', 'TEXT');
-    safeAddColumn('users', 'language', "TEXT DEFAULT 'en'");
   }
   // Events table migrations
   const eventsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='events'`).get();
@@ -58,14 +57,16 @@ try {
       CREATE TABLE news_cache (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
         country_code  TEXT NOT NULL,
+        lang          TEXT NOT NULL DEFAULT 'en',
         source_name   TEXT,
         title         TEXT,
         description   TEXT,
-        url           TEXT UNIQUE,
+        url           TEXT,
         lat           REAL,
         lng           REAL,
         published_at  TEXT,
-        cached_at     TEXT DEFAULT (datetime('now'))
+        cached_at     TEXT DEFAULT (datetime('now')),
+        UNIQUE(url, lang)
       );
     `);
   } catch(e) { console.warn('news_cache migration:', e.message); }
@@ -94,8 +95,7 @@ db.exec(`
     verified        INTEGER DEFAULT 0,
     created_at      TEXT DEFAULT (datetime('now')),
     last_login      TEXT,
-    active          INTEGER DEFAULT 1,
-    language        TEXT DEFAULT 'en'
+    active          INTEGER DEFAULT 1
   );
 
   CREATE TABLE IF NOT EXISTS otp_codes (
@@ -188,14 +188,16 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS news_cache (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     country_code  TEXT NOT NULL,
+    lang          TEXT NOT NULL DEFAULT 'en',
     source_name   TEXT,
     title         TEXT,
     description   TEXT,
-    url           TEXT UNIQUE,
+    url           TEXT,
     lat           REAL,
     lng           REAL,
     published_at  TEXT,
-    cached_at     TEXT DEFAULT (datetime('now'))
+    cached_at     TEXT DEFAULT (datetime('now')),
+    UNIQUE(url, lang)
   );
 
   CREATE TABLE IF NOT EXISTS notify_log (
@@ -317,7 +319,6 @@ const helpers = {
   updateLastLogin: (id) => db.prepare(`UPDATE users SET last_login = datetime('now') WHERE id = ?`).run(id),
   updatePlan: (data) => db.prepare(`UPDATE users SET plan = @plan, stripe_id = @stripe_id WHERE id = @id`).run(data),
   updateRole: (role, id) => db.prepare(`UPDATE users SET role = ? WHERE id = ?`).run(role, id),
-  updateProfile: (data) => db.prepare(`UPDATE users SET country_origin = @country_origin, language = @language WHERE id = @id`).run(data),
   deactivateUser: (id) => db.prepare(`UPDATE users SET active = 0 WHERE id = ?`).run(id),
 
   isTrialActive: (user) => {
@@ -368,8 +369,8 @@ const helpers = {
   addCommunityCrime: db.prepare(`INSERT INTO community_crime (country_code, lat, lng, type, description, reported_by, severity) VALUES (@country_code, @lat, @lng, @type, @description, @reported_by, @severity)`),
 
   // News
-  cacheNews: db.prepare(`INSERT OR IGNORE INTO news_cache (country_code, source_name, title, description, url, lat, lng, published_at) VALUES (@country_code, @source_name, @title, @description, @url, @lat, @lng, @published_at)`),
-  getNewsByCountry: db.prepare(`SELECT * FROM news_cache WHERE country_code = ? ORDER BY published_at DESC LIMIT 20`),
+  cacheNews: db.prepare(`INSERT OR IGNORE INTO news_cache (country_code, lang, source_name, title, description, url, lat, lng, published_at) VALUES (@country_code, @lang, @source_name, @title, @description, @url, @lat, @lng, @published_at)`),
+  getNewsByCountry: (code, lang) => db.prepare(`SELECT * FROM news_cache WHERE country_code = ? AND lang = ? ORDER BY published_at DESC LIMIT 20`).all(code, lang || 'en'),
   clearOldNews: db.prepare(`DELETE FROM news_cache WHERE cached_at < datetime('now', '-24 hours')`),
 
   // Emergency contacts

@@ -156,66 +156,57 @@ function isRemoteSource(item) {
 
 async function refreshNewsForCountry(countryCode, langOverride) {
   const country = COUNTRIES[countryCode];
-  if (!country) return;
+  if (!country) return 0;
 
   const config = GOOGLE_NEWS_CONFIG[countryCode] || {
     lang: 'en', gl: countryCode, query: `${country.name} news safety travel`
   };
 
-  // Use caller's language preference if provided, else fall back to config
   const lang = langOverride || config.lang || 'en';
-
-  let count = 0;
-
-  // Primary: Google News RSS (always works, auto-scales to any country)
-  const gnUrl = googleNewsUrl(config.query, lang, config.gl);
-  const gnItems = await fetchRSS(gnUrl);
+  let count  = 0;
   const seen = new Set();
+
+  // Primary: Google News RSS — lang-aware
+  const gnItems = await fetchRSS(googleNewsUrl(config.query, lang, config.gl));
   for (const raw of gnItems.slice(0, 15)) {
     const item = extractItem(raw);
     if (!item.title || item.title.length < 10) continue;
-    if (isRemoteSource(item)) continue;  // drop Australian/NZ/Canadian outlets
-const titleKey = item.title.toLowerCase().slice(0, 60);
-if (seen.has(item.url) || seen.has(titleKey)) continue;
-seen.add(item.url);
-seen.add(titleKey);
-    
+    if (isRemoteSource(item)) continue;
+    const titleKey = item.title.toLowerCase().slice(0, 60);
+    if (seen.has(item.url) || seen.has(titleKey)) continue;
+    seen.add(item.url); seen.add(titleKey);
     try {
       const loc = extractLocation(item.title + ' ' + item.description, countryCode);
       db.cacheNews.run({
-        country_code: countryCode,
-        source_name: item.sourceDomain || 'Google News',
-        title: item.title,
-        description: item.description,
-        url: item.url,
-        lat: loc.lat || null,
-        lng: loc.lng || null,
+        country_code: countryCode, lang,
+        source_name:  item.sourceDomain || 'Google News',
+        title:        item.title, description: item.description,
+        url:          item.url,
+        lat: loc?.lat || null, lng: loc?.lng || null,
         published_at: item.published_at,
       });
       count++;
     } catch (e) { /* duplicate */ }
   }
 
-  // Secondary: country-specific feeds if defined in countries.js
+  // Secondary: country-specific RSS feeds
   if (country.newsFeed?.length) {
     for (const feed of country.newsFeed) {
       const items = await fetchRSS(feed.url);
       for (const raw of items.slice(0, 6)) {
         const item = extractItem(raw);
         if (!item.title || item.title.length < 10) continue;
-const titleKey = item.title.toLowerCase().slice(0, 60);
-if (seen.has(item.url) || seen.has(titleKey)) continue;
-seen.add(item.url);
-seen.add(titleKey);
+        const titleKey = item.title.toLowerCase().slice(0, 60);
+        if (seen.has(item.url) || seen.has(titleKey)) continue;
+        seen.add(item.url); seen.add(titleKey);
         try {
+          const loc = extractLocation(item.title + ' ' + item.description, countryCode);
           db.cacheNews.run({
-            country_code: countryCode,
-            source_name: feed.name,
-            title: item.title,
-            description: item.description,
-            url: item.url,
-            lat: loc.lat || null,
-            lng: loc.lng || null,
+            country_code: countryCode, lang,
+            source_name:  feed.name,
+            title:        item.title, description: item.description,
+            url:          item.url,
+            lat: loc?.lat || null, lng: loc?.lng || null,
             published_at: item.published_at,
           });
           count++;
@@ -224,7 +215,7 @@ seen.add(titleKey);
     }
   }
 
-  console.log(`  📰 ${countryCode}: cached ${count} news items`);
+  console.log(`  📰 ${countryCode} [${lang}]: cached ${count} news items`);
   return count;
 }
 
