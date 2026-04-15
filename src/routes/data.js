@@ -422,25 +422,99 @@ router.get('/news', (req, res) => {
 });
 
 // ── Events ────────────────────────────────────────────────────────────────────
-router.get('/events', (req, res) => {
-  const { country_code, lat, lng } = req.query;
+// ── Security keyword queries per language for Google News alerts ──────────────
+const SECURITY_QUERIES = {
+  en: 'attack OR explosion OR missile OR shooting OR protest OR security alert OR emergency',
+  ar: 'هجوم OR انفجار OR صاروخ OR إطلاق نار OR احتجاج OR تنبيه أمني OR طوارئ',
+  fr: 'attaque OR explosion OR missile OR fusillade OR manifestation OR alerte sécurité',
+  es: 'ataque OR explosión OR misil OR disparos OR protesta OR alerta de seguridad',
+  pt: 'ataque OR explosão OR míssil OR tiroteio OR protesto OR alerta de segurança',
+  ru: 'атака OR взрыв OR ракета OR стрельба OR протест OR предупреждение безопасности',
+  zh: '袭击 OR 爆炸 OR 导弹 OR 枪击 OR 抗议 OR 安全警报',
+  de: 'Angriff OR Explosion OR Rakete OR Schießerei OR Protest OR Sicherheitswarnung',
+  ja: '攻撃 OR 爆発 OR ミサイル OR 銃撃 OR 抗議 OR 安全警告',
+  ko: '공격 OR 폭발 OR 미사일 OR 총격 OR 시위 OR 보안 경보',
+  tr: 'saldırı OR patlama OR füze OR silahlı saldırı OR protesto OR güvenlik uyarısı',
+  hi: 'हमला OR विस्फोट OR मिसाइल OR गोलीबारी OR विरोध OR सुरक्षा चेतावनी',
+};
+
+// Fetch security-relevant Google News in the user's language
+async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
+  const query    = `"${countryName}" (${SECURITY_QUERIES[lang] || SECURITY_QUERIES.en})`;
+  const gl       = countryCode.toUpperCase();
+  const url      = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
+  try {
+    const xml2js = require('xml2js');
+    const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
+    const r      = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+    if (!r.ok) return [];
+    const xml    = await r.text();
+    const data   = await parser.parseStringPromise(xml);
+    const items  = data?.rss?.channel?.item || [];
+    const arr    = Array.isArray(items) ? items : [items];
+    return arr.slice(0, 15).map(item => {
+      const rawTitle = String(item.title?._ || item.title || '');
+      const dashIdx  = rawTitle.lastIndexOf(' - ');
+      const title    = dashIdx > 10 ? rawTitle.slice(0, dashIdx).trim() : rawTitle.trim();
+      const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
+      const url      = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+      let published  = new Date().toISOString();
+      try { published = new Date(item.pubDate || item.published || '').toISOString(); } catch {}
+      return {
+        id:          `gnews-${Buffer.from(url).toString('base64').slice(0, 20)}`,
+        country_code: countryCode,
+        type:        'incident',
+        severity:    'warn',
+        title:       title.replace(/<[^>]*>/g, '').trim().slice(0, 200),
+        description: '',
+        location:    countryName,
+        lat:         null, lng: null,
+        source:      source,
+        source_url:  String(url).trim(),
+        created_at:  published,
+        status:      'approved',
+        is_gnews:    true,
+      };
+    }).filter(e => e.title.length > 10);
+  } catch { return []; }
+}
+
+router.get('/events', async (req, res) => {
+  const { country_code, lat, lng, lang = 'en' } = req.query;
   if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  const code   = country_code.toUpperCase();
-  const events = db.getEventsByCountry.all(code);
+  const code = country_code.toUpperCase();
+
+  // Official events from DB (embassy alerts, FCDO, ACLED — always authoritative)
+  let events = db.getEventsByCountry.all(code);
   if (!events.length) {
     try { const { ingestSecurityEvents } = require('../services/events-ingest'); ingestSecurityEvents().catch(()=>{}); } catch(e) {}
   }
+
+  // Augment with Google News security feed in the user's selected language
+  const countryName = COUNTRY_NAMES[code] || code;
+  const gnews = await fetchSecurityNewsInLang(countryName, code, lang);
+
+  // Merge: official events first, then lang-matched Google News, deduped by source_url
+  const seen = new Set(events.map(e => e.source_url).filter(Boolean));
+  const merged = [
+    ...events,
+    ...gnews.filter(e => !seen.has(e.source_url)),
+  ];
+
+  // Sort newest first
+  merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
   const userLat = parseFloat(lat), userLng = parseFloat(lng);
   if (!isNaN(userLat) && !isNaN(userLng)) {
     const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center   = COUNTRY_CENTERS[code] || { lat:userLat, lng:userLng };
-    const enriched = events.map(ev => ({
-      ...ev, distance_km:Math.round(distanceKm(userLat,userLng,ev.lat||center.lat,ev.lng||center.lng)),
-    }));
-    enriched.sort((a,b) => a.distance_km - b.distance_km);
-    return res.json(enriched);
+    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+    return res.json(merged.map(ev => ({
+      ...ev,
+      distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),
+    })).sort((a, b) => a.distance_km - b.distance_km));
   }
-  res.json(events);
+
+  res.json(merged);
 });
 
 module.exports = router;

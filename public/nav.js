@@ -303,7 +303,7 @@
     if(!nb) return;
     if(!country){nb.innerHTML=noCountry('Choose a country to see active safety alerts.');return;}
     nb.innerHTML=loading('Loading alerts for '+country+'…');
-    fetch('/api/events?country_code='+encodeURIComponent(country))
+    fetch('/api/events?country_code='+encodeURIComponent(country)+'&lang='+encodeURIComponent(_lang))
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
       .then(function(events){
         var nb2=document.getElementById('aa-feed-body');
