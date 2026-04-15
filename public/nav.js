@@ -13,7 +13,9 @@
     red:       '#EF4444', redLight: '#FEF2F2',
     green:     '#10B981', greenLight: '#ECFDF5',
     gold:      '#F59E0B', goldLight: '#FEF3C7',
-    amber:     '#F59E0B'
+    amber:     '#F59E0B',
+    font:      "'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif",
+    mono:      "'DM Mono',monospace",
   };
 
 
@@ -257,82 +259,134 @@
   /* ═══════════════════════════════════════════
      FEED — NEWS
   ═══════════════════════════════════════════ */
+  function relTime(dateStr) {
+    try {
+      var diff = Math.round((Date.now() - new Date(dateStr)) / 60000);
+      if (diff < 1)   return 'just now';
+      if (diff < 60)  return diff + 'm ago';
+      if (diff < 1440) return Math.round(diff / 60) + 'h ago';
+      return new Date(dateStr).toLocaleDateString([], { month:'short', day:'numeric' });
+    } catch(e) { return ''; }
+  }
+
+  function feedItem(href, iconBg, iconEmoji, tagBg, tagColor, tagLabel, title, time) {
+    return '<a href="'+(href||'#')+'" target="_blank" rel="noopener" '+
+      'style="display:flex;gap:9px;align-items:flex-start;padding:10px 14px;'+
+      'border-bottom:1px solid '+T.border+';background:#fff;text-decoration:none;'+
+      '-webkit-tap-highlight-color:transparent;font-family:'+T.font+';">'+
+      '<div style="width:30px;height:30px;border-radius:8px;background:'+iconBg+';'+
+        'flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;">'+iconEmoji+'</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:11px;font-weight:500;color:'+T.text+';line-height:1.35;margin-bottom:4px;">'+title+'</div>'+
+        '<div style="display:flex;gap:6px;align-items:center;">'+
+          '<span style="padding:2px 6px;border-radius:8px;background:'+tagBg+';color:'+tagColor+';'+
+            'font-size:8px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase;">'+tagLabel+'</span>'+
+          '<span style="font-size:9px;color:'+T.subtle+';font-family:'+T.mono+';">'+time+'</span>'+
+        '</div>'+
+      '</div>'+
+    '</a>';
+  }
+
   function loadNews(country) {
-    var nb=document.getElementById('aa-feed-body');
-    if(!nb) return;
-    if(!country){nb.innerHTML=noCountry('Tap the flag in the header to choose a country and see live news.');return;}
-    nb.innerHTML=loading('Loading news for '+country+'…');
-    fetch('/api/news?country_code='+encodeURIComponent(country)+'&lang='+encodeURIComponent(_lang))
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(articles){
-        var nb2=document.getElementById('aa-feed-body');
-        if(!nb2) return;
-        if(!articles||!articles.length){nb2.innerHTML=emptyState('📡','No News Found','No articles found for '+country+' right now.');return;}
-        nb2.innerHTML=articles.map(function(a){
-          var title=(a.title||'Untitled').slice(0,120);
-          var src=(a.source_name||'').replace(/-/g,' ');
-          var date='';try{date=new Date(a.published_at).toLocaleDateString([],{month:'short',day:'numeric'});}catch(e){}
-          return '<a href="'+(a.url||'#')+'" target="_blank" rel="noopener" '+
-            'style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid '+T.border+';'+
-            'background:#fff;text-decoration:none;align-items:flex-start;-webkit-tap-highlight-color:transparent;">'+
-            '<div style="width:44px;height:44px;border-radius:10px;background:'+T.tealLight+';'+
-            'flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;">🗞️</div>'+
-            '<div style="flex:1;min-width:0;">'+
-            '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.45;margin-bottom:4px;">'+title+'</div>'+
-            '<div style="font-size:11px;color:'+T.muted+';text-transform:capitalize;">'+src+(date?' · '+date:'')+'</div>'+
-            '</div></a>';
+    var nb = document.getElementById('aa-feed-body');
+    if (!nb) return;
+    if (!country) { nb.innerHTML = noCountry('Tap the flag in the header to choose a country and see live news.'); return; }
+    nb.innerHTML = loading('Loading news for ' + country + '…');
+    fetch('/api/news?country_code=' + encodeURIComponent(country) + '&lang=' + encodeURIComponent(_lang))
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(articles) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        if (!articles || !articles.length) {
+          nb2.innerHTML = emptyState('📡', t('noNews'), 'No articles found for ' + country + ' right now.');
+          return;
+        }
+        nb2.innerHTML = articles.map(function(a) {
+          var title = (a.title || 'Untitled').slice(0, 120);
+          var src   = (a.source_name || 'News').replace(/-/g, ' ').slice(0, 20);
+          var time  = relTime(a.published_at);
+          // Pick icon and tag by source/title keywords
+          var lower = title.toLowerCase();
+          var urgent = lower.match(/attack|explos|missile|bomb|kill|dead|crisis|warn|alert|urgent/);
+          var iconBg  = urgent ? T.redLight  : T.tealLight;
+          var iconEm  = urgent ? '🔴'        : '📰';
+          var tagBg   = urgent ? T.redLight  : T.tealLight;
+          var tagCol  = urgent ? T.red       : T.teal;
+          var tagLbl  = urgent ? 'Breaking'  : src;
+          return feedItem(a.url, iconBg, iconEm, tagBg, tagCol, tagLbl, title, time);
         }).join('');
       })
-      .catch(function(err){
-        var nb2=document.getElementById('aa-feed-body');
-        if(!nb2) return;
-        nb2.innerHTML='<div style="padding:32px;text-align:center;">'+
-          '<div style="font-size:13px;color:'+T.red+';margin-bottom:14px;">⚠️ '+err.message+'</div>'+
-          '<button id="aa-retry-news" style="padding:9px 22px;background:'+T.teal+';color:#fff;'+
+      .catch(function(err) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        nb2.innerHTML = '<div style="padding:32px;text-align:center;">' +
+          '<div style="font-size:13px;color:'+T.red+';margin-bottom:14px;">⚠️ ' + err.message + '</div>' +
+          '<button id="aa-retry-news" style="padding:9px 22px;background:'+T.teal+';color:#fff;' +
           'border:none;border-radius:8px;font-size:13px;cursor:pointer;touch-action:manipulation;">Retry</button></div>';
-        var btn=document.getElementById('aa-retry-news');
-        if(btn) btn.addEventListener('click',function(){loadNews(window.activeCountry);});
+        var btn = document.getElementById('aa-retry-news');
+        if (btn) btn.addEventListener('click', function() { loadNews(window.activeCountry); });
       });
   }
 
   /* ═══════════════════════════════════════════
-     FEED — ALERTS
+     FEED — ALERTS / INCIDENTS
   ═══════════════════════════════════════════ */
   function loadAlerts(country) {
-    var nb=document.getElementById('aa-feed-body');
-    if(!nb) return;
-    if(!country){nb.innerHTML=noCountry('Choose a country to see active safety alerts.');return;}
-    nb.innerHTML=loading('Loading alerts for '+country+'…');
-    fetch('/api/events?country_code='+encodeURIComponent(country)+'&lang='+encodeURIComponent(_lang))
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(events){
-        var nb2=document.getElementById('aa-feed-body');
-        if(!nb2) return;
-        if(!events||!events.length){nb2.innerHTML=emptyState('✅','No Active Alerts','No incidents reported for '+country+' right now.');return;}
-        function sc(s){return {critical:T.red,high:T.gold,medium:'#3B82F6'}[s]||T.muted;}
-        function sb(s){return {critical:T.redLight,high:T.goldLight,medium:'#EFF6FF'}[s]||T.bg;}
-        function ic(t){return {conflict:'💥',protest:'✊',accident:'🚧',weather:'🌪️',health:'🏥',crime:'🔴'}[t]||'⚠️';}
-        nb2.innerHTML='<div style="padding:8px 16px;background:'+T.bg+';font-size:11px;font-weight:700;'+
-          'color:'+T.muted+';letter-spacing:0.5px;">'+events.length+' ALERTS</div>'+
-          events.map(function(ev){
-            var time='';try{time=new Date(ev.created_at||ev.published_at).toLocaleDateString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){}
-            return '<div style="margin:8px 12px;border-radius:12px;overflow:hidden;border:1px solid '+T.border+';">'+
-              '<div style="background:'+sb(ev.severity)+';border-left:4px solid '+sc(ev.severity)+';padding:14px;display:flex;gap:12px;align-items:flex-start;">'+
-              '<div style="font-size:26px;flex-shrink:0;line-height:1;">'+ic(ev.type)+'</div>'+
-              '<div style="flex:1;">'+
-              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'+
-              '<span style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'+
-              'padding:3px 8px;border-radius:100px;background:'+sc(ev.severity)+';color:#fff;">'+(ev.severity||'INFO').toUpperCase()+'</span>'+
-              '<span style="font-size:10px;color:'+T.muted+';">'+time+'</span></div>'+
-              '<div style="font-size:14px;font-weight:700;color:'+T.text+';margin-bottom:5px;line-height:1.4;">'+(ev.title||'Alert')+'</div>'+
-              (ev.description?'<div style="font-size:12px;color:'+T.muted+';line-height:1.5;">'+ev.description.slice(0,200)+(ev.description.length>200?'…':'')+'</div>':'')+
-              (ev.location?'<div style="font-size:11px;color:'+T.teal+';margin-top:6px;">📍 '+ev.location+'</div>':'')+
-              '</div></div></div>';
+    var nb = document.getElementById('aa-feed-body');
+    if (!nb) return;
+    if (!country) { nb.innerHTML = noCountry('Choose a country to see active safety incidents.'); return; }
+    nb.innerHTML = loading('Loading incidents for ' + country + '…');
+    fetch('/api/events?country_code=' + encodeURIComponent(country) + '&lang=' + encodeURIComponent(_lang))
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(events) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (!nb2) return;
+        if (!events || !events.length) {
+          nb2.innerHTML = emptyState('✅', 'No Active Incidents', 'No incidents reported for ' + country + ' right now.');
+          return;
+        }
+
+        function evIconBg(type, sev) {
+          if (sev === 'critical' || ['missile','explosion','shooting','siren','drone'].includes(type)) return T.redLight;
+          if (sev === 'high'     || ['protest','evacuation','earthquake','flood','fire'].includes(type)) return T.goldLight;
+          if (sev === 'info'     || type === 'all-clear') return T.greenLight;
+          return T.tealLight;
+        }
+        function evIcon(type, sev) {
+          if (sev === 'critical' || ['missile','explosion','shooting','siren','drone'].includes(type)) return '🔴';
+          if (sev === 'high'     || ['protest','evacuation'].includes(type)) return '⚠️';
+          if (['earthquake','flood','fire'].includes(type)) return '⛈️';
+          if (type === 'all-clear') return '✅';
+          return '📡';
+        }
+        function tagInfo(sev, type) {
+          if (sev === 'critical') return [T.redLight,  T.red,    'Urgent'];
+          if (sev === 'high')     return [T.goldLight, '#92400E','Advisory'];
+          if (type === 'all-clear' || sev === 'clear') return [T.greenLight, '#065F46', 'All Clear'];
+          return [T.tealLight, T.teal, 'Advisory'];
+        }
+
+        nb2.innerHTML =
+          '<div style="padding:6px 14px 4px;background:'+T.bg+';font-size:9px;font-weight:700;'+
+            'color:'+T.muted+';letter-spacing:1px;font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
+          events.map(function(ev) {
+            var ti   = tagInfo(ev.severity, ev.type);
+            var time = relTime(ev.created_at || ev.published_at);
+            return feedItem(
+              ev.source_url || null,
+              evIconBg(ev.type, ev.severity),
+              evIcon(ev.type, ev.severity),
+              ti[0], ti[1], ti[2],
+              (ev.title || 'Incident').slice(0, 120),
+              time
+            ) + (ev.location
+              ? '<div style="padding:0 14px 8px 53px;font-size:9px;color:'+T.teal+';margin-top:-6px;background:#fff;border-bottom:1px solid '+T.border+';">📍 '+ev.location+'</div>'
+              : '');
           }).join('');
       })
-      .catch(function(err){
-        var nb2=document.getElementById('aa-feed-body');
-        if(nb2) nb2.innerHTML='<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ '+err.message+'</div>';
+      .catch(function(err) {
+        var nb2 = document.getElementById('aa-feed-body');
+        if (nb2) nb2.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">⚠️ ' + err.message + '</div>';
       });
   }
 
@@ -654,12 +708,18 @@
      FEED PANEL (container + tabs)
   ═══════════════════════════════════════════ */
   function buildFeed() {
-    return panelHdr('📡 Live Feed')+
-      '<div id="aa-feed-tabs" style="display:flex;background:#fff;border-bottom:2px solid '+T.border+';position:sticky;top:54px;z-index:9;">'+
-        '<button data-ftab="news"   style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:'+T.teal+';border-bottom:2px solid '+T.teal+';margin-bottom:-2px;cursor:pointer;touch-action:manipulation;">📰 News</button>'+
-        '<button data-ftab="alerts" style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;touch-action:manipulation;">⚠️ Alerts</button>'+
-        '<button data-ftab="crime"  style="flex:1;padding:11px 0;border:none;background:none;font-size:12px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;touch-action:manipulation;">🔴 Crime</button>'+
-      '</div>'+
+    return panelHdr('📡 ' + t('feed')) +
+      '<div id="aa-feed-tabs" style="display:flex;background:#fff;border-bottom:1px solid '+T.border+';position:sticky;top:54px;z-index:9;">' +
+        '<button data-ftab="news"   style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.teal+';border-bottom:2px solid '+T.teal+';margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">📰 '+t('news')+'</button>' +
+        '<button data-ftab="alerts" style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">⚠️ Incidents</button>' +
+        '<button data-ftab="crime"  style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">🔴 '+t('crime')+'</button>' +
+      '</div>' +
+      '<div id="aa-feed-meta" style="display:flex;justify-content:space-between;padding:6px 14px 5px;background:'+T.bg+';border-bottom:1px solid '+T.border+';">' +
+        '<span style="font-size:9px;color:'+T.muted+';font-family:'+T.mono+';display:flex;align-items:center;gap:4px;">' +
+          '<span style="width:5px;height:5px;border-radius:50%;background:'+T.green+';display:inline-block;"></span>LIVE' +
+        '</span>' +
+        '<span style="font-size:9px;color:'+T.muted+';font-family:'+T.mono+';" id="aa-feed-country-label">🌍 ' + (window.activeCountry || 'Global') + '</span>' +
+      '</div>' +
       '<div id="aa-feed-body" style="background:'+T.bg+';min-height:300px;"></div>';
   }
 
@@ -1103,6 +1163,14 @@
      INIT
   ═══════════════════════════════════════════ */
   function init() {
+    // Inject DM Sans font
+    if (!document.getElementById('aa-fonts')) {
+      var lk = document.createElement('link');
+      lk.id  = 'aa-fonts';
+      lk.rel = 'stylesheet';
+      lk.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap';
+      document.head.appendChild(lk);
+    }
     mapWrap  = document.getElementById('map-wrap');
     navPanel = document.getElementById('nav-panel');
 
