@@ -55,6 +55,14 @@ function isSecurityRelevant(text) {
   return SECURITY_KEYWORDS.some(k => lower.includes(k));
 }
 
+// Reject titles that are predominantly non-Latin script (Arabic, Chinese, etc.)
+function isEnglishText(text) {
+  if (!text) return false;
+  const latinChars    = (text.match(/[a-zA-Z\s\d.,!?'"()\-:;]/g) || []).length;
+  const nonLatinChars = (text.match(/[^\x00-\x7F]/g) || []).length;
+  return nonLatinChars === 0 || (latinChars / text.length) > 0.6;
+}
+
 // ── Dedup check ───────────────────────────────────────────────────────────────
 
 const seenUrls = new Set(); // in-memory dedup for this session
@@ -125,7 +133,7 @@ async function ingestGDELT(countryCode) {
   const keywords = stableCountries.includes(fipsCode)
     ? '"attack" OR "explosion" OR "shooting" OR "protest" OR "terrorism" OR "flood" OR "earthquake" OR "crash" OR "fire" OR "riot"'
     : '"missile" OR "drone" OR "siren" OR "explosion" OR "airstrike" OR "attack" OR "bombing"';
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${fipsCode}+(${encodeURIComponent(keywords)})&mode=artlist&maxrecords=10&format=json&timespan=1440`; // last 24h
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${fipsCode}+(${encodeURIComponent(keywords)})&mode=artlist&maxrecords=10&format=json&timespan=1440&sourcelang=english`;
 
   try {
     const res = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
@@ -137,6 +145,7 @@ async function ingestGDELT(countryCode) {
     for (const art of articles) {
       const text = `${art.title || ''} ${art.seendate || ''}`;
       if (!isSecurityRelevant(text)) continue;
+      if (!isEnglishText(art.title || '')) continue;
       const { type, severity } = classifyEvent(art.title || '');
       const geo = extractLocation(`${art.title || ''} ${art.seendate || ''}`, countryCode);
       const ok = insertEvent({
@@ -222,8 +231,7 @@ async function ingestJordanRSS() {
     for (const raw of items.slice(0, 20)) {
       const { title, desc, url, pub } = extractText(raw);
       if (!title || title.length < 10) continue;
-
-      const text = `${title} ${desc}`.toLowerCase();
+      if (!isEnglishText(title)) continue;
 
       // If feed has a filterKeyword (e.g. State Dept covers all countries), enforce it
       if (feed.filterKeyword && !text.includes(feed.filterKeyword)) continue;
@@ -350,6 +358,7 @@ async function ingestEmbassyAlerts() {
     for (const raw of items.slice(0, 10)) {
       const { title, desc, url, pub } = extractText(raw);
       if (!title || title.length < 10) continue;
+      if (!isEnglishText(title)) continue;
 
       const { type, severity } = classifyEvent(`${title} ${desc}`);
       const geo = extractLocation(`${title} ${desc}`, feed.country_code);
@@ -408,6 +417,7 @@ async function ingestFCDO() {
     for (const raw of items.slice(0, 5)) {
       const { title, desc, url: link, pub } = extractText(raw);
       if (!title || title.length < 10) continue;
+      if (!isEnglishText(title)) continue;
       if (!isSecurityRelevant(`${title} ${desc}`)) continue;
 
       const { type, severity } = classifyEvent(`${title} ${desc}`);
@@ -533,6 +543,16 @@ async function ingestACLED() {
 
 async function ingestSecurityEvents() {
   console.log('⚡ Ingesting security events...');
+
+  // Purge any previously ingested non-English events
+  try {
+    db.db.prepare(`
+      DELETE FROM events
+      WHERE submitted_by = 'auto-ingest'
+        AND title GLOB '*[^\x00-\x7F]*'
+    `).run();
+  } catch(e) {}
+
   let total = 0;
 
   // Source 4: US Embassy alerts — highest signal, real shelter-in-place/missile alerts
