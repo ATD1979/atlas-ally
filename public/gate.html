@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Atlas Ally — Preview Access</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'DM Sans',-apple-system,sans-serif;
+    background:linear-gradient(135deg,#0A3D52,#0E7490,#0A5F75);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .card{
+    background:#fff;border-radius:20px;padding:40px 36px;
+    max-width:400px;width:100%;
+    box-shadow:0 24px 64px rgba(0,0,0,0.25);
+  }
+  .logo{text-align:center;margin-bottom:28px;}
+  .logo-icon{font-size:40px;margin-bottom:8px;}
+  .logo h1{font-size:22px;font-weight:800;color:#1A2332;letter-spacing:-0.3px;}
+  .logo p{font-size:12px;color:#6B7C93;margin-top:3px;}
+  .badge{display:inline-block;background:#E0F2F7;color:#0E7490;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:100px;margin-bottom:24px;}
+  label{display:block;font-size:11px;font-weight:700;color:#6B7C93;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  input{
+    width:100%;padding:12px 14px;border:1.5px solid #E5EAEF;border-radius:10px;
+    font-size:14px;color:#1A2332;font-family:inherit;outline:none;margin-bottom:16px;
+    transition:border-color 0.15s;
+  }
+  input:focus{border-color:#0E7490;}
+  input.otp-input{
+    font-family:'DM Mono',monospace;font-size:22px;font-weight:700;
+    text-align:center;letter-spacing:8px;margin-bottom:8px;
+  }
+  .btn{
+    width:100%;padding:13px;border:none;border-radius:12px;
+    background:#0E7490;color:#fff;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;transition:background 0.15s;
+  }
+  .btn:hover{background:#0A5F75;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-ghost{background:none;color:#6B7C93;font-size:13px;margin-top:10px;padding:8px;}
+  .btn-ghost:hover{color:#0E7490;background:none;}
+  .error{background:#FEF2F2;border:1px solid rgba(239,68,68,0.3);color:#EF4444;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;}
+  .otp-hint{font-size:12px;color:#6B7C93;text-align:center;margin-bottom:16px;line-height:1.5;}
+  .step{display:none;}
+  .step.active{display:block;}
+  .resend{font-size:12px;color:#6B7C93;text-align:center;margin-top:12px;}
+  .resend a{color:#0E7490;cursor:pointer;font-weight:600;}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .divider{height:1px;background:#E5EAEF;margin:20px 0;}
+  .footer{font-size:11px;color:#A8B5C4;text-align:center;margin-top:20px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🌍</div>
+    <h1>Atlas Ally</h1>
+    <p>Global Travel Safety Intelligence</p>
+  </div>
+  <div style="text-align:center"><span class="badge">🔒 Preview Access</span></div>
+
+  <!-- Step 1: Email + Password -->
+  <div class="step active" id="step-login">
+    <div class="error" id="login-error"></div>
+    <div>
+      <label>Email</label>
+      <input type="email" id="gate-email" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <div>
+      <label>Password</label>
+      <input type="password" id="gate-password" placeholder="••••••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')submitLogin()">
+    </div>
+    <button class="btn" id="login-btn" onclick="submitLogin()">Continue →</button>
+    <div class="footer">atlas-ally.com · Preview Build</div>
+  </div>
+
+  <!-- Step 2: OTP verification -->
+  <div class="step" id="step-otp">
+    <div class="otp-hint" id="otp-hint">A verification code was sent to<br><strong></strong></div>
+    <div class="error" id="otp-error"></div>
+    <label>Verification Code</label>
+    <input type="text" class="otp-input" id="gate-otp" maxlength="6" placeholder="000000"
+           inputmode="numeric" pattern="[0-9]*"
+           onkeydown="if(event.key==='Enter')submitOTP()">
+    <button class="btn" id="otp-btn" onclick="submitOTP()">Verify & Enter →</button>
+    <button class="btn btn-ghost" onclick="goBack()">← Back</button>
+    <div class="resend">Didn't get it? <a onclick="resendOTP()">Resend code</a></div>
+  </div>
+</div>
+
+<script>
+var gateEmail = '';
+
+function showError(id, msg) {
+  var el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearError(id) {
+  var el = document.getElementById(id);
+  el.style.display = 'none';
+}
+function setLoading(btnId, loading) {
+  var btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Please wait…' : btn.dataset.label || btn.innerHTML;
+}
+
+function submitLogin() {
+  clearError('login-error');
+  var email = document.getElementById('gate-email').value.trim();
+  var pass  = document.getElementById('gate-password').value;
+  if (!email || !pass) { showError('login-error', 'Please enter your email and password.'); return; }
+
+  document.getElementById('login-btn').dataset.label = 'Continue →';
+  setLoading('login-btn', true);
+
+  fetch('/gate/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: pass }),
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    setLoading('login-btn', false);
+    if (!d.ok) { showError('login-error', d.error || 'Invalid credentials.'); return; }
+    gateEmail = email;
+    document.querySelector('#otp-hint strong').textContent = email;
+    document.getElementById('step-login').classList.remove('active');
+    document.getElementById('step-otp').classList.add('active');
+    setTimeout(function(){ document.getElementById('gate-otp').focus(); }, 100);
+  })
+  .catch(function() {
+    setLoading('login-btn', false);
+    showError('login-error', 'Network error. Please try again.');
+  });
+}
+
+function submitOTP() {
+  clearError('otp-error');
+  var code = document.getElementById('gate-otp').value.trim();
+  if (code.length !== 6) { showError('otp-error', 'Please enter the 6-digit code.'); return; }
+
+  document.getElementById('otp-btn').dataset.label = 'Verify & Enter →';
+  setLoading('otp-btn', true);
+
+  fetch('/gate/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: gateEmail, code: code }),
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    setLoading('otp-btn', false);
+    if (!d.ok) { showError('otp-error', d.error || 'Invalid or expired code.'); return; }
+    window.location.href = '/';
+  })
+  .catch(function() {
+    setLoading('otp-btn', false);
+    showError('otp-error', 'Network error. Please try again.');
+  });
+}
+
+function resendOTP() {
+  document.getElementById('gate-otp').value = '';
+  clearError('otp-error');
+  fetch('/gate/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: gateEmail, password: '' }),
+  }).catch(function(){});
+  document.querySelector('.resend').textContent = 'Code resent!';
+}
+
+function goBack() {
+  document.getElementById('step-otp').classList.remove('active');
+  document.getElementById('step-login').classList.add('active');
+  clearError('login-error');
+}
+</script>
+</body>
+</html>
