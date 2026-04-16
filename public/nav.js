@@ -1,4 +1,5 @@
 /*
+// v2026.04.15 — clean slate
   Atlas Ally — nav.js
   Overlay-based navigation. All panel content built in JS with inline styles.
   No CSS class dependencies for visibility.
@@ -1283,6 +1284,245 @@
   }
 
   /* ═══════════════════════════════════════════
+     ROUTE PLANNER
+  ═══════════════════════════════════════════ */
+
+  var _routeFromCoords = null;
+  var _routeLayer      = null;
+
+  // Geocode a text address to { lat, lng } using Nominatim (free, no key)
+  function geocodeLocation(query, countryCode) {
+    var cc  = countryCode ? '&countrycodes=' + countryCode.toLowerCase() : '';
+    var url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) +
+              cc + '&format=json&limit=1';
+    return fetch(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.length) return null;
+        return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), name: d[0].display_name };
+      });
+  }
+
+  function openRouteSheet() {
+    var sheet = document.getElementById('route-sheet');
+    if (!sheet) return;
+
+    // Wire GPS button once
+    if (!document.getElementById('route-gps-btn')) {
+      var fromInput = document.getElementById('route-from');
+      if (fromInput) {
+        var gpsBtn = document.createElement('button');
+        gpsBtn.id = 'route-gps-btn';
+        gpsBtn.textContent = '📡 Use my GPS location';
+        gpsBtn.style.cssText = 'width:100%;padding:9px;background:rgba(14,116,144,0.08);color:#0E7490;' +
+          'border:1px solid rgba(14,116,144,0.25);border-radius:8px;font-size:12px;font-weight:600;' +
+          'cursor:pointer;touch-action:manipulation;margin-bottom:10px;font-family:-apple-system,sans-serif;';
+        gpsBtn.addEventListener('click', function() {
+          if (!navigator.geolocation) { gpsBtn.textContent = '📡 GPS unavailable'; return; }
+          gpsBtn.textContent = '📡 Getting location…';
+          navigator.geolocation.getCurrentPosition(function(pos) {
+            _routeFromCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            fromInput.value  = 'My location (' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4) + ')';
+            gpsBtn.textContent = '✅ GPS location set';
+          }, function() {
+            gpsBtn.textContent = '📡 GPS unavailable — type address';
+            _routeFromCoords  = null;
+          });
+        });
+        fromInput.parentNode.insertBefore(gpsBtn, fromInput.nextSibling);
+      }
+    }
+
+    // Wire plan button once
+    if (!document.getElementById('route-plan-btn')) {
+      var planBtn = document.createElement('button');
+      planBtn.id = 'route-plan-btn';
+      planBtn.textContent = '🗺️ Plan Safe Route';
+      planBtn.style.cssText = 'width:100%;padding:13px;background:#0E7490;color:#fff;border:none;' +
+        'border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;' +
+        'margin-bottom:8px;font-family:-apple-system,sans-serif;';
+      planBtn.addEventListener('click', planRoute);
+      var cancelBtn = sheet.querySelector('button[onclick]');
+      if (cancelBtn) cancelBtn.parentNode.insertBefore(planBtn, cancelBtn);
+    }
+
+    // Results area
+    if (!document.getElementById('route-result')) {
+      var resultDiv = document.createElement('div');
+      resultDiv.id = 'route-result';
+      var inner = sheet.querySelector('div');
+      if (inner) inner.appendChild(resultDiv);
+    }
+
+    // Reset GPS coords when opening fresh
+    _routeFromCoords = null;
+    var gpsB = document.getElementById('route-gps-btn');
+    if (gpsB) gpsB.textContent = '📡 Use my GPS location';
+
+    sheet.classList.add('open');
+    var bd = document.getElementById('bd');
+    if (bd) { bd.style.opacity = '1'; bd.style.pointerEvents = 'all'; }
+  }
+
+  function planRoute() {
+    var fromInput = document.getElementById('route-from');
+    var toInput   = document.getElementById('route-to');
+    var resultDiv = document.getElementById('route-result');
+    var planBtn   = document.getElementById('route-plan-btn');
+
+    if (!fromInput || !toInput) return;
+    var fromText = fromInput.value.trim();
+    var toText   = toInput.value.trim();
+
+    if (!fromText || !toText) {
+      if (resultDiv) resultDiv.innerHTML =
+        '<div style="padding:10px;color:#EF4444;font-size:13px;">⚠️ Please enter both a start point and a destination.</div>';
+      return;
+    }
+
+    if (planBtn) { planBtn.textContent = '⏳ Planning route…'; planBtn.disabled = true; }
+    if (resultDiv) resultDiv.innerHTML =
+      '<div style="padding:12px;text-align:center;color:#6B7C93;font-size:13px;">⏳ Geocoding locations…</div>';
+
+    var country = window.activeCountry || null;
+
+    // Step 1: resolve "from" coords
+    var fromPromise = _routeFromCoords
+      ? Promise.resolve(_routeFromCoords)
+      : geocodeLocation(fromText, country);
+
+    fromPromise.then(function(fromCoords) {
+      if (!fromCoords) throw new Error('Could not find start location: ' + fromText);
+      if (resultDiv) resultDiv.innerHTML =
+        '<div style="padding:12px;text-align:center;color:#6B7C93;font-size:13px;">⏳ Finding destination…</div>';
+
+      return geocodeLocation(toText, country).then(function(toCoords) {
+        if (!toCoords) throw new Error('Could not find destination: ' + toText);
+        if (resultDiv) resultDiv.innerHTML =
+          '<div style="padding:12px;text-align:center;color:#6B7C93;font-size:13px;">⏳ Calculating safe route…</div>';
+
+        return fetch('/api/route', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ from: fromCoords, to: toCoords, country_code: country }),
+        })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(routeData) {
+          renderRouteResult(fromCoords, toCoords, routeData);
+        });
+      });
+    })
+    .catch(function(err) {
+      if (resultDiv) resultDiv.innerHTML =
+        '<div style="padding:10px;color:#EF4444;font-size:13px;">⚠️ ' + err.message + '</div>';
+    })
+    .then(function() {
+      if (planBtn) { planBtn.textContent = '🗺️ Plan Safe Route'; planBtn.disabled = false; }
+    });
+  }
+
+  function renderRouteResult(fromCoords, toCoords, routeData) {
+    var resultDiv = document.getElementById('route-result');
+    if (!resultDiv) return;
+
+    var fll = fromCoords.lat.toFixed(5) + ',' + fromCoords.lng.toFixed(5);
+    var tll = toCoords.lat.toFixed(5)   + ',' + toCoords.lng.toFixed(5);
+    var osmUrl   = 'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' + fll + ';' + tll;
+    var gmapsUrl = 'https://www.google.com/maps/dir/' + fll + '/' + tll;
+    var wazeUrl  = 'https://waze.com/ul?ll=' + tll + '&navigate=yes';
+
+    var html = '<div style="margin-top:12px;">';
+
+    // Route summary card
+    if (routeData && routeData.distance) {
+      var km   = (routeData.distance / 1000).toFixed(1);
+      var mins = Math.round((routeData.duration || 0) / 60);
+      var sc   = routeData.safety_score;
+      var scColor = sc !== undefined ? (sc >= 70 ? T.green : sc >= 40 ? T.gold : T.red) : T.teal;
+
+      html += '<div style="background:' + T.tealLight + ';border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid rgba(14,116,144,0.2);">';
+      html += '<div style="font-size:10px;font-weight:700;color:' + T.teal + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Route Summary</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr' + (sc !== undefined ? ' 1fr' : '') + ';gap:10px;">';
+      html += routeStat(km, 'km');
+      html += routeStat(mins, 'mins');
+      if (sc !== undefined) html += routeStat(sc, 'Safety', scColor);
+      html += '</div>';
+      if (routeData.warnings && routeData.warnings.length) {
+        html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(14,116,144,0.2);">';
+        routeData.warnings.forEach(function(w) {
+          html += '<div style="font-size:11px;color:' + T.text + ';padding:3px 0;">⚠️ ' + w + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Advisory warning if high-risk country
+    var country = window.activeCountry;
+    if (country) {
+      var countryData = (window.allCountries || []).find(function(c) { return c.code === country; });
+      if (countryData && (countryData.advisoryLevel || 1) >= 3) {
+        html += '<div style="background:' + T.redLight + ';border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;margin-bottom:12px;">';
+        html += '<div style="font-size:11px;font-weight:700;color:' + T.red + ';margin-bottom:3px;">⚠️ High Advisory Area</div>';
+        html += '<div style="font-size:11px;color:' + T.muted + ';">Exercise extreme caution. Check local conditions before departing. Register your trip with your embassy.</div>';
+        html += '</div>';
+      }
+    }
+
+    // Open in maps
+    html += '<div style="font-size:10px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Open navigation in:</div>';
+    html += routeMapLink(osmUrl,   '🗺️', 'OpenStreetMap',  'Free · works offline · no account');
+    html += routeMapLink(gmapsUrl, '📍', 'Google Maps',    'Real-time traffic · turn-by-turn');
+    html += routeMapLink(wazeUrl,  '🚗', 'Waze',           'Community alerts · live incidents');
+
+    // Draw on Leaflet map
+    if (window.map && routeData && routeData.geometry) {
+      try {
+        if (_routeLayer) window.map.removeLayer(_routeLayer);
+        _routeLayer = window.L.polyline(routeData.geometry, { color: T.teal, weight: 5, opacity: 0.85 })
+          .addTo(window.map);
+        window.map.fitBounds(_routeLayer.getBounds(), { padding: [40, 40] });
+        html += '<div style="font-size:11px;color:' + T.teal + ';text-align:center;padding:8px 0;">Route drawn on map ✓</div>';
+      } catch(e) {}
+    } else {
+      // Draw straight line as fallback
+      if (window.map && window.L) {
+        try {
+          if (_routeLayer) window.map.removeLayer(_routeLayer);
+          _routeLayer = window.L.polyline(
+            [[fromCoords.lat, fromCoords.lng], [toCoords.lat, toCoords.lng]],
+            { color: T.teal, weight: 4, opacity: 0.7, dashArray: '8 6' }
+          ).addTo(window.map);
+          window.map.fitBounds(_routeLayer.getBounds(), { padding: [60, 60] });
+        } catch(e) {}
+      }
+    }
+
+    html += '</div>';
+    resultDiv.innerHTML = html;
+  }
+
+  function routeStat(val, label, color) {
+    return '<div style="text-align:center;background:#fff;border-radius:8px;padding:10px 4px;">' +
+      '<div style="font-size:20px;font-weight:800;color:' + (color || T.teal) + ';">' + val + '</div>' +
+      '<div style="font-size:9px;color:' + T.muted + ';margin-top:2px;">' + label + '</div>' +
+      '</div>';
+  }
+
+  function routeMapLink(href, icon, title, sub) {
+    return '<a href="' + href + '" target="_blank" rel="noopener" ' +
+      'style="display:flex;align-items:center;gap:10px;padding:12px;background:#fff;' +
+      'border:1px solid ' + T.border + ';border-radius:10px;text-decoration:none;margin-bottom:8px;">' +
+      '<span style="font-size:22px;">' + icon + '</span>' +
+      '<div><div style="font-size:13px;font-weight:600;color:' + T.text + ';">' + title + '</div>' +
+      '<div style="font-size:11px;color:' + T.muted + ';">' + sub + '</div></div></a>';
+  }
+
+  // Called by onclick attributes already in index.html
+  function buildOSMRoute()   { planRoute(); return false; }
+  function buildGMapsRoute() { planRoute(); return false; }
+
+  /* ═══════════════════════════════════════════
      SAFE CHECK-IN MODAL
   ═══════════════════════════════════════════ */
   function showCheckin() {
@@ -1488,6 +1728,9 @@
     window.closeNav          = function(){if(navPanel)navPanel.classList.remove('open');};
     window.openCheckin       = showCheckin;
     window.openReport        = function(lat, lng){ showReportModal(lat||null, lng||null); };
+    window.openRouteSheet    = openRouteSheet;
+    window.buildOSMRoute     = buildOSMRoute;
+    window.buildGMapsRoute   = buildGMapsRoute;
     window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
