@@ -1,8 +1,21 @@
 // Atlas Ally — Data routes
 // Rule: specific routes ALWAYS before parameterized (/crime/:code)
-const router = require('express').Router();
-const fetch  = require('node-fetch');
-const db     = require('../db');
+const router  = require('express').Router();
+const fetch   = require('node-fetch');
+const db      = require('../db');
+const xml2js  = require('xml2js');
+const rssParser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
+
+async function fetchRSS(url) {
+  try {
+    const r   = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0', Accept: 'application/rss+xml,*/*' } });
+    if (!r.ok) return [];
+    const xml = await r.text();
+    const d   = await rssParser.parseStringPromise(xml);
+    const raw = d?.rss?.channel?.item || d?.feed?.entry || [];
+    return Array.isArray(raw) ? raw : [raw];
+  } catch { return []; }
+}
 
 // ── UNODC Baseline per 100k population ───────────────────────────────────────
 const UNODC = {
@@ -251,14 +264,11 @@ function monthIndex(dateStr, now) {
   } catch { return -1; }
 }
 
-// ── Live Google News fetch for crime tab (fresh, not just cached) ─────────────
+// ── Live Google News fetch for crime tab ─────────────────────────────────────
 async function fetchLiveCrimeNews(countryName, countryCode) {
-  const xml2js = require('xml2js');
-  const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
-  const gl     = countryCode.toUpperCase();
-
-  // Country-specific drug terms to add to query
+  const gl       = countryCode.toUpperCase();
   const drugBoost = (COUNTRY_DRUG_KEYS[countryCode] || []).slice(0, 3).join(' OR ');
+
   const queries = [
     `"${countryName}" (crime OR murder OR robbery OR theft OR fraud)`,
     `"${countryName}" (drug OR narcotic OR trafficking OR smuggling OR seizure${drugBoost ? ' OR ' + drugBoost : ''})`,
@@ -266,28 +276,20 @@ async function fetchLiveCrimeNews(countryName, countryCode) {
     `"${countryName}" (protest OR riot OR unrest OR demonstration OR clash)`,
   ];
 
+  const urls    = queries.map(q => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en&gl=${gl}&ceid=${gl}:en`);
+  const batches = await Promise.all(urls.map(u => fetchRSS(u)));
   const results = [];
-  for (const q of queries) {
-    try {
-      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en&gl=${gl}&ceid=${gl}:en`;
-      const r   = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
-      if (!r.ok) continue;
-      const xml  = await r.text();
-      const data = await parser.parseStringPromise(xml);
-      const items = data?.rss?.channel?.item || [];
-      const arr   = Array.isArray(items) ? items : [items];
-      for (const item of arr.slice(0, 12)) {
-        const raw   = String(item.title?._ || item.title || '');
-        const dash  = raw.lastIndexOf(' - ');
-        const title = dash > 10 ? raw.slice(0, dash).trim() : raw.trim();
-        let pub = new Date().toISOString();
-        try { pub = new Date(item.pubDate || '').toISOString(); } catch {}
-        const url2 = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
-        if (title.length > 10) results.push({ title, published_at: pub, url: String(url2) });
-      }
-    } catch {}
-    await new Promise(r => setTimeout(r, 300));
+
+  for (const item of batches.flat().slice(0, 60)) {
+    const raw   = String(item.title?._ || item.title || '');
+    const dash  = raw.lastIndexOf(' - ');
+    const title = (dash > 10 ? raw.slice(0, dash) : raw).trim();
+    let pub = new Date().toISOString();
+    try { pub = new Date(item.pubDate || item.published || '').toISOString(); } catch {}
+    const url2 = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
+    if (title.length > 10) results.push({ title, published_at: pub, url: String(url2) });
   }
+
   return results;
 }
 
@@ -578,61 +580,42 @@ function classifyGNewsTitle(title) {
   return { type:'incident', severity:'warn' };
 }
 
-// Fetch security news — parallel queries, no over-filtering
+// Fetch security news — 5 parallel Google News queries, no over-filtering
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
-  const xml2js = require('xml2js');
-  const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
-  const gl     = countryCode.toUpperCase();
+  const gl = countryCode.toUpperCase();
 
-  // Simple keyword sets — country name is already in each query so Google filters for us
   const termSets = lang === 'en' ? [
     `${countryName} attack OR explosion OR shooting OR bombing OR airstrike OR missile`,
-    `${countryName} protest OR riot OR unrest OR demonstration OR clash OR crackdown`,
-    `${countryName} drug OR trafficking OR cartel OR crime OR murder OR arrested`,
-    `${countryName} earthquake OR flood OR fire OR disaster OR emergency OR evacuation`,
-    `${countryName} security alert OR military OR troops OR border OR threat OR warning`,
+    `${countryName} protest OR riot OR unrest OR demonstration OR clash`,
+    `${countryName} drug OR trafficking OR crime OR murder OR arrested OR seized`,
+    `${countryName} earthquake OR flood OR fire OR disaster OR emergency`,
+    `${countryName} security OR military OR troops OR border OR threat OR warning`,
   ] : [
-    // Other languages: single broad query — Google handles translation
     `${countryName} ${(SECURITY_QUERY_SETS[lang] || SECURITY_QUERY_SETS.en)[0]}`,
   ];
 
-  // Fire all queries at once
-  const fetches = termSets.map(async q => {
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`;
-    try {
-      const r    = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
-      if (!r.ok) return [];
-      const xml  = await r.text();
-      const data = await parser.parseStringPromise(xml);
-      const raw  = data?.rss?.channel?.item || [];
-      return Array.isArray(raw) ? raw : [raw];
-    } catch { return []; }
-  });
+  const urls    = termSets.map(q => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`);
+  const batches = await Promise.all(urls.map(u => fetchRSS(u)));
+  const allItems = batches.flat();
 
-  const allItems = (await Promise.all(fetches)).flat();
-  const seen     = new Set();
-  const results  = [];
+  const seen    = new Set();
+  const results = [];
 
   for (const item of allItems) {
-    const rawTitle = String(item.title?._ || item.title || '');
-    const dashIdx  = rawTitle.lastIndexOf(' - ');
-    const title    = (dashIdx > 10 ? rawTitle.slice(0, dashIdx) : rawTitle)
-                       .replace(/<[^>]*>/g, '').trim();
-    const source   = dashIdx > 10 ? rawTitle.slice(dashIdx + 3).trim() : 'Google News';
-    const link     = typeof item.link === 'string' ? item.link
-                   : item.guid?._ || item.guid || '';
+    const raw      = String(item.title?._ || item.title || '');
+    const dashIdx  = raw.lastIndexOf(' - ');
+    const title    = (dashIdx > 10 ? raw.slice(0, dashIdx) : raw).replace(/<[^>]*>/g, '').trim();
+    const source   = dashIdx > 10 ? raw.slice(dashIdx + 3).trim() : 'Google News';
+    const link     = typeof item.link === 'string' ? item.link : item.guid?._ || item.guid || '';
     const linkStr  = String(link).trim();
-    const titleKey = title.toLowerCase().slice(0, 60);
+    const key      = title.toLowerCase().slice(0, 60);
 
-    if (title.length < 10) continue;
-    if (seen.has(linkStr) || seen.has(titleKey)) continue;
-    // Only skip if clearly about a completely different country (hard blacklist)
-    // We do NOT filter by title mention — Google already ensures country relevance via query
+    if (title.length < 10 || seen.has(linkStr) || seen.has(key)) continue;
     seen.add(linkStr);
-    seen.add(titleKey);
+    seen.add(key);
 
     let published = new Date().toISOString();
-    try { published = new Date(item.pubDate || '').toISOString(); } catch {}
+    try { published = new Date(item.pubDate || item.published || '').toISOString(); } catch {}
 
     const { type, severity } = classifyGNewsTitle(title);
     results.push({
@@ -651,7 +634,7 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     });
   }
 
-  console.log(`  📡 Security news ${countryCode}: ${results.length} items from ${allItems.length} candidates`);
+  console.log(`Security news ${countryCode} [${lang}]: ${results.length} from ${allItems.length} raw`);
   return results;
 }
 
