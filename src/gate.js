@@ -1,5 +1,5 @@
 // Atlas Ally — Preview Gate (full email OTP — DNS verified green)
-// v2026.04.15 — clean slate
+// v2026.04.15 — clean slate + timeout fixes
 'use strict';
 
 const crypto   = require('crypto');
@@ -15,8 +15,8 @@ const SMTP_PASSWORD  = process.env.IMPROVMX_PASSWORD || '6WkNttWW7kxd';
 const validSessions = new Set();
 const pendingOTPs   = new Map(); // email → { code, expires }
 
-// ── SMTP transport via ImprovMX ───────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
+// ── SMTP transport via ImprovMX with defensive timeouts ──────────────────────
+const transporter = nodemailer.createTransporter({
   host:   'smtp.improvmx.com',
   port:   587,
   secure: false,
@@ -24,6 +24,10 @@ const transporter = nodemailer.createTransport({
     user: GATE_EMAIL,
     pass: SMTP_PASSWORD,
   },
+  // Add connection timeouts to prevent hanging
+  connectionTimeout: 15000,   // 15s to establish connection
+  greetingTimeout:   10000,   // 10s for server greeting
+  socketTimeout:     20000,   // 20s for socket inactivity
 });
 
 function generateOTP() {
@@ -31,7 +35,10 @@ function generateOTP() {
 }
 
 async function sendOTPEmail(toEmail, code) {
-  await transporter.sendMail({
+  console.log(`Gate: Attempting to send OTP to ${toEmail} via ImprovMX...`);
+  
+  // Wrap the entire send operation in a promise race with timeout
+  const sendPromise = transporter.sendMail({
     from:    `"Atlas Ally" <${GATE_EMAIL}>`,
     to:      toEmail,
     subject: 'Your Atlas Ally access code',
@@ -49,6 +56,19 @@ async function sendOTPEmail(toEmail, code) {
       </div>
     `,
   });
+
+  // Add a 25-second timeout as last resort
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Email send timeout after 25 seconds')), 25000);
+  });
+
+  try {
+    await Promise.race([sendPromise, timeoutPromise]);
+    console.log(`Gate: OTP email sent successfully to ${toEmail}`);
+  } catch (error) {
+    console.error(`Gate: Email send failed to ${toEmail}:`, error.message);
+    throw error; // Re-throw so caller can handle
+  }
 }
 
 function makeSessionToken(email) {
@@ -111,18 +131,24 @@ function setupGateRoutes(app) {
       res.json({ ok: true, needs_otp: true, message: 'Verification code sent to your email.' });
     } catch (e) {
       console.error('Gate OTP email failed:', e.message);
-      // Fallback — grant session directly if email fails (avoids lockout)
-      const token = makeSessionToken(email);
-      validSessions.add(token);
-      res.cookie('atlas_gate', token, {
-        httpOnly: true,
-        secure:   process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge:   8 * 60 * 60 * 1000,
-        path:     '/',
-      });
-      console.warn('Gate: email failed, granting session directly');
-      res.json({ ok: true, skip_otp: true, warning: 'Email unavailable — access granted directly.' });
+      
+      // Log more details for debugging
+      if (e.code) console.error(`Gate: SMTP Error code: ${e.code}`);
+      if (e.response) console.error(`Gate: SMTP Response: ${e.response}`);
+      
+      // Return specific error instead of fallback session
+      let errorMsg = 'Email service temporarily unavailable. ';
+      if (e.message.includes('timeout')) {
+        errorMsg += 'Connection timed out - please try again.';
+      } else if (e.message.includes('Invalid login') || e.code === 'EAUTH') {
+        errorMsg += 'SMTP authentication failed - check credentials.';
+      } else if (e.code === 'ENOTFOUND' || e.code === 'ECONNREFUSED') {
+        errorMsg += 'Cannot reach email server - network issue.';
+      } else {
+        errorMsg += 'Please try again or contact support.';
+      }
+      
+      res.json({ ok: false, error: errorMsg });
     }
   });
 
