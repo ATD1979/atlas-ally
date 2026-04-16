@@ -130,6 +130,7 @@ function submitLogin() {
   .then(function(d) {
     setLoading('login-btn', false);
     if (!d.ok) { showError('login-error', d.error || 'Invalid credentials.'); return; }
+    if (d.skip_otp) { window.location.href = '/'; return; }
     gateEmail = email;
     document.querySelector('#otp-hint strong').textContent = email;
     document.getElementById('step-login').classList.remove('active');
