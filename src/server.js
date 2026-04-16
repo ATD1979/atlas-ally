@@ -1,8 +1,9 @@
 // Atlas Ally — Server entry point
 require('dotenv').config();
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const cookieParser = require('cookie-parser');
 
 const db = require('./db');
 const { COUNTRIES }    = require('./countries');
@@ -16,6 +17,7 @@ const {
   apiLimiter, authLimiter, apiSlowDown, apiFingerprint,
   securityHeaders, attachErrorLogger,
 } = require('./middleware');
+const { gateMiddleware, setupGateRoutes } = require('./gate');
 
 // Route modules
 const authRoutes     = require('./routes/auth');
@@ -34,9 +36,17 @@ seedAdminUsers();
 const app = express();
 app.set('trust proxy', 1);
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 app.use(securityHeaders);
 app.use(attachErrorLogger);
+
+// ── Gate routes (must be before static + gate middleware) ─────────────────────
+setupGateRoutes(app);
+
+// ── Gate middleware — redirects unauthenticated browsers to coming-soon ────────
+app.use(gateMiddleware);
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ── API middleware ────────────────────────────────────────────────────────────
@@ -158,9 +168,22 @@ app.get('/unsubscribe', (req, res) => {
   res.send('<html><body style="font-family:sans-serif;max-width:400px;margin:40px auto;text-align:center"><h2>Unsubscribed</h2><p>You have been removed from Atlas Ally alerts.</p></body></html>');
 });
 
-// Static files
+// Static files — root serves the app (gate middleware already protects it)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'landing.html')));
+
+// Capture launch interest emails
+app.post('/api/notify-interest', (req, res) => {
+  const { email } = req.body || {};
+  if (email) {
+    try {
+      db.db.prepare(`CREATE TABLE IF NOT EXISTS launch_interest (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, created_at TEXT DEFAULT (datetime('now')))`).run();
+      db.db.prepare(`INSERT OR IGNORE INTO launch_interest (email) VALUES (?)`).run(email);
+    } catch {}
+    console.log(`Launch interest: ${email}`);
+  }
+  res.json({ ok: true });
+});
 
 // Legal pages
 app.get('/admin',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
