@@ -27,6 +27,7 @@ const userRoutes     = require('./routes/user');
 const dataRoutes     = require('./routes/data');
 const adminRoutes    = require('./routes/admin');
 const paymentRoutes  = require('./routes/payments');
+const packRoutes     = require('./routes/pack');
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 ensureRuntimeTables();
@@ -72,6 +73,9 @@ app.post('/api/zone-alert', softAuth, require('./routes/user').handleZoneAlert);
 
 // Crime stats, route planning, news
 app.use('/api', softAuth, dataRoutes);
+
+// AI pack list
+app.use('/api', softAuth, packRoutes);
 
 // Stripe checkout & webhook
 app.use('/api', softAuth, paymentRoutes);

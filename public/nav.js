@@ -891,39 +891,416 @@
   /* ═══════════════════════════════════════════
      PACK PANEL
   ═══════════════════════════════════════════ */
+
+  var _packChecked = {}; // checkbox state: key → true/false
+  var _packResult  = null; // last AI result
+
   function buildPack() {
-    var items=[
-      ['🛂','Passport & Visas','All travel documents and entry requirements'],
-      ['🔌','Power Adapter','Check destination voltage and plug type'],
-      ['📱','Local SIM / Data','International plan or local SIM card'],
-      ['💊','Medications','Prescriptions + first aid kit'],
-      ['💵','Emergency Cash','Local currency for power outages / no signal'],
-      ['📋','Document Copies','Photos of passport, insurance, contacts'],
-      ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
-      ['🌊','Water Purification','Tablets or filter for high-risk areas'],
-      ['🔦','Torch / Headlamp','For power cuts and night navigation'],
-      ['🗺️','Offline Maps','Download before you go — no data needed']
-    ];
-    return panelHdr('🎒 Pack Assistant')+
-      '<div style="padding:16px;background:'+T.bg+';">'+
-        '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.teal+';margin-bottom:4px;">Essential Travel Checklist</div>'+
-          '<div style="font-size:12px;color:'+T.teal+';opacity:0.8;">AI-powered custom lists based on destination coming soon</div>'+
-        '</div>'+
-        items.map(function(it){
-          return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;'+
-            'background:#fff;border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
-            '<div style="font-size:24px;width:40px;text-align:center;flex-shrink:0;">'+it[0]+'</div>'+
-            '<div style="flex:1;">'+
-              '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+it[1]+'</div>'+
-              '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+it[2]+'</div>'+
-            '</div>'+
-            '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+T.border+';flex-shrink:0;"></div>'+
-          '</div>';
-        }).join('')+
-      '</div>';
+    return panelHdr('🎒 ' + t('pack')) +
+      // Sub-tabs
+      '<div id="aa-pack-tabs" style="display:flex;background:#fff;border-bottom:1px solid '+T.border+';position:sticky;top:54px;z-index:9;">' +
+        '<button data-ptab="ai" style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.teal+';border-bottom:2px solid '+T.teal+';margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">✨ AI Pack List</button>' +
+        '<button data-ptab="templates" style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">📋 Templates</button>' +
+      '</div>' +
+      '<div id="aa-pack-body" style="background:'+T.bg+';min-height:300px;"></div>';
   }
 
+  function wirePack() {
+    var bar = document.getElementById('aa-pack-tabs');
+    if (!bar) return;
+    bar.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-ptab]');
+      if (!btn) return;
+      var tab = btn.dataset.ptab;
+      bar.querySelectorAll('[data-ptab]').forEach(function(b) {
+        var on = b.dataset.ptab === tab;
+        b.style.color       = on ? T.teal : T.muted;
+        b.style.borderBottom = on ? '2px solid '+T.teal : '2px solid transparent';
+        b.style.fontWeight  = on ? '700' : '600';
+      });
+      if (tab === 'ai')        renderPackAI();
+      if (tab === 'templates') renderPackTemplates();
+    });
+    // Default: AI tab
+    renderPackAI();
+  }
+
+  // ── AI Pack Generator ──────────────────────────────────────────────────────
+
+  function renderPackAI() {
+    var body = document.getElementById('aa-pack-body');
+    if (!body) return;
+
+    // If we already have a result, show it
+    if (_packResult) { renderPackResult(_packResult); return; }
+
+    var country = window.activeCountry || '';
+    var countryName = (window.allCountries || []).find(function(c){return c.code===country;});
+    var destDefault = countryName ? countryName.name : '';
+
+    body.innerHTML =
+      '<div style="padding:16px;">' +
+
+        // Intro banner
+        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');border-radius:12px;padding:16px;margin-bottom:16px;color:#fff;">' +
+          '<div style="font-size:15px;font-weight:800;margin-bottom:4px;">✨ AI Packing Assistant</div>' +
+          '<div style="font-size:12px;opacity:0.85;line-height:1.5;">Get a personalised packing list based on your destination, trip length, and travel style.</div>' +
+        '</div>' +
+
+        // Destination
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Destination *</div>' +
+        '<input id="aa-pack-dest" value="'+destDefault+'" placeholder="e.g. Jordan, Tokyo, Colombia" ' +
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;color:'+T.text+';background:#fff;outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:14px;">' +
+
+        // Duration
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Trip Duration</div>' +
+        '<div id="aa-pack-dur-btns" style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;">' +
+          ['3','5','7','10','14','21+'].map(function(d,i) {
+            return '<button data-dur="'+d+'" style="padding:7px 14px;border-radius:8px;border:1.5px solid '+(i===2?T.teal:T.border)+';background:'+(i===2?T.tealLight:'#fff')+';color:'+(i===2?T.teal:T.muted)+';font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;">'+d+' days</button>';
+          }).join('') +
+        '</div>' +
+
+        // Trip type
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Trip Type</div>' +
+        '<div id="aa-pack-type-btns" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px;">' +
+          [['✈️','leisure','Leisure'],['💼','business','Business'],['🏕️','adventure','Adventure'],['👨‍👩‍👧','family','Family'],['🎒','solo','Solo'],['🏥','medical','Medical']].map(function(tp,i) {
+            return '<button data-type="'+tp[1]+'" style="padding:9px 6px;border-radius:9px;border:1.5px solid '+(i===0?T.teal:T.border)+';background:'+(i===0?T.tealLight:'#fff')+';color:'+(i===0?T.teal:T.muted)+';font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:3px;">' +
+              '<span style="font-size:18px;">'+tp[0]+'</span><span>'+tp[2]+'</span></button>';
+          }).join('') +
+        '</div>' +
+
+        // Climate
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Climate</div>' +
+        '<div id="aa-pack-climate-btns" style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;">' +
+          [['☀️','hot','Hot'],['🌤️','warm','Warm'],['🌧️','mixed','Mixed'],['❄️','cold','Cold'],['🏜️','desert','Desert'],['🌊','tropical','Tropical']].map(function(cl,i) {
+            return '<button data-climate="'+cl[1]+'" style="padding:7px 11px;border-radius:8px;border:1.5px solid '+T.border+';background:#fff;color:'+T.muted+';font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;">'+cl[0]+' '+cl[2]+'</button>';
+          }).join('') +
+        '</div>' +
+
+        // Special needs
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Special Requirements (optional)</div>' +
+        '<input id="aa-pack-special" placeholder="e.g. diabetic supplies, baby items, hiking gear" ' +
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:20px;">' +
+
+        '<div id="aa-pack-error" style="display:none;background:'+T.redLight+';border-radius:8px;padding:9px 12px;font-size:12px;color:'+T.red+';margin-bottom:12px;"></div>' +
+
+        '<button id="aa-pack-generate" ' +
+          'style="width:100%;padding:14px;background:'+T.teal+';color:#fff;border:none;border-radius:12px;' +
+          'font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;font-family:-apple-system,sans-serif;">' +
+          '✨ Generate My Pack List</button>' +
+
+      '</div>';
+
+    // Wire duration buttons
+    var selDur = '7';
+    body.querySelectorAll('[data-dur]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selDur = btn.dataset.dur;
+        body.querySelectorAll('[data-dur]').forEach(function(b) {
+          var on = b.dataset.dur === selDur;
+          b.style.borderColor = on ? T.teal : T.border;
+          b.style.background  = on ? T.tealLight : '#fff';
+          b.style.color       = on ? T.teal : T.muted;
+        });
+      });
+    });
+
+    // Wire trip type buttons
+    var selType = 'leisure';
+    body.querySelectorAll('[data-type]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selType = btn.dataset.type;
+        body.querySelectorAll('[data-type]').forEach(function(b) {
+          var on = b.dataset.type === selType;
+          b.style.borderColor = on ? T.teal : T.border;
+          b.style.background  = on ? T.tealLight : '#fff';
+          b.style.color       = on ? T.teal : T.muted;
+        });
+      });
+    });
+
+    // Wire climate buttons
+    var selClimate = '';
+    body.querySelectorAll('[data-climate]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selClimate = selClimate === btn.dataset.climate ? '' : btn.dataset.climate;
+        body.querySelectorAll('[data-climate]').forEach(function(b) {
+          var on = b.dataset.climate === selClimate;
+          b.style.borderColor = on ? T.teal : T.border;
+          b.style.background  = on ? T.tealLight : '#fff';
+          b.style.color       = on ? T.teal : T.muted;
+        });
+      });
+    });
+
+    // Generate button
+    document.getElementById('aa-pack-generate').addEventListener('click', function() {
+      var dest    = (document.getElementById('aa-pack-dest').value || '').trim();
+      var special = (document.getElementById('aa-pack-special').value || '').trim();
+      var errEl   = document.getElementById('aa-pack-error');
+      var genBtn  = document.getElementById('aa-pack-generate');
+
+      if (!dest) {
+        errEl.textContent = 'Please enter a destination.';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+      genBtn.textContent  = '✨ Generating your list…';
+      genBtn.disabled     = true;
+
+      // Show loading state
+      body.innerHTML =
+        '<div style="padding:40px 24px;text-align:center;">' +
+          '<div style="font-size:48px;margin-bottom:16px;">🧳</div>' +
+          '<div style="font-size:16px;font-weight:700;color:'+T.text+';margin-bottom:8px;">Building your pack list…</div>' +
+          '<div style="font-size:13px;color:'+T.muted+';line-height:1.6;">Claude is creating a personalised list for your trip to <strong>'+dest+'</strong></div>' +
+          '<div style="margin-top:20px;display:flex;justify-content:center;gap:6px;">' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s infinite;"></div>' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s 0.4s infinite;"></div>' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s 0.8s infinite;"></div>' +
+          '</div>' +
+          '<style>@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}</style>' +
+        '</div>';
+
+      fetch('/api/pack/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination:   dest,
+          duration:      selDur.replace('+',''),
+          trip_type:     selType,
+          climate:       selClimate,
+          special_needs: special,
+          country_code:  window.activeCountry || '',
+        }),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) throw new Error(data.error);
+        _packResult  = data;
+        _packChecked = {};
+        renderPackResult(data);
+      })
+      .catch(function(err) {
+        body.innerHTML =
+          '<div style="padding:32px;text-align:center;">' +
+            '<div style="font-size:13px;color:'+T.red+';margin-bottom:16px;">⚠️ '+err.message+'</div>' +
+            '<button id="aa-pack-retry" style="padding:10px 22px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Try Again</button>' +
+          '</div>';
+        var retry = document.getElementById('aa-pack-retry');
+        if (retry) retry.addEventListener('click', function() { _packResult = null; renderPackAI(); });
+      });
+    });
+  }
+
+  function renderPackResult(data) {
+    var body = document.getElementById('aa-pack-body');
+    if (!body) return;
+
+    var categories = data.categories || [];
+    var totalItems = categories.reduce(function(s,c){return s+(c.items||[]).length;}, 0);
+    var checkedCount = Object.keys(_packChecked).filter(function(k){return _packChecked[k];}).length;
+
+    var html =
+      // Header
+      '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:14px 16px;color:#fff;display:flex;align-items:center;justify-content:space-between;">' +
+        '<div>' +
+          '<div style="font-size:14px;font-weight:800;">🧳 '+data.destination+'</div>' +
+          '<div style="font-size:11px;opacity:0.8;margin-top:2px;">'+(data.summary||'')+'</div>' +
+        '</div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:18px;font-weight:800;">'+checkedCount+'/'+totalItems+'</div>' +
+          '<div style="font-size:9px;opacity:0.75;">PACKED</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Progress bar
+      '<div style="height:4px;background:rgba(14,116,144,0.2);">' +
+        '<div style="height:100%;background:'+T.teal+';width:'+(totalItems>0?Math.round(checkedCount/totalItems*100):0)+'%;transition:width 0.4s;"></div>' +
+      '</div>' +
+
+      // Actions row
+      '<div style="padding:10px 14px;background:#fff;border-bottom:1px solid '+T.border+';display:flex;gap:8px;">' +
+        '<button id="aa-pack-new" style="flex:1;padding:8px;background:'+T.tealLight+';color:'+T.teal+';border:1px solid rgba(14,116,144,0.2);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;">✨ New List</button>' +
+        '<button id="aa-pack-uncheck" style="flex:1;padding:8px;background:'+T.bg+';color:'+T.muted+';border:1px solid '+T.border+';border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;">☐ Uncheck All</button>' +
+      '</div>';
+
+    // Categories
+    categories.forEach(function(cat, ci) {
+      var items    = cat.items || [];
+      var catKey   = 'cat_' + ci;
+      var catDone  = items.filter(function(item, ii) { return _packChecked[catKey+'_'+ii]; }).length;
+
+      html += '<div style="margin:10px 12px 0;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:20px;">'+(cat.icon||'📦')+'</span>' +
+            '<span style="font-size:13px;font-weight:700;color:'+T.text+';">'+(cat.name||'')+'</span>' +
+          '</div>' +
+          '<span style="font-size:11px;color:'+T.muted+';">'+catDone+'/'+items.length+'</span>' +
+        '</div>' +
+        '<div style="background:#fff;border-radius:10px;border:1px solid '+T.border+';overflow:hidden;">';
+
+      items.forEach(function(item, ii) {
+        var key     = catKey + '_' + ii;
+        var checked = !!_packChecked[key];
+        html +=
+          '<div data-pkey="'+key+'" style="display:flex;align-items:center;gap:10px;padding:11px 12px;' +
+            'border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;' +
+            'background:'+(checked?'#F0FDF4':'#fff')+';transition:background 0.15s;">' +
+            '<div style="width:22px;height:22px;border-radius:6px;border:2px solid '+(checked?T.green:T.border)+';' +
+              'background:'+(checked?T.green:'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+              (checked?'<span style="color:#fff;font-size:13px;">✓</span>':'') +
+            '</div>' +
+            '<div style="flex:1;">' +
+              '<div style="font-size:13px;color:'+(checked?T.muted:T.text)+';'+(checked?'text-decoration:line-through;':'')+' line-height:1.3;">' +
+                (item.text||'') +
+              '</div>' +
+              (item.essential && !checked ? '<div style="font-size:9px;font-weight:700;color:'+T.red+';text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Essential</div>' : '') +
+            '</div>' +
+          '</div>';
+      });
+
+      html += '</div></div>';
+    });
+
+    html += '<div style="height:24px;"></div>';
+    body.innerHTML = html;
+
+    // Wire checkboxes
+    body.addEventListener('click', function(e) {
+      var row = e.target.closest('[data-pkey]');
+      if (!row) return;
+      var key = row.dataset.pkey;
+      _packChecked[key] = !_packChecked[key];
+      renderPackResult(data); // re-render with updated state
+    });
+
+    // New list button
+    var newBtn = document.getElementById('aa-pack-new');
+    if (newBtn) newBtn.addEventListener('click', function() { _packResult = null; _packChecked = {}; renderPackAI(); });
+
+    // Uncheck all
+    var uncheckBtn = document.getElementById('aa-pack-uncheck');
+    if (uncheckBtn) uncheckBtn.addEventListener('click', function() { _packChecked = {}; renderPackResult(data); });
+  }
+
+  // ── Templates ──────────────────────────────────────────────────────────────
+
+  function renderPackTemplates() {
+    var body = document.getElementById('aa-pack-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:16px;text-align:center;color:'+T.muted+';font-size:13px;">⏳ Loading templates…</div>';
+
+    fetch('/api/checklists')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var keys = Object.keys(data);
+        var html = '<div style="padding:12px 12px 80px;">';
+
+        // Info banner
+        html += '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+          '<div style="font-size:12px;font-weight:700;color:'+T.teal+';margin-bottom:2px;">📋 Travel Checklist Templates</div>' +
+          '<div style="font-size:11px;color:'+T.teal+';opacity:0.85;">Tap a template to open and check off items</div>' +
+        '</div>';
+
+        // Template cards grid
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+        var icons = { predeparture:'✈️', solo:'🎒', family:'👨‍👩‍👧‍👦', business:'💼', gobag:'🚨' };
+        keys.forEach(function(key) {
+          var tpl     = data[key];
+          var icon    = icons[key] || '📋';
+          var total   = (tpl.categories||[]).reduce(function(s,c){return s+(c.items||[]).length;},0);
+          html += '<div data-tpl="'+key+'" style="background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
+            '<div style="font-size:24px;margin-bottom:8px;">'+icon+'</div>' +
+            '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:3px;">'+(tpl.name||key)+'</div>' +
+            '<div style="font-size:11px;color:'+T.muted+';margin-bottom:6px;">'+(tpl.desc||'')+'</div>' +
+            '<div style="font-size:10px;font-weight:600;color:'+T.teal+';">'+total+' items</div>' +
+          '</div>';
+        });
+        html += '</div>';
+
+        body.innerHTML = html + '</div>';
+
+        // Wire template clicks
+        body.querySelectorAll('[data-tpl]').forEach(function(card) {
+          card.addEventListener('click', function() {
+            var key = card.dataset.tpl;
+            var tpl = data[key];
+            if (tpl) showTemplateModal(tpl);
+          });
+        });
+      })
+      .catch(function() {
+        body.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">Failed to load templates</div>';
+      });
+  }
+
+  function showTemplateModal(tpl) {
+    closeModal();
+    var tplChecked = {};
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);pointer-events:all;overflow-y:auto;';
+
+    function buildModalHtml() {
+      var categories = tpl.categories || [];
+      var totalItems = categories.reduce(function(s,c){return s+(c.items||[]).length;},0);
+      var checkedCount = Object.keys(tplChecked).filter(function(k){return tplChecked[k];}).length;
+
+      var html = '<div style="background:'+T.bg+';min-height:100%;padding-bottom:40px;">' +
+        '<div style="background:'+T.teal+';padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:700;color:#fff;">'+(tpl.name||'Checklist')+'</div>' +
+            '<div style="font-size:11px;color:rgba(255,255,255,0.75);">'+checkedCount+'/'+totalItems+' packed</div>' +
+          '</div>' +
+          '<button id="aa-tpl-close" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;">✕</button>' +
+        '</div>' +
+        '<div style="height:4px;background:rgba(14,116,144,0.2);">' +
+          '<div style="height:100%;background:'+T.teal+';width:'+(totalItems>0?Math.round(checkedCount/totalItems*100):0)+'%;transition:width 0.4s;"></div>' +
+        '</div>';
+
+      categories.forEach(function(cat, ci) {
+        html += '<div style="margin:12px 12px 0;">' +
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding-left:2px;">'+(cat.name||'')+'</div>' +
+          '<div style="background:#fff;border-radius:10px;border:1px solid '+T.border+';overflow:hidden;">';
+
+        (cat.items||[]).forEach(function(item, ii) {
+          var key     = ci+'_'+ii;
+          var checked = !!tplChecked[key];
+          var pri     = item.priority === 'high' ? T.red : item.priority === 'med' ? T.gold : T.muted;
+          html += '<div data-tkey="'+key+'" style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-bottom:1px solid '+T.border+';cursor:pointer;background:'+(checked?'#F0FDF4':'#fff')+'">' +
+            '<div style="margin-top:1px;width:22px;height:22px;border-radius:6px;border:2px solid '+(checked?T.green:T.border)+';background:'+(checked?T.green:'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+              (checked ? '<span style="color:#fff;font-size:13px;">✓</span>' : '') +
+            '</div>' +
+            '<div style="flex:1;">' +
+              '<div style="font-size:13px;color:'+(checked?T.muted:T.text)+';'+(checked?'text-decoration:line-through;':'')+' line-height:1.3;">'+(item.text||'')+'</div>' +
+              (item.priority==='high'&&!checked?'<div style="font-size:9px;font-weight:700;color:'+pri+';text-transform:uppercase;margin-top:2px;">High Priority</div>':'') +
+              (item.note?'<div style="font-size:10px;color:'+T.muted+';margin-top:3px;line-height:1.4;">'+item.note+'</div>':'') +
+            '</div>' +
+          '</div>';
+        });
+        html += '</div></div>';
+      });
+
+      html += '</div>';
+      return html;
+    }
+
+    modal.innerHTML = buildModalHtml();
+    document.body.appendChild(modal);
+
+    modal.querySelector('#aa-tpl-close').addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+      var row = e.target.closest('[data-tkey]');
+      if (!row) return;
+      var key = row.dataset.tkey;
+      tplChecked[key] = !tplChecked[key];
+      modal.innerHTML = buildModalHtml();
+      // Re-wire after re-render
+      modal.querySelector('#aa-tpl-close').addEventListener('click', closeModal);
+    });
+  }
   /* ═══════════════════════════════════════════
      WORLD / COUNTRIES PANEL
   ═══════════════════════════════════════════ */
@@ -1609,6 +1986,7 @@
       var cb=document.getElementById('aa-close-btn');
       if(cb) cb.addEventListener('click',function(){switchTab('map');});
       if(name==='feed'){_feedTab='news';wireFeedTabs();loadNews(window.activeCountry);}
+      if(name==='pack')      wirePack();
       if(name==='countries') loadWorldCountries();
       if(name==='account')   wireAccount();
     },0);
