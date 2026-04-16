@@ -1479,11 +1479,21 @@
       closeModal();
       showToast('✅ Preferences saved', 'ok');
 
-      if (isOnboarding) {
-        // Re-render account tab labels with new language
-        if (overlay && overlay.style.display !== 'none') {
-          switchTab('account');
+      // Re-render current view with new language
+      if (overlay && overlay.style.display !== 'none') {
+        // Get the currently active tab and refresh it
+        var currentTab = 'account'; // default assumption
+        if (_feedTab && overlay.innerHTML.includes('aa-feed-body')) {
+          currentTab = 'feed';
+        } else if (overlay.innerHTML.includes('aa-pack-body')) {
+          currentTab = 'pack';
+        } else if (overlay.innerHTML.includes('aa-countries-body')) {
+          currentTab = 'countries';
+        } else if (overlay.innerHTML.includes('aa-account-body')) {
+          currentTab = 'account';
         }
+        // Refresh the current tab to show new language
+        switchTab(currentTab);
       }
     });
     var cancelBtn = document.getElementById('aa-prof-cancel');
