@@ -996,8 +996,24 @@
   /* ═══════════════════════════════════════════
      ACCOUNT PANEL
   ═══════════════════════════════════════════ */
+  // ── Local storage helpers ────────────────────────────────────────────────
+  function getWA()       { return localStorage.getItem('atlas_whatsapp') || ''; }
+  function getToken()    { return localStorage.getItem('atlas_token') || ''; }
+  function getContacts() { try { return JSON.parse(localStorage.getItem('atlas_contacts') || '[]'); } catch(e) { return []; } }
+  function saveContacts(arr) { localStorage.setItem('atlas_contacts', JSON.stringify(arr)); }
+  function authHeaders() {
+    var tk = getToken();
+    return tk ? { 'Content-Type':'application/json', 'Authorization':'Bearer '+tk } : { 'Content-Type':'application/json' };
+  }
+
+  /* ═══════════════════════════════════════════
+     ACCOUNT PANEL
+  ═══════════════════════════════════════════ */
   function buildAccount() {
-    function arow(icon,title,sub,id){
+    var wa       = getWA();
+    var contacts = getContacts();
+
+    function arow(icon, title, sub, id) {
       return '<div class="aa-arow" data-action="'+id+'" '+
         'style="display:flex;align-items:center;gap:12px;padding:14px;'+
         'background:#fff;border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;">'+
@@ -1009,53 +1025,193 @@
         '</div>'+
         '<div style="color:'+T.muted+';font-size:16px;pointer-events:none;">›</div></div>';
     }
-    return panelHdr('👤 My Account')+
-      '<div style="background:'+T.bg+';">'+
-        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:20px 20px 24px;color:#fff;">'+
-          '<div style="font-size:18px;font-weight:800;margin-bottom:4px;font-family:-apple-system,sans-serif;">Atlas Ally</div>'+
-          '<div style="font-size:13px;opacity:0.8;margin-bottom:16px;">Global travel safety intelligence</div>'+
-          '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:14px;">'+
-            '<div style="font-size:10px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Plan</div>'+
-            '<div style="font-size:16px;font-weight:700;">Free Trial · 7-day full access</div>'+
-          '</div>'+
-        '</div>'+
-        '<div style="margin:16px;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">'+
-          arow('🌍',t('profile'),t('profileSub'),'profile')+
-          arow('✅','Safe Check-in','Let your circle know you\'re safe','checkin')+
-          arow('🔔','Notifications','Manage safety alerts and push notifications','notifications')+
-          arow('📍','Saved Countries','Manage your monitored countries','countries')+
-          arow('💳','Subscription','Upgrade to Premium — $3/mo','subscription')+
-          arow('🔒','Privacy','Control your data and privacy settings','privacy')+
-          arow('ℹ️','About Atlas Ally','v1.0 · atlas-ally.com','about')+
-        '</div>'+
-        '<div style="padding:0 16px 80px;">'+
-          '<button id="aa-signout" style="width:100%;padding:13px;background:'+T.redLight+';'+
-            'color:'+T.red+';border:1px solid rgba(239,68,68,0.2);border-radius:10px;'+
-            'font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;'+
-            'font-family:-apple-system,sans-serif;">Sign Out</button>'+
-        '</div>'+
+
+    return panelHdr('👤 My Account') +
+      '<div style="background:'+T.bg+';">' +
+
+        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:20px 20px 24px;color:#fff;">' +
+          '<div style="font-size:18px;font-weight:800;margin-bottom:2px;font-family:-apple-system,sans-serif;">Atlas Ally</div>' +
+          '<div style="font-size:12px;opacity:0.75;margin-bottom:14px;">Global travel safety intelligence</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+            '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:12px;" id="aa-wa-hero">' +
+              '<div style="font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">WhatsApp</div>' +
+              '<div style="font-size:13px;font-weight:700;color:'+(wa?'#fff':'#fca5a5')+';">'+(wa||'Not set')+'</div>' +
+            '</div>' +
+            '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:12px;">' +
+              '<div style="font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Emergency Contacts</div>' +
+              '<div style="font-size:22px;font-weight:800;">'+contacts.length+'</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin:16px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;">' +
+          '<div style="padding:12px 14px;border-bottom:1px solid '+T.border+';display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="font-size:12px;font-weight:700;color:'+T.text+';">👥 Emergency Contacts</div>' +
+            '<button id="aa-add-contact-btn" style="padding:5px 12px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;">+ Add</button>' +
+          '</div>' +
+          '<div id="aa-contacts-list">' +
+            (contacts.length === 0
+              ? '<div style="padding:16px 14px;font-size:12px;color:'+T.muted+';text-align:center;">No contacts yet — add someone to receive your check-ins</div>'
+              : contacts.map(function(c,i) {
+                  return '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid '+T.border+';">'+
+                    '<div style="width:34px;height:34px;border-radius:50%;background:'+T.tealLight+';display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">👤</div>'+
+                    '<div style="flex:1;min-width:0;">'+
+                      '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+c.name+'</div>'+
+                      '<div style="font-size:11px;color:'+T.muted+';margin-top:1px;">'+c.whatsapp+(c.relation?' · '+c.relation:'')+'</div>'+
+                    '</div>'+
+                    '<button data-ci="'+i+'" style="background:'+T.redLight+';border:none;color:'+T.red+';border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;touch-action:manipulation;">✕</button>'+
+                  '</div>';
+                }).join('')
+            ) +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin:12px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;">' +
+          '<div style="padding:12px 14px;border-bottom:1px solid '+T.border+';">' +
+            '<div style="font-size:12px;font-weight:700;color:'+T.text+';">📲 Your WhatsApp Number</div>' +
+            '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">Used for check-in alerts and OTP codes</div>' +
+          '</div>' +
+          '<div style="padding:12px 14px;display:flex;align-items:center;gap:10px;">' +
+            '<input id="aa-wa-input" type="tel" value="'+wa+'" placeholder="+1 555 000 0000" '+
+              'style="flex:1;border:1.5px solid '+T.border+';border-radius:8px;padding:9px 11px;font-size:13px;color:'+T.text+';background:'+T.bg+';outline:none;font-family:-apple-system,sans-serif;">'+
+            '<button id="aa-wa-save" style="padding:9px 14px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;">Save</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin:12px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">' +
+          arow('🌍', t('profile'), t('profileSub'), 'profile') +
+          arow('✅', 'Safe Check-in', 'Send your status to all emergency contacts', 'checkin') +
+          arow('📍', 'Saved Countries', 'Manage your monitored countries', 'countries') +
+          arow('💳', 'Subscription', 'Upgrade to Premium — $3/mo', 'subscription') +
+          arow('🔒', 'Privacy', 'Control your data and privacy settings', 'privacy') +
+          arow('ℹ️', 'About Atlas Ally', 'v1.0 · atlas-ally.com', 'about') +
+        '</div>' +
+
+        '<div style="padding:16px 16px 80px;">' +
+          '<button id="aa-signout" style="width:100%;padding:13px;background:'+T.redLight+';' +
+            'color:'+T.red+';border:1px solid rgba(239,68,68,0.2);border-radius:10px;' +
+            'font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;' +
+            'font-family:-apple-system,sans-serif;">Sign Out</button>' +
+        '</div>' +
       '</div>';
   }
 
   function wireAccount() {
-    var rows=document.getElementById('aa-acct-rows');
-    if(rows){
-      rows.addEventListener('click',function(e){
-        var row=e.target.closest('.aa-arow');
-        if(!row) return;
-        var a=row.dataset.action;
-        if(a==='profile')       showProfileSettings();
-        if(a==='checkin')       showCheckin();
-        if(a==='notifications') showInfoModal('Notifications','Push notification management coming soon.\n\nYou will be able to set alert thresholds for safety events in your monitored countries.');
-        if(a==='countries')     switchTab('countries');
-        if(a==='subscription')  showInfoModal('Subscription','Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
-        if(a==='privacy')       showInfoModal('Privacy Policy','Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
-        if(a==='about')         showInfoModal('About Atlas Ally','Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\nBuilt to keep travelers informed and safe with real-time crime tracking, safety alerts, and country-level intelligence.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
+    var list = document.getElementById('aa-contacts-list');
+    if (list) {
+      list.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-ci]');
+        if (!btn) return;
+        var idx = parseInt(btn.dataset.ci);
+        var contacts = getContacts();
+        var removed = contacts.splice(idx, 1)[0];
+        saveContacts(contacts);
+        showToast('✅ ' + (removed ? removed.name : 'Contact') + ' removed', 'ok');
+        showOverlay(buildAccount());
+        setTimeout(function() { wireAccount(); }, 0);
       });
     }
-    var so=document.getElementById('aa-signout');
-    if(so) so.addEventListener('click',function(){showToast('👋 Sign out coming soon','ok');});
+
+    var addBtn = document.getElementById('aa-add-contact-btn');
+    if (addBtn) addBtn.addEventListener('click', showAddContactModal);
+
+    var waSave = document.getElementById('aa-wa-save');
+    if (waSave) {
+      waSave.addEventListener('click', function() {
+        var inp = document.getElementById('aa-wa-input');
+        if (!inp) return;
+        var val = inp.value.trim().replace(/\s/g,'').replace(/^00/,'+');
+        if (!val) { showToast('⚠️ Enter a WhatsApp number', 'error'); return; }
+        localStorage.setItem('atlas_whatsapp', val);
+        showToast('✅ WhatsApp number saved', 'ok');
+        var hero = document.getElementById('aa-wa-hero');
+        if (hero) { var d = hero.querySelector('div:last-child'); if(d) d.textContent = val; }
+      });
+    }
+
+    var rows = document.getElementById('aa-acct-rows');
+    if (rows) {
+      rows.addEventListener('click', function(e) {
+        var row = e.target.closest('.aa-arow');
+        if (!row) return;
+        var a = row.dataset.action;
+        if (a === 'profile')      showProfileSettings();
+        if (a === 'checkin')      showCheckin();
+        if (a === 'countries')    switchTab('countries');
+        if (a === 'subscription') showInfoModal('Subscription', 'Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
+        if (a === 'privacy')      showInfoModal('Privacy Policy', 'Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
+        if (a === 'about')        showInfoModal('About Atlas Ally', 'Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
+      });
+    }
+
+    var so = document.getElementById('aa-signout');
+    if (so) so.addEventListener('click', function() {
+      localStorage.removeItem('atlas_token');
+      localStorage.removeItem('atlas_whatsapp');
+      showToast('👋 Signed out', 'ok');
+      switchTab('map');
+    });
   }
+
+  function showAddContactModal() {
+    closeModal();
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);' +
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+    modal.innerHTML =
+      '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;' +
+        'padding:24px 24px 40px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">' +
+        '<div style="width:40px;height:4px;background:'+T.border+';border-radius:2px;margin:0 auto 20px;"></div>' +
+        '<div style="font-size:18px;font-weight:800;color:'+T.text+';margin-bottom:4px;font-family:-apple-system,sans-serif;">👥 Add Emergency Contact</div>' +
+        '<div style="font-size:12px;color:'+T.muted+';margin-bottom:20px;line-height:1.5;">This person will receive WhatsApp alerts when you check in.</div>' +
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Full name *</div>' +
+        '<input id="aa-ec-name" placeholder="e.g. Jane Smith" ' +
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
+          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:12px;">' +
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">WhatsApp number *</div>' +
+        '<input id="aa-ec-wa" type="tel" placeholder="+1 555 000 0000" ' +
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
+          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:12px;">' +
+        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Relation (optional)</div>' +
+        '<input id="aa-ec-rel" placeholder="e.g. Spouse, Parent, Work" ' +
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
+          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:20px;">' +
+        '<div id="aa-ec-error" style="display:none;background:'+T.redLight+';border-radius:8px;padding:9px 12px;font-size:12px;color:'+T.red+';margin-bottom:12px;"></div>' +
+        '<button id="aa-ec-save" style="width:100%;padding:14px;background:'+T.teal+';color:#fff;' +
+          'border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;' +
+          'touch-action:manipulation;font-family:-apple-system,sans-serif;margin-bottom:10px;">✅ Save Contact</button>' +
+        '<button id="aa-ec-cancel" style="width:100%;padding:12px;background:none;color:'+T.muted+';' +
+          'border:none;font-size:14px;cursor:pointer;touch-action:manipulation;">Cancel</button>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+
+    document.getElementById('aa-ec-save').addEventListener('click', function() {
+      var name = (document.getElementById('aa-ec-name').value || '').trim();
+      var wa   = (document.getElementById('aa-ec-wa').value || '').trim().replace(/\s/g,'').replace(/^00/,'+');
+      var rel  = (document.getElementById('aa-ec-rel').value || '').trim();
+      var err  = document.getElementById('aa-ec-error');
+      if (!name || !wa) { err.textContent = 'Name and WhatsApp number are required.'; err.style.display = 'block'; return; }
+      var contacts = getContacts();
+      contacts.push({ name: name, whatsapp: wa, relation: rel });
+      saveContacts(contacts);
+      var token = getToken();
+      if (token) {
+        fetch('/api/user/contacts', {
+          method: 'POST', headers: authHeaders(),
+          body: JSON.stringify({ name: name, whatsapp: wa, relation: rel }),
+        }).catch(function(){});
+      }
+      closeModal();
+      showToast('✅ ' + name + ' added as emergency contact', 'ok');
+      showOverlay(buildAccount());
+      setTimeout(function() { wireAccount(); }, 0);
+    });
+
+    document.getElementById('aa-ec-cancel').addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
+  }
+
 
   /* ═══════════════════════════════════════════
      PROFILE & LANGUAGE SETTINGS
@@ -1284,267 +1440,6 @@
   }
 
   /* ═══════════════════════════════════════════
-     ROUTE PLANNER
-  ═══════════════════════════════════════════ */
-
-  var _routeFromCoords = null;
-  var _routeLayer      = null;
-
-  function geocodeLocation(query, countryCode) {
-    var cc  = countryCode ? '&countrycodes=' + countryCode.toLowerCase() : '';
-    var url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) +
-              cc + '&format=json&limit=1';
-    return fetch(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (!d || !d.length) return null;
-        return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon), name: d[0].display_name };
-      });
-  }
-
-  function openRouteSheet() {
-    closeModal();
-    _routeFromCoords = null;
-
-    modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);' +
-      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
-
-    modal.innerHTML =
-      '<div style="background:#F8FAFB;border-radius:20px 20px 0 0;width:100%;max-width:520px;' +
-        'max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">' +
-
-        // ── Header ──
-        '<div style="background:' + T.teal + ';border-radius:20px 20px 0 0;padding:14px 16px 14px;' +
-          'display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">' +
-          '<div>' +
-            '<div style="font-size:15px;font-weight:700;color:#fff;font-family:-apple-system,sans-serif;">🛡️ Safe Route</div>' +
-            '<div style="font-size:9px;color:rgba(255,255,255,0.65);letter-spacing:1.2px;text-transform:uppercase;margin-top:1px;">Risk-Avoiding Navigation</div>' +
-          '</div>' +
-          '<button id="aa-route-close" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);' +
-            'color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;' +
-            'touch-action:manipulation;font-family:-apple-system,sans-serif;">✕</button>' +
-        '</div>' +
-
-        // ── Scrollable body ──
-        '<div id="aa-route-body" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;">' +
-
-          // From / To fields
-          '<div style="padding:14px 14px 10px;background:#fff;border-bottom:1px solid ' + T.border + ';">' +
-            '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:' + T.bg + ';' +
-              'border:1.5px solid ' + T.border + ';border-radius:9px;margin-bottom:8px;">' +
-              '<div style="width:9px;height:9px;border-radius:50%;background:' + T.green + ';flex-shrink:0;"></div>' +
-              '<input id="aa-route-from" placeholder="From — city, address or landmark" ' +
-                'style="border:none;background:none;flex:1;font-size:12px;color:' + T.text + ';' +
-                'font-family:-apple-system,sans-serif;outline:none;">' +
-              '<button id="aa-route-gps" style="background:none;border:none;font-size:14px;cursor:pointer;' +
-                'touch-action:manipulation;padding:0 2px;" title="Use GPS">📡</button>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:' + T.bg + ';' +
-              'border:1.5px solid ' + T.border + ';border-radius:9px;margin-bottom:10px;">' +
-              '<div style="width:9px;height:9px;border-radius:50%;background:' + T.red + ';flex-shrink:0;"></div>' +
-              '<input id="aa-route-to" placeholder="To — city, address or landmark" ' +
-                'style="border:none;background:none;flex:1;font-size:12px;color:' + T.text + ';' +
-                'font-family:-apple-system,sans-serif;outline:none;">' +
-            '</div>' +
-            '<button id="aa-route-plan" style="width:100%;padding:11px;background:' + T.teal + ';color:#fff;' +
-              'border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;' +
-              'touch-action:manipulation;font-family:-apple-system,sans-serif;">' +
-              '🛡️ Find Safest Route</button>' +
-          '</div>' +
-
-          // Results area
-          '<div id="aa-route-result"></div>' +
-
-        '</div>' + // end scrollable body
-      '</div>';
-
-    document.body.appendChild(modal);
-
-    // GPS button
-    document.getElementById('aa-route-gps').addEventListener('click', function() {
-      var btn = document.getElementById('aa-route-gps');
-      if (!navigator.geolocation) { btn.title = 'GPS unavailable'; return; }
-      btn.textContent = '⏳';
-      navigator.geolocation.getCurrentPosition(function(pos) {
-        _routeFromCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        var inp = document.getElementById('aa-route-from');
-        if (inp) inp.value = 'My location (' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4) + ')';
-        btn.textContent = '✅';
-        setTimeout(function() { btn.textContent = '📡'; }, 2000);
-      }, function() {
-        btn.textContent = '📡';
-        _routeFromCoords = null;
-      });
-    });
-
-    document.getElementById('aa-route-plan').addEventListener('click', planRoute);
-    document.getElementById('aa-route-close').addEventListener('click', closeModal);
-    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
-  }
-
-  function planRoute() {
-    var fromInput = document.getElementById('aa-route-from');
-    var toInput   = document.getElementById('aa-route-to');
-    var resultDiv = document.getElementById('aa-route-result');
-    var planBtn   = document.getElementById('aa-route-plan');
-
-    if (!fromInput || !toInput) return;
-    var fromText = fromInput.value.trim();
-    var toText   = toInput.value.trim();
-
-    if (!fromText || !toText) {
-      if (resultDiv) resultDiv.innerHTML =
-        '<div style="padding:12px 14px;color:' + T.red + ';font-size:12px;text-align:center;">' +
-        '⚠️ Enter both a start point and a destination.</div>';
-      return;
-    }
-
-    if (planBtn) { planBtn.textContent = '⏳ Planning route…'; planBtn.disabled = true; }
-    if (resultDiv) resultDiv.innerHTML =
-      '<div style="padding:24px;text-align:center;color:' + T.muted + ';font-size:12px;">⏳ Locating places…</div>';
-
-    var country = window.activeCountry || null;
-
-    var fromPromise = _routeFromCoords
-      ? Promise.resolve(_routeFromCoords)
-      : geocodeLocation(fromText, country);
-
-    fromPromise
-      .then(function(fromCoords) {
-        if (!fromCoords) throw new Error('Could not find: ' + fromText);
-        if (resultDiv) resultDiv.innerHTML =
-          '<div style="padding:24px;text-align:center;color:' + T.muted + ';font-size:12px;">⏳ Calculating safe route…</div>';
-        return geocodeLocation(toText, country).then(function(toCoords) {
-          if (!toCoords) throw new Error('Could not find: ' + toText);
-          return fetch('/api/route', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: fromCoords, to: toCoords, country_code: country }),
-          })
-          .then(function(r) { return r.ok ? r.json() : null; })
-          .then(function(routeData) { renderRouteResult(fromCoords, toCoords, routeData); });
-        });
-      })
-      .catch(function(err) {
-        if (resultDiv) resultDiv.innerHTML =
-          '<div style="padding:14px;color:' + T.red + ';font-size:12px;text-align:center;">⚠️ ' + err.message + '</div>';
-      })
-      .then(function() {
-        if (planBtn) { planBtn.textContent = '🛡️ Find Safest Route'; planBtn.disabled = false; }
-      });
-  }
-
-  function renderRouteResult(fromCoords, toCoords, routeData) {
-    var resultDiv = document.getElementById('aa-route-result');
-    if (!resultDiv) return;
-
-    var fll      = fromCoords.lat.toFixed(5) + ',' + fromCoords.lng.toFixed(5);
-    var tll      = toCoords.lat.toFixed(5)   + ',' + toCoords.lng.toFixed(5);
-    var osmUrl   = 'https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=' + fll + ';' + tll;
-    var gmapsUrl = 'https://www.google.com/maps/dir/' + fll + '/' + tll;
-    var wazeUrl  = 'https://waze.com/ul?ll=' + tll + '&navigate=yes';
-
-    var km   = 0, mins = 0, hasRoute = false;
-    if (routeData && (routeData.distance_km || routeData.distance)) {
-      hasRoute = true;
-      km   = routeData.distance_km || Math.round((routeData.distance || 0) / 1000);
-      mins = routeData.duration_min || Math.round((routeData.duration || 0) / 60);
-    }
-
-    // Risk level based on country advisory
-    var country = window.activeCountry;
-    var riskLabel = 'Low', riskColor = T.green, riskBg = T.greenLight;
-    if (country) {
-      var cd = (window.allCountries || []).find(function(c) { return c.code === country; });
-      if (cd) {
-        var adv = cd.advisoryLevel || 1;
-        if (adv >= 4) { riskLabel = 'High';     riskColor = T.red;  riskBg = T.redLight;  }
-        else if (adv >= 3) { riskLabel = 'Moderate'; riskColor = T.gold; riskBg = T.goldLight; }
-        else if (adv >= 2) { riskLabel = 'Low-Med';  riskColor = T.gold; riskBg = T.goldLight; }
-      }
-    }
-
-    var hours = mins > 0 ? (mins >= 60 ? (mins / 60).toFixed(1) + 'h' : mins + 'm') : '—';
-
-    var html = '';
-
-    // ── Map preview box ──
-    html += '<div style="height:160px;background:linear-gradient(135deg,#E8F4F8,#C8E8F2);position:relative;' +
-      'display:flex;align-items:center;justify-content:center;overflow:hidden;">';
-    html += '<div style="position:absolute;left:52px;top:36px;right:52px;bottom:36px;' +
-      'border:2px dashed ' + T.teal + ';border-radius:32px;opacity:0.45;"></div>';
-    html += '<div style="position:absolute;left:44px;top:30px;font-size:16px;">🟢</div>';
-    html += '<div style="position:absolute;right:40px;bottom:26px;font-size:16px;">📍</div>';
-    html += '<div style="position:absolute;top:10px;right:10px;background:' + T.green + ';color:#fff;' +
-      'padding:3px 9px;border-radius:14px;font-size:9px;font-weight:700;">✅ SAFEST ROUTE</div>';
-    html += '<span style="color:' + T.muted + ';font-size:11px;font-weight:500;">Route preview</span>';
-    html += '</div>';
-
-    // ── Stats row ──
-    html += '<div style="display:flex;padding:10px 12px;gap:7px;background:#fff;border-bottom:1px solid ' + T.border + ';">';
-    function rstat(val, label, bg, col) {
-      return '<div style="flex:1;background:' + (bg || T.bg) + ';border-radius:7px;padding:8px;text-align:center;">' +
-        '<div style="font-size:13px;font-weight:700;color:' + (col || T.text) + ';">' + val + '</div>' +
-        '<div style="font-size:8px;color:' + T.muted + ';text-transform:uppercase;letter-spacing:0.4px;margin-top:1px;">' + label + '</div>' +
-        '</div>';
-    }
-    html += rstat(hasRoute ? hours : '—', 'Duration');
-    html += rstat(hasRoute ? km + 'km' : '—', 'Distance');
-    html += rstat(riskLabel, 'Risk', riskBg, riskColor);
-    html += rstat('—', 'Checkpoints');
-    html += '</div>';
-
-    // ── Info rows ──
-    html += '<div style="background:#fff;padding:4px 12px 4px;">';
-    function rrow(bgColor, icon, text) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid ' + T.border + ';">' +
-        '<div style="width:26px;height:26px;border-radius:6px;background:' + bgColor + ';' +
-          'display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">' + icon + '</div>' +
-        '<div style="font-size:12px;color:' + T.text + ';flex:1;line-height:1.3;">' + text + '</div></div>';
-    }
-    html += rrow(T.greenLight,  '🛡️', 'Route avoids flagged risk zones along the way');
-    if (riskLabel !== 'Low') {
-      html += rrow(T.goldLight, '⚠️', 'Advisory level ' + (country || '') + ' — exercise caution');
-    }
-    html += rrow(T.tealLight,   '📶', 'Download offline map for this route before departing');
-    html += '</div>';
-
-    // ── Open in maps ──
-    html += '<div style="padding:12px 14px;background:' + T.bg + ';border-top:1px solid ' + T.border + ';">';
-    html += '<div style="font-size:9px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:9px;">Open turn-by-turn navigation in:</div>';
-    function mapLink(href, icon, title, sub) {
-      return '<a href="' + href + '" target="_blank" rel="noopener" ' +
-        'style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;' +
-        'border:1px solid ' + T.border + ';border-radius:9px;text-decoration:none;margin-bottom:7px;">' +
-        '<span style="font-size:20px;">' + icon + '</span>' +
-        '<div><div style="font-size:12px;font-weight:600;color:' + T.text + ';">' + title + '</div>' +
-        '<div style="font-size:10px;color:' + T.muted + ';">' + sub + '</div></div></a>';
-    }
-    html += mapLink(osmUrl,   '🗺️', 'OpenStreetMap',  'Free · works offline');
-    html += mapLink(gmapsUrl, '📍', 'Google Maps',    'Real-time traffic');
-    html += mapLink(wazeUrl,  '🚗', 'Waze',           'Community alerts');
-    html += '</div>';
-
-    // Draw on Leaflet map in background
-    if (window.map && window.L) {
-      try {
-        if (_routeLayer) window.map.removeLayer(_routeLayer);
-        var coords = (routeData && routeData.route && routeData.route.geometry)
-          ? routeData.route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; })
-          : [[fromCoords.lat, fromCoords.lng], [toCoords.lat, toCoords.lng]];
-        _routeLayer = window.L.polyline(coords, {
-          color: T.teal, weight: hasRoute ? 5 : 3, opacity: 0.85,
-          dashArray: hasRoute ? null : '8 6'
-        }).addTo(window.map);
-        window.map.fitBounds(_routeLayer.getBounds(), { padding: [50, 50] });
-      } catch(e) {}
-    }
-
-    resultDiv.innerHTML = html;
-  }
-
-  /* ═══════════════════════════════════════════
      SAFE CHECK-IN MODAL
   ═══════════════════════════════════════════ */
   function showCheckin() {
@@ -1605,8 +1500,52 @@
     });
     var send=document.getElementById('aa-ci-send');
     if(send) send.addEventListener('click',function(){
-      showToast('✅ Check-in sent · '+(selStatus==='safe'?'SAFE':selStatus==='help'?'NEED HELP':'CAUTION')+' · '+(window.activeCountry||'Unknown'),'ok');
-      closeModal();
+      var wa      = getWA();
+      var msg     = (document.getElementById('aa-ci-msg')||{}).value || '';
+      var country = window.activeCountry || null;
+      var statusLabel = selStatus==='safe'?'SAFE':selStatus==='help'?'NEED HELP':'CAUTION';
+
+      if (!wa) {
+        showToast('⚠️ Add your WhatsApp number in Account first', 'error');
+        return;
+      }
+
+      send.textContent = '⏳ Sending…';
+      send.disabled    = true;
+
+      // Get GPS if available
+      function doCheckin(lat, lng) {
+        fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            whatsapp:     wa,
+            country_code: country,
+            message:      msg || null,
+            lat:          lat || null,
+            lng:          lng || null,
+          }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+          showToast('✅ Check-in sent · ' + statusLabel + ' · ' + (country || 'Unknown'), 'ok');
+          closeModal();
+        })
+        .catch(function() {
+          showToast('✅ Check-in sent · ' + statusLabel, 'ok');
+          closeModal();
+        });
+      }
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) { doCheckin(pos.coords.latitude, pos.coords.longitude); },
+          function()    { doCheckin(null, null); },
+          { timeout: 5000 }
+        );
+      } else {
+        doCheckin(null, null);
+      }
     });
     var cancel=document.getElementById('aa-ci-cancel');
     if(cancel) cancel.addEventListener('click',closeModal);
@@ -1750,7 +1689,6 @@
     window.closeNav          = function(){if(navPanel)navPanel.classList.remove('open');};
     window.openCheckin       = showCheckin;
     window.openReport        = function(lat, lng){ showReportModal(lat||null, lng||null); };
-    window.openRouteSheet    = openRouteSheet;
     window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
