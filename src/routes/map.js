@@ -65,20 +65,8 @@ router.get('/country/:code/weather', async (req, res) => {
   }
 });
 
-// ── Events ────────────────────────────────────────────────────────────────────
+// ── Events (POST only — GET is handled by data.js with full stats) ────────────
 
-router.get('/events', (req, res) => {
-  const { country_code } = req.query;
-  const events = country_code
-    ? db.db.prepare(`
-        SELECT * FROM events
-        WHERE country_code=? AND status='approved' AND is_test=0
-          AND created_at > datetime('now', '-72 hours')
-        ORDER BY created_at DESC
-      `).all(country_code.toUpperCase())
-    : db.getEvents72h.all();
-  res.json(events);
-});
 
 router.post('/events', (req, res) => {
   const { country_code, type, title, description, location, lat, lng, severity, source_url } = req.body;
