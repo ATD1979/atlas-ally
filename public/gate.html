@@ -104,12 +104,64 @@
     <div class="label">Verification code</div>
     <input type="number" id="otp-code" class="otp-input" placeholder="000000" maxlength="6" autocomplete="one-time-code">
     <button class="btn" id="otp-btn" onclick="submitOTP()">Verify & Enter →</button>
+    <button class="btn-secondary" id="resend-btn" onclick="resendCode()" style="color:#0E7490;font-weight:600;">Resend code</button>
+    <div id="resend-countdown" style="text-align:center;font-size:11px;color:#A8B5C4;margin-top:-6px;margin-bottom:8px;display:none;">Resend available in <span id="countdown-num">30</span>s</div>
     <button class="btn-secondary" onclick="goBack()">← Use a different account</button>
   </div>
 </div>
 
 <script>
 var _email = '';
+var _resendTimer = null;
+
+function startResendCountdown() {
+  var btn       = document.getElementById('resend-btn');
+  var countdown = document.getElementById('resend-countdown');
+  var num       = document.getElementById('countdown-num');
+  btn.style.display      = 'none';
+  countdown.style.display = 'block';
+  var secs = 30;
+  num.textContent = secs;
+  _resendTimer = setInterval(function() {
+    secs--;
+    num.textContent = secs;
+    if (secs <= 0) {
+      clearInterval(_resendTimer);
+      countdown.style.display = 'none';
+      btn.style.display       = 'block';
+    }
+  }, 1000);
+}
+
+function resendCode() {
+  var btn = document.getElementById('resend-btn');
+  btn.textContent = 'Sending…';
+  btn.disabled    = true;
+  hideError('otp-error');
+
+  fetch('/gate/login', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email: _email, password: document.getElementById('login-password').value }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.textContent = 'Resend code';
+    btn.disabled    = false;
+    if (d.ok && d.needs_otp) {
+      showInfo('otp-info', '✅ New code sent — check your inbox.');
+      document.getElementById('otp-code').value = '';
+      startResendCountdown();
+    } else {
+      showError('otp-error', d.error || 'Could not resend. Go back and try again.');
+    }
+  })
+  .catch(function() {
+    btn.textContent = 'Resend code';
+    btn.disabled    = false;
+    showError('otp-error', 'Network error. Please try again.');
+  });
+}
 
 function showError(id, msg) {
   var el = document.getElementById(id);
@@ -165,6 +217,7 @@ function submitLogin() {
     document.getElementById('step-login').classList.remove('active');
     document.getElementById('step-otp').classList.add('active');
     setTimeout(function() { document.getElementById('otp-code').focus(); }, 100);
+    startResendCountdown();
   })
   .catch(function() {
     showError('login-error', 'Network error. Please try again.');
