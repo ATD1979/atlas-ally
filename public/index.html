@@ -206,7 +206,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="switchTab('map');closeNav();if(window.toast)toast('🗺️ Use the map to plan your route','ok');" type="button">
+    <button class="nav-item" onclick="closeNav();setTimeout(function(){openRouteSheet();},200);" type="button">
       <div class="nav-item-icon">🗺️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Route Planner</div>
