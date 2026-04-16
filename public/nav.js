@@ -1,5 +1,4 @@
 /*
-// v2026.04.15 — clean slate
   Atlas Ally — nav.js
   Overlay-based navigation. All panel content built in JS with inline styles.
   No CSS class dependencies for visibility.
@@ -475,20 +474,70 @@
         html += '<div style="height:100%;width:'+safeScore+'%;background:'+scoreColor+';border-radius:3px;transition:width 0.6s;"></div>';
         html += '</div></div>';
 
-        // ── Tourist safety tips ───────────────────────────────
+        // ── Tourist safety tips (country-specific) ────────────────────────
         var tips = [];
-        if (buckets.air.length)      tips.push('🚀 Air threat activity detected — know your nearest shelter');
-        if (buckets.explosion.length) tips.push('💥 Explosion reports — avoid crowded public spaces');
-        if (buckets.protest.length)  tips.push('✊ Civil unrest reported — avoid demonstrations');
-        if (buckets.weather.length)  tips.push('⛈️ Adverse weather — check local forecasts before travel');
-        if (buckets.crime.length)    tips.push('🔴 Crime activity — secure valuables, avoid isolated areas');
-        if (!tips.length && events.length === 0) tips.push('✅ No active incidents — normal travel precautions apply');
+        var cData = (window.allCountries||[]).find(function(c){ return c.code===code; }) || {};
+        var advisoryLevel = cData.advisoryLevel || 1;
+
+        // Incident-driven tips first
+        if (buckets.air && buckets.air.length)       tips.push('🚀 Air threat activity detected — know your nearest shelter and follow local emergency broadcasts');
+        if (buckets.explosion && buckets.explosion.length) tips.push('💥 Explosion reports in the area — avoid crowded public spaces and markets');
+        if (buckets.armed && buckets.armed.length)   tips.push('🔫 Armed incident reports — stay indoors, avoid confrontations, follow local authority guidance');
+        if (buckets.protest && buckets.protest.length) tips.push('✊ Civil unrest reported — avoid demonstrations even if peaceful, they can escalate rapidly');
+        if (buckets.weather && buckets.weather.length) tips.push('⛈️ Adverse weather alerts active — check local forecasts before travel, follow evacuation orders');
+        if (buckets.drug && buckets.drug.length)     tips.push('💊 Drug-related criminal activity reported — avoid isolated areas at night, do not accept items from strangers');
+        if (buckets.crime && buckets.crime.length)   tips.push('🔴 Crime activity reported — secure valuables, avoid displaying expensive items, use reputable transport');
+
+        // Country-specific standing advice
+        var countryTips = {
+          JO: ['🕌 Dress modestly near religious sites — cover shoulders and knees', '🚗 Border areas with Syria and Iraq — avoid unless essential', '💊 Captagon and drug trafficking is a serious issue — do not carry unexplained packages'],
+          UA: ['🚨 Active conflict zones — do not approach front-line regions', '💣 UXO risk in liberated areas — stay on paved roads', '📻 Keep emergency radio for air raid alerts'],
+          LB: ['⚡ Power outages are frequent — carry a power bank', '🚧 Avoid south near Israeli border — active tension', '💵 Carry USD — banking system is unstable'],
+          SY: ['🚫 Travel strongly discouraged — active conflict throughout', '🏥 Medical infrastructure severely damaged', '📞 Register with your embassy before any entry'],
+          IQ: ['💣 IED risk in rural areas — stay on established routes', '🕌 Respect religious sites and Shia holy days', '📱 VPN recommended — internet monitoring common'],
+          IL: ['🚀 Rocket alert app (Red Alert) — install before arrival', '🕌 Religious site protocols — appropriate dress required', '🚗 Gaza border and West Bank — check security before travel'],
+          EG: ['🌅 Sinai Peninsula — heightened risk, travel only to resort areas', '📷 Photography restrictions near military sites', '🐪 Tourist scams common near major sites — agree on prices upfront'],
+          MX: ['🚗 Avoid driving at night — carjacking risk on highway', '🍺 Only buy sealed drinks — drink-spiking incidents reported', '💳 Use ATMs inside banks or hotels only'],
+          CO: ['🌿 Coca-growing regions — avoid rural areas in Putumayo, Nariño', '🚕 Use app-based taxis only — never hail street taxis', '🏔️ Altitude sickness risk in Bogotá and Medellín — acclimatize slowly'],
+          NG: ['✈️ Port Harcourt and northeast — high kidnapping risk', '💵 Keep cash in multiple locations', '🚗 Do not drive after dark outside major cities'],
+          PH: ['🌊 Typhoon season June-November — monitor PAGASA warnings', '🏝️ Mindanao and Sulu — terrorist and kidnapping risk', '🛵 Only use registered tricycles and jeepneys'],
+          TH: ['🚗 Road traffic deaths among highest in Asia — wear helmets on bikes', '🌊 Tsunami coast — know evacuation routes in beach areas', '👮 Strict lèse-majesté laws — do not comment on monarchy'],
+          MM: ['🚫 Travel advisories active — conflict ongoing in multiple states', '📵 Internet shutdowns common — download content offline', '💵 USD cash only — card machines unreliable'],
+          VE: ['🔦 Power cuts frequent — carry torch and power bank', '🚗 Carjacking common — keep windows up, doors locked', '🏥 Medical supplies scarce — bring all medications from home'],
+          HT: ['🚫 Gang control of major roads — avoid all non-essential travel', '🏥 Medical infrastructure collapsed — carry full first aid kit', '✈️ Departure taxes and airport scams — use official channels only'],
+          IN: ['🌡️ Heatwave risk May-June — stay hydrated, avoid midday sun', '💧 Only drink bottled or purified water', '🚕 Use app-based taxis — meter fraud common in older taxis'],
+          PK: ['📍 FATA regions and Balochistan — do not travel without security escort', '📷 Photography near military — strictly prohibited', '🕌 During Ramadan — respect fasting rules in public'],
+          AF: ['🚫 Do not travel — ongoing security crisis', '🏥 Medical evacuation extremely difficult', '📞 Emergency contacts: ICRC +93 20 210 2288'],
+          BR: ['🏖️ Beware of beach robberies — do not bring valuables to beach', '🚗 Avoid favelas unless on guided tour', '💊 Yellow fever vaccination recommended for Amazon region'],
+          ZA: ['🚗 Smash-and-grab common — keep windows up at traffic lights', '🏥 Private hospitals far superior to public — ensure insurance', '⚡ Load shedding (power cuts) 2-12 hours daily — plan accordingly'],
+          KE: ['🦟 Malaria risk — take prophylaxis, use repellent', '🌊 Coastal flooding risk in long rains (March-May)', '🚕 Matatu minibus — official but often reckless — ride-apps safer'],
+        };
+
+        var standing = countryTips[code] || [];
+
+        // Add advisory-level advice
+        if (advisoryLevel >= 3 && !buckets.air.length && standing.length === 0) {
+          tips.push('⚠️ This destination has a high travel advisory — register your trip with your embassy');
+        }
+        if (advisoryLevel >= 4) {
+          tips.unshift('🚨 DO NOT TRAVEL advisory in effect — contact your embassy before any movement');
+        }
+
+        // Merge standing tips (up to 3)
+        standing.slice(0, 3).forEach(function(t){ tips.push(t); });
+
+        if (!tips.length) {
+          tips.push('✅ No active incidents — normal travel precautions apply for ' + (cData.name || code));
+          tips.push('📋 Register your trip with your home country\'s embassy online');
+          tips.push('📱 Save local emergency numbers: ' + (cData.emergency ? Object.entries(cData.emergency||{}).slice(0,2).map(function(e){return e[0]+': '+e[1]}).join(' · ') : '112'));
+        }
 
         if (tips.length) {
           html += '<div style="margin:8px 12px 0;background:'+T.tealLight+';border-radius:10px;border:1px solid rgba(14,116,144,0.2);padding:12px 14px;">';
-          html += '<div style="font-size:10px;font-weight:700;color:'+T.teal+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Tourist Advisory</div>';
+          html += '<div style="font-size:10px;font-weight:700;color:'+T.teal+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+
+            (cData.name ? '📍 ' + cData.name + ' — Travel Advisory' : 'Tourist Advisory') + '</div>';
           tips.forEach(function(tip) {
-            html += '<div style="font-size:12px;color:'+T.text+';padding:4px 0;border-bottom:1px solid rgba(14,116,144,0.12);line-height:1.4;">'+tip+'</div>';
+            html += '<div style="font-size:12px;color:'+T.text+';padding:5px 0;border-bottom:1px solid rgba(14,116,144,0.12);line-height:1.5;">'+tip+'</div>';
           });
           html += '</div>';
         }
@@ -891,416 +940,195 @@
   /* ═══════════════════════════════════════════
      PACK PANEL
   ═══════════════════════════════════════════ */
+  // ── Pack: seasonal + destination intelligence ─────────────────────────────
+  function getClimateProfile(countryCode, lat) {
+    // Climate zones by latitude and known country overrides
+    var tropical = ['JO','EG','MX','CO','VE','HT','GT','HN','NG','KE','ET','SO','PH','TH','ID','MM','BD','IN','SY','IQ','YE','LY','SD','ML','GH','TZ','CD','AF'];
+    var desert   = ['JO','EG','SA','AE','OM','IQ','LY','DZ','MA','AF','PK'];
+    var arctic   = ['NO','IS','GL','FI','SE','RU','CA'];
+    var monsoon  = ['IN','BD','MM','TH','PH','ID','VN','KH','LA'];
 
-  var _packChecked = {}; // checkbox state: key → true/false
-  var _packResult  = null; // last AI result
-
-  function buildPack() {
-    return panelHdr('🎒 ' + t('pack')) +
-      // Sub-tabs
-      '<div id="aa-pack-tabs" style="display:flex;background:#fff;border-bottom:1px solid '+T.border+';position:sticky;top:54px;z-index:9;">' +
-        '<button data-ptab="ai" style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.teal+';border-bottom:2px solid '+T.teal+';margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">✨ AI Pack List</button>' +
-        '<button data-ptab="templates" style="flex:1;padding:10px 0;border:none;background:none;font-size:11px;font-weight:700;color:'+T.muted+';border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;touch-action:manipulation;font-family:'+T.font+';">📋 Templates</button>' +
-      '</div>' +
-      '<div id="aa-pack-body" style="background:'+T.bg+';min-height:300px;"></div>';
+    if (desert.indexOf(countryCode) >= 0)  return 'desert';
+    if (arctic.indexOf(countryCode) >= 0)  return 'arctic';
+    if (monsoon.indexOf(countryCode) >= 0) return 'monsoon';
+    if (tropical.indexOf(countryCode) >= 0) return 'tropical';
+    if (Math.abs(lat) < 23.5)              return 'tropical';
+    if (Math.abs(lat) > 60)                return 'arctic';
+    return 'temperate';
   }
 
-  function wirePack() {
-    var bar = document.getElementById('aa-pack-tabs');
-    if (!bar) return;
-    bar.addEventListener('click', function(e) {
-      var btn = e.target.closest('[data-ptab]');
-      if (!btn) return;
-      var tab = btn.dataset.ptab;
-      bar.querySelectorAll('[data-ptab]').forEach(function(b) {
-        var on = b.dataset.ptab === tab;
-        b.style.color       = on ? T.teal : T.muted;
-        b.style.borderBottom = on ? '2px solid '+T.teal : '2px solid transparent';
-        b.style.fontWeight  = on ? '700' : '600';
-      });
-      if (tab === 'ai')        renderPackAI();
-      if (tab === 'templates') renderPackTemplates();
-    });
-    // Default: AI tab
-    renderPackAI();
+  function getSeasonForCountry(lat) {
+    // Returns local season based on hemisphere + current month
+    var month = new Date().getMonth(); // 0=Jan
+    var southern = lat < 0;
+    // Northern: DJF=winter, MAM=spring, JJA=summer, SON=autumn
+    // Southern: flipped
+    var northSeason = (month <= 1 || month === 11) ? 'winter'
+                    : (month <= 4) ? 'spring'
+                    : (month <= 7) ? 'summer'
+                    : 'autumn';
+    if (!southern) return northSeason;
+    var flip = { winter:'summer', summer:'winter', spring:'autumn', autumn:'spring' };
+    return flip[northSeason];
   }
 
-  // ── AI Pack Generator ──────────────────────────────────────────────────────
+  function buildClothingItems(climate, season, countryCode) {
+    var items = [];
 
-  function renderPackAI() {
-    var body = document.getElementById('aa-pack-body');
-    if (!body) return;
+    // Base clothing always needed
+    items.push(['👕', 'Moisture-wicking T-shirts', '3-5 lightweight, quick-dry']);
+    items.push(['🩲', 'Underwear & socks', '5-7 days worth, quick-dry']);
 
-    // If we already have a result, show it
-    if (_packResult) { renderPackResult(_packResult); return; }
+    if (climate === 'desert') {
+      items.push(['👘', 'Loose long-sleeve shirts', 'Sun protection + modesty in conservative areas']);
+      items.push(['👒', 'Wide-brim hat', 'Essential sun protection in desert heat']);
+      items.push(['🕶️', 'UV sunglasses', 'Desert glare is intense']);
+      items.push(['🧥', 'Light jacket or fleece', 'Desert nights get cold even in summer']);
+      items.push(['👟', 'Closed-toe walking shoes', 'Hot sand and uneven terrain']);
+      if (['JO','SA','AE','EG','IR','PK'].indexOf(countryCode) >= 0)
+        items.push(['👗', 'Conservative clothing', 'Cover shoulders and knees — cultural respect']);
 
-    var country = window.activeCountry || '';
-    var countryName = (window.allCountries || []).find(function(c){return c.code===country;});
-    var destDefault = countryName ? countryName.name : '';
+    } else if (climate === 'tropical') {
+      items.push(['🩱', 'Swimwear', 'Beach and pool access']);
+      items.push(['🩴', 'Sandals', 'Casual footwear for warm weather']);
+      items.push(['☂️', 'Compact rain jacket', 'Sudden tropical downpours']);
+      items.push(['🧴', 'SPF 50+ sunscreen', 'Strong equatorial UV']);
+      items.push(['👟', 'Breathable sneakers', 'For walking and day trips']);
 
-    body.innerHTML =
-      '<div style="padding:16px;">' +
+    } else if (climate === 'monsoon') {
+      items.push(['🌂', 'Packable umbrella', 'Daily monsoon rains']);
+      items.push(['🥾', 'Waterproof shoes', 'Flooded streets and muddy trails']);
+      items.push(['☂️', 'Waterproof jacket', 'Heavy rain periods']);
+      items.push(['🧴', 'Insect repellent clothing', 'Mosquito protection in wet season']);
+      items.push(['🩴', 'Flip flops / sandals', 'For when shoes get soaked']);
 
-        // Intro banner
-        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');border-radius:12px;padding:16px;margin-bottom:16px;color:#fff;">' +
-          '<div style="font-size:15px;font-weight:800;margin-bottom:4px;">✨ AI Packing Assistant</div>' +
-          '<div style="font-size:12px;opacity:0.85;line-height:1.5;">Get a personalised packing list based on your destination, trip length, and travel style.</div>' +
-        '</div>' +
+    } else if (climate === 'arctic') {
+      items.push(['🧥', 'Heavy insulated coat', 'Rated for sub-zero temperatures']);
+      items.push(['🧤', 'Thermal gloves + hat', 'Frostbite prevention']);
+      items.push(['🧣', 'Scarf or neck gaiter', 'Wind protection']);
+      items.push(['🥾', 'Insulated waterproof boots', 'Snow and ice surfaces']);
+      items.push(['🧦', 'Wool thermal socks', 'Moisture-wicking + warm']);
+      items.push(['🩲', 'Thermal base layers', 'Top and bottom, merino wool ideal']);
 
-        // Destination
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Destination *</div>' +
-        '<input id="aa-pack-dest" value="'+destDefault+'" placeholder="e.g. Jordan, Tokyo, Colombia" ' +
-          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;color:'+T.text+';background:#fff;outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:14px;">' +
-
-        // Duration
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Trip Duration</div>' +
-        '<div id="aa-pack-dur-btns" style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;">' +
-          ['3','5','7','10','14','21+'].map(function(d,i) {
-            return '<button data-dur="'+d+'" style="padding:7px 14px;border-radius:8px;border:1.5px solid '+(i===2?T.teal:T.border)+';background:'+(i===2?T.tealLight:'#fff')+';color:'+(i===2?T.teal:T.muted)+';font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;">'+d+' days</button>';
-          }).join('') +
-        '</div>' +
-
-        // Trip type
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Trip Type</div>' +
-        '<div id="aa-pack-type-btns" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px;">' +
-          [['✈️','leisure','Leisure'],['💼','business','Business'],['🏕️','adventure','Adventure'],['👨‍👩‍👧','family','Family'],['🎒','solo','Solo'],['🏥','medical','Medical']].map(function(tp,i) {
-            return '<button data-type="'+tp[1]+'" style="padding:9px 6px;border-radius:9px;border:1.5px solid '+(i===0?T.teal:T.border)+';background:'+(i===0?T.tealLight:'#fff')+';color:'+(i===0?T.teal:T.muted)+';font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:3px;">' +
-              '<span style="font-size:18px;">'+tp[0]+'</span><span>'+tp[2]+'</span></button>';
-          }).join('') +
-        '</div>' +
-
-        // Climate
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Climate</div>' +
-        '<div id="aa-pack-climate-btns" style="display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap;">' +
-          [['☀️','hot','Hot'],['🌤️','warm','Warm'],['🌧️','mixed','Mixed'],['❄️','cold','Cold'],['🏜️','desert','Desert'],['🌊','tropical','Tropical']].map(function(cl,i) {
-            return '<button data-climate="'+cl[1]+'" style="padding:7px 11px;border-radius:8px;border:1.5px solid '+T.border+';background:#fff;color:'+T.muted+';font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;">'+cl[0]+' '+cl[2]+'</button>';
-          }).join('') +
-        '</div>' +
-
-        // Special needs
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Special Requirements (optional)</div>' +
-        '<input id="aa-pack-special" placeholder="e.g. diabetic supplies, baby items, hiking gear" ' +
-          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:20px;">' +
-
-        '<div id="aa-pack-error" style="display:none;background:'+T.redLight+';border-radius:8px;padding:9px 12px;font-size:12px;color:'+T.red+';margin-bottom:12px;"></div>' +
-
-        '<button id="aa-pack-generate" ' +
-          'style="width:100%;padding:14px;background:'+T.teal+';color:#fff;border:none;border-radius:12px;' +
-          'font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;font-family:-apple-system,sans-serif;">' +
-          '✨ Generate My Pack List</button>' +
-
-      '</div>';
-
-    // Wire duration buttons
-    var selDur = '7';
-    body.querySelectorAll('[data-dur]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        selDur = btn.dataset.dur;
-        body.querySelectorAll('[data-dur]').forEach(function(b) {
-          var on = b.dataset.dur === selDur;
-          b.style.borderColor = on ? T.teal : T.border;
-          b.style.background  = on ? T.tealLight : '#fff';
-          b.style.color       = on ? T.teal : T.muted;
-        });
-      });
-    });
-
-    // Wire trip type buttons
-    var selType = 'leisure';
-    body.querySelectorAll('[data-type]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        selType = btn.dataset.type;
-        body.querySelectorAll('[data-type]').forEach(function(b) {
-          var on = b.dataset.type === selType;
-          b.style.borderColor = on ? T.teal : T.border;
-          b.style.background  = on ? T.tealLight : '#fff';
-          b.style.color       = on ? T.teal : T.muted;
-        });
-      });
-    });
-
-    // Wire climate buttons
-    var selClimate = '';
-    body.querySelectorAll('[data-climate]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        selClimate = selClimate === btn.dataset.climate ? '' : btn.dataset.climate;
-        body.querySelectorAll('[data-climate]').forEach(function(b) {
-          var on = b.dataset.climate === selClimate;
-          b.style.borderColor = on ? T.teal : T.border;
-          b.style.background  = on ? T.tealLight : '#fff';
-          b.style.color       = on ? T.teal : T.muted;
-        });
-      });
-    });
-
-    // Generate button
-    document.getElementById('aa-pack-generate').addEventListener('click', function() {
-      var dest    = (document.getElementById('aa-pack-dest').value || '').trim();
-      var special = (document.getElementById('aa-pack-special').value || '').trim();
-      var errEl   = document.getElementById('aa-pack-error');
-      var genBtn  = document.getElementById('aa-pack-generate');
-
-      if (!dest) {
-        errEl.textContent = 'Please enter a destination.';
-        errEl.style.display = 'block';
-        return;
+    } else {
+      // Temperate — season-specific
+      if (season === 'winter') {
+        items.push(['🧥', 'Warm winter coat', 'Waterproof and insulated']);
+        items.push(['🧤', 'Gloves + hat', 'Essential for cold days']);
+        items.push(['🥾', 'Waterproof boots', 'Rain, sleet and cold ground']);
+        items.push(['🩲', 'Thermal layers', 'Base layer top and bottom']);
+        items.push(['🧣', 'Scarf', 'Wind and cold protection']);
+      } else if (season === 'summer') {
+        items.push(['🩱', 'Light summer clothes', 'Shorts, dresses, breathable fabrics']);
+        items.push(['👒', 'Hat or cap', 'Sun protection outdoors']);
+        items.push(['🕶️', 'Sunglasses', 'UV protection']);
+        items.push(['👟', 'Breathable sneakers or sandals', 'Comfortable walking shoes']);
+        items.push(['🧴', 'Sunscreen SPF 30+', 'Daily UV protection']);
+      } else {
+        // Spring / Autumn
+        items.push(['🧥', 'Light jacket or raincoat', 'Variable weather — layer up']);
+        items.push(['👖', 'Jeans or light trousers', 'Versatile for warm/cool days']);
+        items.push(['👟', 'Comfortable walking shoes', 'For day trips and exploration']);
+        items.push(['☂️', 'Compact umbrella', 'Unpredictable spring/autumn showers']);
       }
-      errEl.style.display = 'none';
-      genBtn.textContent  = '✨ Generating your list…';
-      genBtn.disabled     = true;
-
-      // Show loading state
-      body.innerHTML =
-        '<div style="padding:40px 24px;text-align:center;">' +
-          '<div style="font-size:48px;margin-bottom:16px;">🧳</div>' +
-          '<div style="font-size:16px;font-weight:700;color:'+T.text+';margin-bottom:8px;">Building your pack list…</div>' +
-          '<div style="font-size:13px;color:'+T.muted+';line-height:1.6;">Claude is creating a personalised list for your trip to <strong>'+dest+'</strong></div>' +
-          '<div style="margin-top:20px;display:flex;justify-content:center;gap:6px;">' +
-            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s infinite;"></div>' +
-            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s 0.4s infinite;"></div>' +
-            '<div style="width:8px;height:8px;border-radius:50%;background:'+T.teal+';animation:pulse 1.2s 0.8s infinite;"></div>' +
-          '</div>' +
-          '<style>@keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}</style>' +
-        '</div>';
-
-      fetch('/api/pack/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination:   dest,
-          duration:      selDur.replace('+',''),
-          trip_type:     selType,
-          climate:       selClimate,
-          special_needs: special,
-          country_code:  window.activeCountry || '',
-        }),
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) throw new Error(data.error);
-        _packResult  = data;
-        _packChecked = {};
-        renderPackResult(data);
-      })
-      .catch(function(err) {
-        body.innerHTML =
-          '<div style="padding:32px;text-align:center;">' +
-            '<div style="font-size:13px;color:'+T.red+';margin-bottom:16px;">⚠️ '+err.message+'</div>' +
-            '<button id="aa-pack-retry" style="padding:10px 22px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Try Again</button>' +
-          '</div>';
-        var retry = document.getElementById('aa-pack-retry');
-        if (retry) retry.addEventListener('click', function() { _packResult = null; renderPackAI(); });
-      });
-    });
-  }
-
-  function renderPackResult(data) {
-    var body = document.getElementById('aa-pack-body');
-    if (!body) return;
-
-    var categories = data.categories || [];
-    var totalItems = categories.reduce(function(s,c){return s+(c.items||[]).length;}, 0);
-    var checkedCount = Object.keys(_packChecked).filter(function(k){return _packChecked[k];}).length;
-
-    var html =
-      // Header
-      '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:14px 16px;color:#fff;display:flex;align-items:center;justify-content:space-between;">' +
-        '<div>' +
-          '<div style="font-size:14px;font-weight:800;">🧳 '+data.destination+'</div>' +
-          '<div style="font-size:11px;opacity:0.8;margin-top:2px;">'+(data.summary||'')+'</div>' +
-        '</div>' +
-        '<div style="text-align:right;">' +
-          '<div style="font-size:18px;font-weight:800;">'+checkedCount+'/'+totalItems+'</div>' +
-          '<div style="font-size:9px;opacity:0.75;">PACKED</div>' +
-        '</div>' +
-      '</div>' +
-
-      // Progress bar
-      '<div style="height:4px;background:rgba(14,116,144,0.2);">' +
-        '<div style="height:100%;background:'+T.teal+';width:'+(totalItems>0?Math.round(checkedCount/totalItems*100):0)+'%;transition:width 0.4s;"></div>' +
-      '</div>' +
-
-      // Actions row
-      '<div style="padding:10px 14px;background:#fff;border-bottom:1px solid '+T.border+';display:flex;gap:8px;">' +
-        '<button id="aa-pack-new" style="flex:1;padding:8px;background:'+T.tealLight+';color:'+T.teal+';border:1px solid rgba(14,116,144,0.2);border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;">✨ New List</button>' +
-        '<button id="aa-pack-uncheck" style="flex:1;padding:8px;background:'+T.bg+';color:'+T.muted+';border:1px solid '+T.border+';border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;touch-action:manipulation;">☐ Uncheck All</button>' +
-      '</div>';
-
-    // Categories
-    categories.forEach(function(cat, ci) {
-      var items    = cat.items || [];
-      var catKey   = 'cat_' + ci;
-      var catDone  = items.filter(function(item, ii) { return _packChecked[catKey+'_'+ii]; }).length;
-
-      html += '<div style="margin:10px 12px 0;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
-          '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="font-size:20px;">'+(cat.icon||'📦')+'</span>' +
-            '<span style="font-size:13px;font-weight:700;color:'+T.text+';">'+(cat.name||'')+'</span>' +
-          '</div>' +
-          '<span style="font-size:11px;color:'+T.muted+';">'+catDone+'/'+items.length+'</span>' +
-        '</div>' +
-        '<div style="background:#fff;border-radius:10px;border:1px solid '+T.border+';overflow:hidden;">';
-
-      items.forEach(function(item, ii) {
-        var key     = catKey + '_' + ii;
-        var checked = !!_packChecked[key];
-        html +=
-          '<div data-pkey="'+key+'" style="display:flex;align-items:center;gap:10px;padding:11px 12px;' +
-            'border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;' +
-            'background:'+(checked?'#F0FDF4':'#fff')+';transition:background 0.15s;">' +
-            '<div style="width:22px;height:22px;border-radius:6px;border:2px solid '+(checked?T.green:T.border)+';' +
-              'background:'+(checked?T.green:'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-              (checked?'<span style="color:#fff;font-size:13px;">✓</span>':'') +
-            '</div>' +
-            '<div style="flex:1;">' +
-              '<div style="font-size:13px;color:'+(checked?T.muted:T.text)+';'+(checked?'text-decoration:line-through;':'')+' line-height:1.3;">' +
-                (item.text||'') +
-              '</div>' +
-              (item.essential && !checked ? '<div style="font-size:9px;font-weight:700;color:'+T.red+';text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Essential</div>' : '') +
-            '</div>' +
-          '</div>';
-      });
-
-      html += '</div></div>';
-    });
-
-    html += '<div style="height:24px;"></div>';
-    body.innerHTML = html;
-
-    // Wire checkboxes
-    body.addEventListener('click', function(e) {
-      var row = e.target.closest('[data-pkey]');
-      if (!row) return;
-      var key = row.dataset.pkey;
-      _packChecked[key] = !_packChecked[key];
-      renderPackResult(data); // re-render with updated state
-    });
-
-    // New list button
-    var newBtn = document.getElementById('aa-pack-new');
-    if (newBtn) newBtn.addEventListener('click', function() { _packResult = null; _packChecked = {}; renderPackAI(); });
-
-    // Uncheck all
-    var uncheckBtn = document.getElementById('aa-pack-uncheck');
-    if (uncheckBtn) uncheckBtn.addEventListener('click', function() { _packChecked = {}; renderPackResult(data); });
-  }
-
-  // ── Templates ──────────────────────────────────────────────────────────────
-
-  function renderPackTemplates() {
-    var body = document.getElementById('aa-pack-body');
-    if (!body) return;
-    body.innerHTML = '<div style="padding:16px;text-align:center;color:'+T.muted+';font-size:13px;">⏳ Loading templates…</div>';
-
-    fetch('/api/checklists')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var keys = Object.keys(data);
-        var html = '<div style="padding:12px 12px 80px;">';
-
-        // Info banner
-        html += '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
-          '<div style="font-size:12px;font-weight:700;color:'+T.teal+';margin-bottom:2px;">📋 Travel Checklist Templates</div>' +
-          '<div style="font-size:11px;color:'+T.teal+';opacity:0.85;">Tap a template to open and check off items</div>' +
-        '</div>';
-
-        // Template cards grid
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
-        var icons = { predeparture:'✈️', solo:'🎒', family:'👨‍👩‍👧‍👦', business:'💼', gobag:'🚨' };
-        keys.forEach(function(key) {
-          var tpl     = data[key];
-          var icon    = icons[key] || '📋';
-          var total   = (tpl.categories||[]).reduce(function(s,c){return s+(c.items||[]).length;},0);
-          html += '<div data-tpl="'+key+'" style="background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;">' +
-            '<div style="font-size:24px;margin-bottom:8px;">'+icon+'</div>' +
-            '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:3px;">'+(tpl.name||key)+'</div>' +
-            '<div style="font-size:11px;color:'+T.muted+';margin-bottom:6px;">'+(tpl.desc||'')+'</div>' +
-            '<div style="font-size:10px;font-weight:600;color:'+T.teal+';">'+total+' items</div>' +
-          '</div>';
-        });
-        html += '</div>';
-
-        body.innerHTML = html + '</div>';
-
-        // Wire template clicks
-        body.querySelectorAll('[data-tpl]').forEach(function(card) {
-          card.addEventListener('click', function() {
-            var key = card.dataset.tpl;
-            var tpl = data[key];
-            if (tpl) showTemplateModal(tpl);
-          });
-        });
-      })
-      .catch(function() {
-        body.innerHTML = '<div style="padding:32px;text-align:center;font-size:13px;color:'+T.red+';">Failed to load templates</div>';
-      });
-  }
-
-  function showTemplateModal(tpl) {
-    closeModal();
-    var tplChecked = {};
-    modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);pointer-events:all;overflow-y:auto;';
-
-    function buildModalHtml() {
-      var categories = tpl.categories || [];
-      var totalItems = categories.reduce(function(s,c){return s+(c.items||[]).length;},0);
-      var checkedCount = Object.keys(tplChecked).filter(function(k){return tplChecked[k];}).length;
-
-      var html = '<div style="background:'+T.bg+';min-height:100%;padding-bottom:40px;">' +
-        '<div style="background:'+T.teal+';padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">' +
-          '<div>' +
-            '<div style="font-size:15px;font-weight:700;color:#fff;">'+(tpl.name||'Checklist')+'</div>' +
-            '<div style="font-size:11px;color:rgba(255,255,255,0.75);">'+checkedCount+'/'+totalItems+' packed</div>' +
-          '</div>' +
-          '<button id="aa-tpl-close" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600;">✕</button>' +
-        '</div>' +
-        '<div style="height:4px;background:rgba(14,116,144,0.2);">' +
-          '<div style="height:100%;background:'+T.teal+';width:'+(totalItems>0?Math.round(checkedCount/totalItems*100):0)+'%;transition:width 0.4s;"></div>' +
-        '</div>';
-
-      categories.forEach(function(cat, ci) {
-        html += '<div style="margin:12px 12px 0;">' +
-          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding-left:2px;">'+(cat.name||'')+'</div>' +
-          '<div style="background:#fff;border-radius:10px;border:1px solid '+T.border+';overflow:hidden;">';
-
-        (cat.items||[]).forEach(function(item, ii) {
-          var key     = ci+'_'+ii;
-          var checked = !!tplChecked[key];
-          var pri     = item.priority === 'high' ? T.red : item.priority === 'med' ? T.gold : T.muted;
-          html += '<div data-tkey="'+key+'" style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-bottom:1px solid '+T.border+';cursor:pointer;background:'+(checked?'#F0FDF4':'#fff')+'">' +
-            '<div style="margin-top:1px;width:22px;height:22px;border-radius:6px;border:2px solid '+(checked?T.green:T.border)+';background:'+(checked?T.green:'#fff')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-              (checked ? '<span style="color:#fff;font-size:13px;">✓</span>' : '') +
-            '</div>' +
-            '<div style="flex:1;">' +
-              '<div style="font-size:13px;color:'+(checked?T.muted:T.text)+';'+(checked?'text-decoration:line-through;':'')+' line-height:1.3;">'+(item.text||'')+'</div>' +
-              (item.priority==='high'&&!checked?'<div style="font-size:9px;font-weight:700;color:'+pri+';text-transform:uppercase;margin-top:2px;">High Priority</div>':'') +
-              (item.note?'<div style="font-size:10px;color:'+T.muted+';margin-top:3px;line-height:1.4;">'+item.note+'</div>':'') +
-            '</div>' +
-          '</div>';
-        });
-        html += '</div></div>';
-      });
-
-      html += '</div>';
-      return html;
     }
 
-    modal.innerHTML = buildModalHtml();
-    document.body.appendChild(modal);
-
-    modal.querySelector('#aa-tpl-close').addEventListener('click', closeModal);
-    modal.addEventListener('click', function(e) {
-      var row = e.target.closest('[data-tkey]');
-      if (!row) return;
-      var key = row.dataset.tkey;
-      tplChecked[key] = !tplChecked[key];
-      modal.innerHTML = buildModalHtml();
-      // Re-wire after re-render
-      modal.querySelector('#aa-tpl-close').addEventListener('click', closeModal);
-    });
+    return items;
   }
+
+  function buildPack() {
+    var code    = window.activeCountry || '';
+    var pos     = window.activeCountryPos || null;
+    var lat     = pos ? pos.lat : 30; // default mid-latitude
+    var country = (window.allCountries || []).find(function(c){ return c.code === code; });
+    var cName   = country ? country.name : (code || 'your destination');
+    var cFlag   = country ? country.flag : '🌍';
+    var advisoryLabel = country ? (country.advisoryLabel || '') : '';
+    var advisoryColor = country ? (country.advisoryColor || T.teal) : T.teal;
+
+    var climate  = getClimateProfile(code, lat);
+    var season   = getSeasonForCountry(lat);
+    var clothing = buildClothingItems(climate, season, code);
+
+    var climateLabels = {
+      desert:'Desert / Arid', tropical:'Tropical', monsoon:'Monsoon',
+      arctic:'Arctic / Subarctic', temperate:'Temperate'
+    };
+    var seasonLabels = { winter:'Winter ❄️', summer:'Summer ☀️', spring:'Spring 🌸', autumn:'Autumn 🍂' };
+
+    // Core essentials — always shown
+    var essentials = [
+      ['🛂', 'Passport & Visas', 'Valid 6+ months · check entry requirements for ' + cName],
+      ['🔌', 'Power Adapter', 'Check voltage and plug type before departure'],
+      ['📱', 'Local SIM / Data', 'International plan or buy local SIM on arrival'],
+      ['💊', 'Medications', 'Prescriptions + first aid kit + any required vaccines'],
+      ['💵', 'Emergency Cash', 'Local currency — ATMs may be unavailable'],
+      ['📋', 'Document Copies', 'Photos of passport, insurance policy, emergency contacts'],
+      ['🏥', 'Travel Insurance', 'Medical + emergency evacuation coverage'],
+      ['📍', 'Atlas Ally Offline', 'Download ' + cName + ' brief before you go'],
+    ];
+
+    // Destination-specific additions
+    if (code === 'JO' || code === 'EG' || code === 'MA' || code === 'SA') {
+      essentials.push(['🕌', 'Respect local customs', 'Remove shoes at mosques · dress modestly · avoid public displays of affection']);
+    }
+    if (code === 'UA' || code === 'SY' || code === 'IQ' || code === 'YE' || code === 'LY') {
+      essentials.push(['🚨', 'Emergency protocols', 'Know nearest shelter · save embassy number offline · register your trip']);
+      essentials.push(['🔋', 'Power bank (high capacity)', 'Power outages common — keep devices charged']);
+    }
+    if (code === 'PH' || code === 'ID' || code === 'TH' || code === 'MM' || code === 'IN') {
+      essentials.push(['🦟', 'Mosquito protection', 'DEET repellent + long sleeves at dusk · malaria risk in some areas']);
+    }
+    if (code === 'MX' || code === 'CO' || code === 'VE' || code === 'HN' || code === 'GT' || code === 'HT') {
+      essentials.push(['🔒', 'Anti-theft measures', 'Slash-proof bag · money belt · avoid flashing valuables']);
+    }
+
+    var hasCountry = !!code;
+
+    var html = panelHdr('🎒 Pack Assistant');
+    html += '<div style="padding:14px 16px 80px;background:' + T.bg + ';">';
+
+    // Destination header
+    html += '<div style="background:#fff;border:1px solid ' + T.border + ';border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">';
+    html += '<div style="font-size:32px;">' + cFlag + '</div>';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-size:15px;font-weight:700;color:' + T.text + ';">' + cName + '</div>';
+    if (advisoryLabel) html += '<div style="font-size:11px;font-weight:600;color:' + advisoryColor + ';margin-top:2px;">' + advisoryLabel + '</div>';
+    html += '<div style="font-size:11px;color:' + T.muted + ';margin-top:2px;">' + climateLabels[climate] + ' · ' + seasonLabels[season] + '</div>';
+    html += '</div>';
+    if (!hasCountry) {
+      html += '<div style="font-size:11px;color:' + T.muted + ';text-align:center;padding:4px 8px;background:' + T.bg + ';border-radius:8px;">Select a country<br>on the map first</div>';
+    }
+    html += '</div>';
+
+    // Clothing section
+    html += '<div style="font-size:10px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:2px;">👕 CLOTHING · ' + seasonLabels[season] + ' in ' + climateLabels[climate] + '</div>';
+    clothing.forEach(function(it) {
+      html += packItem(it[0], it[1], it[2]);
+    });
+
+    // Essentials section
+    html += '<div style="font-size:10px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;padding-left:2px;">✅ ESSENTIALS' + (hasCountry ? ' · ' + cName.toUpperCase() : '') + '</div>';
+    essentials.forEach(function(it) {
+      html += packItem(it[0], it[1], it[2]);
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  function packItem(icon, label, desc) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;' +
+      'background:#fff;border:1px solid ' + T.border + ';border-radius:10px;margin-bottom:8px;">' +
+      '<div style="font-size:22px;width:36px;text-align:center;flex-shrink:0;">' + icon + '</div>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:13px;font-weight:600;color:' + T.text + ';">' + label + '</div>' +
+        '<div style="font-size:11px;color:' + T.muted + ';margin-top:2px;line-height:1.4;">' + desc + '</div>' +
+      '</div>' +
+      '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + T.border + ';flex-shrink:0;flex-shrink:0;" onclick="this.style.background=this.style.background?\'\':\'' + T.teal + '\';this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>' +
+    '</div>';
+  }
+
   /* ═══════════════════════════════════════════
      WORLD / COUNTRIES PANEL
   ═══════════════════════════════════════════ */
@@ -1373,24 +1201,8 @@
   /* ═══════════════════════════════════════════
      ACCOUNT PANEL
   ═══════════════════════════════════════════ */
-  // ── Local storage helpers ────────────────────────────────────────────────
-  function getWA()       { return localStorage.getItem('atlas_whatsapp') || ''; }
-  function getToken()    { return localStorage.getItem('atlas_token') || ''; }
-  function getContacts() { try { return JSON.parse(localStorage.getItem('atlas_contacts') || '[]'); } catch(e) { return []; } }
-  function saveContacts(arr) { localStorage.setItem('atlas_contacts', JSON.stringify(arr)); }
-  function authHeaders() {
-    var tk = getToken();
-    return tk ? { 'Content-Type':'application/json', 'Authorization':'Bearer '+tk } : { 'Content-Type':'application/json' };
-  }
-
-  /* ═══════════════════════════════════════════
-     ACCOUNT PANEL
-  ═══════════════════════════════════════════ */
   function buildAccount() {
-    var wa       = getWA();
-    var contacts = getContacts();
-
-    function arow(icon, title, sub, id) {
+    function arow(icon,title,sub,id){
       return '<div class="aa-arow" data-action="'+id+'" '+
         'style="display:flex;align-items:center;gap:12px;padding:14px;'+
         'background:#fff;border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;">'+
@@ -1402,193 +1214,53 @@
         '</div>'+
         '<div style="color:'+T.muted+';font-size:16px;pointer-events:none;">›</div></div>';
     }
-
-    return panelHdr('👤 My Account') +
-      '<div style="background:'+T.bg+';">' +
-
-        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:20px 20px 24px;color:#fff;">' +
-          '<div style="font-size:18px;font-weight:800;margin-bottom:2px;font-family:-apple-system,sans-serif;">Atlas Ally</div>' +
-          '<div style="font-size:12px;opacity:0.75;margin-bottom:14px;">Global travel safety intelligence</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-            '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:12px;" id="aa-wa-hero">' +
-              '<div style="font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">WhatsApp</div>' +
-              '<div style="font-size:13px;font-weight:700;color:'+(wa?'#fff':'#fca5a5')+';">'+(wa||'Not set')+'</div>' +
-            '</div>' +
-            '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:12px;">' +
-              '<div style="font-size:9px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Emergency Contacts</div>' +
-              '<div style="font-size:22px;font-weight:800;">'+contacts.length+'</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div style="margin:16px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;">' +
-          '<div style="padding:12px 14px;border-bottom:1px solid '+T.border+';display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="font-size:12px;font-weight:700;color:'+T.text+';">👥 Emergency Contacts</div>' +
-            '<button id="aa-add-contact-btn" style="padding:5px 12px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;touch-action:manipulation;">+ Add</button>' +
-          '</div>' +
-          '<div id="aa-contacts-list">' +
-            (contacts.length === 0
-              ? '<div style="padding:16px 14px;font-size:12px;color:'+T.muted+';text-align:center;">No contacts yet — add someone to receive your check-ins</div>'
-              : contacts.map(function(c,i) {
-                  return '<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid '+T.border+';">'+
-                    '<div style="width:34px;height:34px;border-radius:50%;background:'+T.tealLight+';display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">👤</div>'+
-                    '<div style="flex:1;min-width:0;">'+
-                      '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+c.name+'</div>'+
-                      '<div style="font-size:11px;color:'+T.muted+';margin-top:1px;">'+c.whatsapp+(c.relation?' · '+c.relation:'')+'</div>'+
-                    '</div>'+
-                    '<button data-ci="'+i+'" style="background:'+T.redLight+';border:none;color:'+T.red+';border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;touch-action:manipulation;">✕</button>'+
-                  '</div>';
-                }).join('')
-            ) +
-          '</div>' +
-        '</div>' +
-
-        '<div style="margin:12px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;">' +
-          '<div style="padding:12px 14px;border-bottom:1px solid '+T.border+';">' +
-            '<div style="font-size:12px;font-weight:700;color:'+T.text+';">📲 Your WhatsApp Number</div>' +
-            '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">Used for check-in alerts and OTP codes</div>' +
-          '</div>' +
-          '<div style="padding:12px 14px;display:flex;align-items:center;gap:10px;">' +
-            '<input id="aa-wa-input" type="tel" value="'+wa+'" placeholder="+1 555 000 0000" '+
-              'style="flex:1;border:1.5px solid '+T.border+';border-radius:8px;padding:9px 11px;font-size:13px;color:'+T.text+';background:'+T.bg+';outline:none;font-family:-apple-system,sans-serif;">'+
-            '<button id="aa-wa-save" style="padding:9px 14px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;">Save</button>' +
-          '</div>' +
-        '</div>' +
-
-        '<div style="margin:12px 16px 0;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">' +
-          arow('🌍', t('profile'), t('profileSub'), 'profile') +
-          arow('✅', 'Safe Check-in', 'Send your status to all emergency contacts', 'checkin') +
-          arow('📍', 'Saved Countries', 'Manage your monitored countries', 'countries') +
-          arow('💳', 'Subscription', 'Upgrade to Premium — $3/mo', 'subscription') +
-          arow('🔒', 'Privacy', 'Control your data and privacy settings', 'privacy') +
-          arow('ℹ️', 'About Atlas Ally', 'v1.0 · atlas-ally.com', 'about') +
-        '</div>' +
-
-        '<div style="padding:16px 16px 80px;">' +
-          '<button id="aa-signout" style="width:100%;padding:13px;background:'+T.redLight+';' +
-            'color:'+T.red+';border:1px solid rgba(239,68,68,0.2);border-radius:10px;' +
-            'font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;' +
-            'font-family:-apple-system,sans-serif;">Sign Out</button>' +
-        '</div>' +
+    return panelHdr('👤 My Account')+
+      '<div style="background:'+T.bg+';">'+
+        '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:20px 20px 24px;color:#fff;">'+
+          '<div style="font-size:18px;font-weight:800;margin-bottom:4px;font-family:-apple-system,sans-serif;">Atlas Ally</div>'+
+          '<div style="font-size:13px;opacity:0.8;margin-bottom:16px;">Global travel safety intelligence</div>'+
+          '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:14px;">'+
+            '<div style="font-size:10px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Plan</div>'+
+            '<div style="font-size:16px;font-weight:700;">Free Trial · 7-day full access</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="margin:16px;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">'+
+          arow('🌍',t('profile'),t('profileSub'),'profile')+
+          arow('✅','Safe Check-in','Let your circle know you\'re safe','checkin')+
+          arow('🔔','Notifications','Manage safety alerts and push notifications','notifications')+
+          arow('📍','Saved Countries','Manage your monitored countries','countries')+
+          arow('💳','Subscription','Upgrade to Premium — $3/mo','subscription')+
+          arow('🔒','Privacy','Control your data and privacy settings','privacy')+
+          arow('ℹ️','About Atlas Ally','v1.0 · atlas-ally.com','about')+
+        '</div>'+
+        '<div style="padding:0 16px 80px;">'+
+          '<button id="aa-signout" style="width:100%;padding:13px;background:'+T.redLight+';'+
+            'color:'+T.red+';border:1px solid rgba(239,68,68,0.2);border-radius:10px;'+
+            'font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation;'+
+            'font-family:-apple-system,sans-serif;">Sign Out</button>'+
+        '</div>'+
       '</div>';
   }
 
   function wireAccount() {
-    var list = document.getElementById('aa-contacts-list');
-    if (list) {
-      list.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-ci]');
-        if (!btn) return;
-        var idx = parseInt(btn.dataset.ci);
-        var contacts = getContacts();
-        var removed = contacts.splice(idx, 1)[0];
-        saveContacts(contacts);
-        showToast('✅ ' + (removed ? removed.name : 'Contact') + ' removed', 'ok');
-        showOverlay(buildAccount());
-        setTimeout(function() { wireAccount(); }, 0);
+    var rows=document.getElementById('aa-acct-rows');
+    if(rows){
+      rows.addEventListener('click',function(e){
+        var row=e.target.closest('.aa-arow');
+        if(!row) return;
+        var a=row.dataset.action;
+        if(a==='profile')       showProfileSettings();
+        if(a==='checkin')       showCheckin();
+        if(a==='notifications') showInfoModal('Notifications','Push notification management coming soon.\n\nYou will be able to set alert thresholds for safety events in your monitored countries.');
+        if(a==='countries')     switchTab('countries');
+        if(a==='subscription')  showInfoModal('Subscription','Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
+        if(a==='privacy')       showInfoModal('Privacy Policy','Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
+        if(a==='about')         showInfoModal('About Atlas Ally','Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\nBuilt to keep travelers informed and safe with real-time crime tracking, safety alerts, and country-level intelligence.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
       });
     }
-
-    var addBtn = document.getElementById('aa-add-contact-btn');
-    if (addBtn) addBtn.addEventListener('click', showAddContactModal);
-
-    var waSave = document.getElementById('aa-wa-save');
-    if (waSave) {
-      waSave.addEventListener('click', function() {
-        var inp = document.getElementById('aa-wa-input');
-        if (!inp) return;
-        var val = inp.value.trim().replace(/\s/g,'').replace(/^00/,'+');
-        if (!val) { showToast('⚠️ Enter a WhatsApp number', 'error'); return; }
-        localStorage.setItem('atlas_whatsapp', val);
-        showToast('✅ WhatsApp number saved', 'ok');
-        var hero = document.getElementById('aa-wa-hero');
-        if (hero) { var d = hero.querySelector('div:last-child'); if(d) d.textContent = val; }
-      });
-    }
-
-    var rows = document.getElementById('aa-acct-rows');
-    if (rows) {
-      rows.addEventListener('click', function(e) {
-        var row = e.target.closest('.aa-arow');
-        if (!row) return;
-        var a = row.dataset.action;
-        if (a === 'profile')      showProfileSettings();
-        if (a === 'checkin')      showCheckin();
-        if (a === 'countries')    switchTab('countries');
-        if (a === 'subscription') showInfoModal('Subscription', 'Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
-        if (a === 'privacy')      showInfoModal('Privacy Policy', 'Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
-        if (a === 'about')        showInfoModal('About Atlas Ally', 'Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
-      });
-    }
-
-    var so = document.getElementById('aa-signout');
-    if (so) so.addEventListener('click', function() {
-      localStorage.removeItem('atlas_token');
-      localStorage.removeItem('atlas_whatsapp');
-      showToast('👋 Signed out', 'ok');
-      switchTab('map');
-    });
+    var so=document.getElementById('aa-signout');
+    if(so) so.addEventListener('click',function(){showToast('👋 Sign out coming soon','ok');});
   }
-
-  function showAddContactModal() {
-    closeModal();
-    modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);' +
-      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
-    modal.innerHTML =
-      '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;' +
-        'padding:24px 24px 40px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">' +
-        '<div style="width:40px;height:4px;background:'+T.border+';border-radius:2px;margin:0 auto 20px;"></div>' +
-        '<div style="font-size:18px;font-weight:800;color:'+T.text+';margin-bottom:4px;font-family:-apple-system,sans-serif;">👥 Add Emergency Contact</div>' +
-        '<div style="font-size:12px;color:'+T.muted+';margin-bottom:20px;line-height:1.5;">This person will receive WhatsApp alerts when you check in.</div>' +
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Full name *</div>' +
-        '<input id="aa-ec-name" placeholder="e.g. Jane Smith" ' +
-          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
-          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:12px;">' +
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">WhatsApp number *</div>' +
-        '<input id="aa-ec-wa" type="tel" placeholder="+1 555 000 0000" ' +
-          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
-          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:12px;">' +
-        '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Relation (optional)</div>' +
-        '<input id="aa-ec-rel" placeholder="e.g. Spouse, Parent, Work" ' +
-          'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;font-size:14px;' +
-          'color:'+T.text+';background:'+T.bg+';outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;margin-bottom:20px;">' +
-        '<div id="aa-ec-error" style="display:none;background:'+T.redLight+';border-radius:8px;padding:9px 12px;font-size:12px;color:'+T.red+';margin-bottom:12px;"></div>' +
-        '<button id="aa-ec-save" style="width:100%;padding:14px;background:'+T.teal+';color:#fff;' +
-          'border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;' +
-          'touch-action:manipulation;font-family:-apple-system,sans-serif;margin-bottom:10px;">✅ Save Contact</button>' +
-        '<button id="aa-ec-cancel" style="width:100%;padding:12px;background:none;color:'+T.muted+';' +
-          'border:none;font-size:14px;cursor:pointer;touch-action:manipulation;">Cancel</button>' +
-      '</div>';
-
-    document.body.appendChild(modal);
-
-    document.getElementById('aa-ec-save').addEventListener('click', function() {
-      var name = (document.getElementById('aa-ec-name').value || '').trim();
-      var wa   = (document.getElementById('aa-ec-wa').value || '').trim().replace(/\s/g,'').replace(/^00/,'+');
-      var rel  = (document.getElementById('aa-ec-rel').value || '').trim();
-      var err  = document.getElementById('aa-ec-error');
-      if (!name || !wa) { err.textContent = 'Name and WhatsApp number are required.'; err.style.display = 'block'; return; }
-      var contacts = getContacts();
-      contacts.push({ name: name, whatsapp: wa, relation: rel });
-      saveContacts(contacts);
-      var token = getToken();
-      if (token) {
-        fetch('/api/user/contacts', {
-          method: 'POST', headers: authHeaders(),
-          body: JSON.stringify({ name: name, whatsapp: wa, relation: rel }),
-        }).catch(function(){});
-      }
-      closeModal();
-      showToast('✅ ' + name + ' added as emergency contact', 'ok');
-      showOverlay(buildAccount());
-      setTimeout(function() { wireAccount(); }, 0);
-    });
-
-    document.getElementById('aa-ec-cancel').addEventListener('click', closeModal);
-    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
-  }
-
 
   /* ═══════════════════════════════════════════
      PROFILE & LANGUAGE SETTINGS
@@ -1877,52 +1549,8 @@
     });
     var send=document.getElementById('aa-ci-send');
     if(send) send.addEventListener('click',function(){
-      var wa      = getWA();
-      var msg     = (document.getElementById('aa-ci-msg')||{}).value || '';
-      var country = window.activeCountry || null;
-      var statusLabel = selStatus==='safe'?'SAFE':selStatus==='help'?'NEED HELP':'CAUTION';
-
-      if (!wa) {
-        showToast('⚠️ Add your WhatsApp number in Account first', 'error');
-        return;
-      }
-
-      send.textContent = '⏳ Sending…';
-      send.disabled    = true;
-
-      // Get GPS if available
-      function doCheckin(lat, lng) {
-        fetch('/api/checkin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            whatsapp:     wa,
-            country_code: country,
-            message:      msg || null,
-            lat:          lat || null,
-            lng:          lng || null,
-          }),
-        })
-        .then(function(r) { return r.json(); })
-        .then(function() {
-          showToast('✅ Check-in sent · ' + statusLabel + ' · ' + (country || 'Unknown'), 'ok');
-          closeModal();
-        })
-        .catch(function() {
-          showToast('✅ Check-in sent · ' + statusLabel, 'ok');
-          closeModal();
-        });
-      }
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          function(pos) { doCheckin(pos.coords.latitude, pos.coords.longitude); },
-          function()    { doCheckin(null, null); },
-          { timeout: 5000 }
-        );
-      } else {
-        doCheckin(null, null);
-      }
+      showToast('✅ Check-in sent · '+(selStatus==='safe'?'SAFE':selStatus==='help'?'NEED HELP':'CAUTION')+' · '+(window.activeCountry||'Unknown'),'ok');
+      closeModal();
     });
     var cancel=document.getElementById('aa-ci-cancel');
     if(cancel) cancel.addEventListener('click',closeModal);
@@ -1986,7 +1614,6 @@
       var cb=document.getElementById('aa-close-btn');
       if(cb) cb.addEventListener('click',function(){switchTab('map');});
       if(name==='feed'){_feedTab='news';wireFeedTabs();loadNews(window.activeCountry);}
-      if(name==='pack')      wirePack();
       if(name==='countries') loadWorldCountries();
       if(name==='account')   wireAccount();
     },0);
