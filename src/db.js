@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+// v2026.04.15 — clean slate
 const path = require('path');
 const fs = require('fs');
 

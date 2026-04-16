@@ -1,4 +1,5 @@
 // Atlas Ally — Static City Geocoder
+// v2026.04.15 — clean slate
 // Extracts location names from article text and returns coordinates.
 // No paid API needed — uses a static city → lat/lng lookup per country.
 

@@ -1,4 +1,5 @@
 // Atlas Ally — Country Intelligence Data
+// v2026.04.15 — clean slate
 // Each country has: advisory level, emergency numbers, news RSS feeds,
 // State Dept URL, border crossings, health notices, currency, capital
 

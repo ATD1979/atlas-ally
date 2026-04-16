@@ -1,4 +1,5 @@
 // Atlas Ally — Auth middleware & token helpers
+// v2026.04.15 — clean slate
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const db = require('./db');

@@ -1,4 +1,5 @@
 // Atlas Ally — Auth routes (/api/auth/*)
+// v2026.04.15 — clean slate
 const router  = require('express').Router();
 const crypto  = require('crypto');
 const db      = require('../db');
@@ -22,7 +23,6 @@ function checkOTPRateLimit(whatsapp) {
   return true;
 }
 
-// Strip sensitive / internal fields before sending user to client
 function sanitizeUser(u) {
   const safe = { ...u };
   delete safe.stripe_id;
@@ -30,7 +30,6 @@ function sanitizeUser(u) {
   return safe;
 }
 
-// Returns trial status fields to attach to any auth response
 function trialStatus(user) {
   if (user.plan === 'premium') return { trial_active: false, trial_expired: false, on_premium: true };
   const daysLeft = db.getTrialDaysLeft(user);
@@ -42,7 +41,6 @@ function trialStatus(user) {
   };
 }
 
-// ─── Send OTP (shared — works for user login AND admin login) ─────────────────
 router.post('/send-otp', async (req, res) => {
   const { whatsapp, purpose = 'login' } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'WhatsApp number required' });
@@ -53,7 +51,6 @@ router.post('/send-otp', async (req, res) => {
 
   const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
 
-  // For admin-login, verify the number belongs to a real admin before sending
   if (purpose === 'admin-login') {
     const user = db.getUser(clean);
     if (!user || user.role !== 'admin')
@@ -78,8 +75,6 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
-// ─── Admin Login ──────────────────────────────────────────────────────────────
-// Separate endpoint — verifies OTP AND enforces role=admin
 router.post('/admin-login', (req, res) => {
   const { whatsapp, code } = req.body;
   if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
@@ -100,10 +95,6 @@ router.post('/admin-login', (req, res) => {
   res.json({ ok: true, token: createToken(user), user: sanitizeUser(db.getUser(clean)) });
 });
 
-// ─── User: Send OTP for login ─────────────────────────────────────────────────
-// (Uses /send-otp above with purpose='login'. This endpoint just verifies.)
-
-// ─── Verify OTP → JWT (regular users) ────────────────────────────────────────
 router.post('/verify-otp', (req, res) => {
   const { whatsapp, code, purpose = 'login' } = req.body;
   if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
@@ -119,27 +110,16 @@ router.post('/verify-otp', (req, res) => {
 
   db.markOTPUsed.run(otp.id);
 
-  // New user — tell client to show signup form
   let user = db.getUser(clean);
   if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
 
-  // Returning user — log them in
   db.updateUserVerified(clean);
   db.updateLastLogin(user.id);
   user = db.getUser(clean);
 
-  const status = trialStatus(user);
-
-  // If trial has expired, log them in but flag it so the app shows the paywall
-  res.json({
-    ok: true,
-    token:   createToken(user),
-    user:    sanitizeUser(user),
-    ...status,
-  });
+  res.json({ ok: true, token: createToken(user), user: sanitizeUser(user), ...trialStatus(user) });
 });
 
-// ─── Signup (new users) ───────────────────────────────────────────────────────
 router.post('/signup', (req, res) => {
   const { whatsapp, name, email, dob, state_origin, country_origin, trial_code } = req.body;
 
@@ -151,13 +131,11 @@ router.post('/signup', (req, res) => {
 
   const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
 
-  // Require a verified signup OTP
   const otp = db.getOTP.get(clean);
   if (!otp || otp.purpose !== 'signup')
     return res.status(401).json({ error: 'Please verify your WhatsApp number before signing up' });
   db.markOTPUsed.run(otp.id);
 
-  // Existing user — update profile and log them in (graceful re-signup)
   const existing = db.getUser(clean);
   if (existing) {
     db.db.prepare(`
@@ -169,20 +147,14 @@ router.post('/signup', (req, res) => {
         country_origin = COALESCE(NULLIF(@country_origin,''), country_origin),
         verified = 1, last_login = datetime('now')
       WHERE whatsapp = @whatsapp
-    `).run({
-      name: name || null, email: email || null, dob: dob || null,
-      state_origin: state_origin || null, country_origin: country_origin || null,
-      whatsapp: clean
-    });
+    `).run({ name: name || null, email: email || null, dob: dob || null,
+             state_origin: state_origin || null, country_origin: country_origin || null,
+             whatsapp: clean });
     const updated = db.getUser(clean);
-    return res.json({
-      ok: true, token: createToken(updated),
-      user: sanitizeUser(updated), was_existing: true,
-      ...trialStatus(updated),
-    });
+    return res.json({ ok: true, token: createToken(updated), user: sanitizeUser(updated),
+                      was_existing: true, ...trialStatus(updated) });
   }
 
-  // New user — validate invite code if provided
   let distributor_id = null;
   let trialDays      = 7;
   if (trial_code) {
@@ -195,28 +167,21 @@ router.post('/signup', (req, res) => {
   }
 
   try {
-    db.createUser({
-      whatsapp: clean, name, email: email || null, dob,
-      state_origin: state_origin || null, country_origin: country_origin || null,
-      trial_code: trial_code || null, distributor_id,
-    });
+    db.createUser({ whatsapp: clean, name, email: email || null, dob,
+                    state_origin: state_origin || null, country_origin: country_origin || null,
+                    trial_code: trial_code || null, distributor_id });
 
     if (trialDays !== 7)
       db.db.prepare(`UPDATE users SET trial_end = datetime('now', '+${trialDays} days') WHERE whatsapp = ?`).run(clean);
 
     const user = db.getUser(clean);
-    res.json({
-      ok: true, token: createToken(user),
-      user: sanitizeUser(user),
-      ...trialStatus(user),
-    });
+    res.json({ ok: true, token: createToken(user), user: sanitizeUser(user), ...trialStatus(user) });
   } catch (e) {
     req.logErr('signup', e);
     res.status(500).json({ error: 'Signup failed. Please try again.' });
   }
 });
 
-// ─── Redeem a free token (sent by admin) ─────────────────────────────────────
 router.post('/redeem-token', requireAuth, (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token required' });
@@ -224,11 +189,8 @@ router.post('/redeem-token', requireAuth, (req, res) => {
   const row = db.db.prepare(`SELECT * FROM free_tokens WHERE token = ? AND used = 0`).get(token);
   if (!row) return res.status(400).json({ error: 'Invalid or already used token' });
 
-  // Extend trial_end by token's days from today (or from current trial_end if still active)
-  db.db.prepare(`
-    UPDATE free_tokens SET used = 1, used_by = ?, used_at = datetime('now') WHERE token = ?
-  `).run(req.user.whatsapp, token);
-
+  db.db.prepare(`UPDATE free_tokens SET used = 1, used_by = ?, used_at = datetime('now') WHERE token = ?`)
+    .run(req.user.whatsapp, token);
   db.db.prepare(`
     UPDATE users
     SET trial_end = datetime(
@@ -243,7 +205,6 @@ router.post('/redeem-token', requireAuth, (req, res) => {
   res.json({ ok: true, message: `${row.days} free days added to your account`, ...trialStatus(user) });
 });
 
-// ─── Admin: Send a free token to a user ──────────────────────────────────────
 router.post('/send-free-token', requireAdmin, async (req, res) => {
   const { whatsapp, days = 30 } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'WhatsApp number required' });
@@ -253,11 +214,8 @@ router.post('/send-free-token', requireAdmin, async (req, res) => {
   if (!recipient) return res.status(404).json({ error: 'No user found with that WhatsApp number' });
 
   const token = crypto.randomBytes(12).toString('hex').toUpperCase();
-
-  db.db.prepare(`
-    INSERT INTO free_tokens (token, created_by, whatsapp, days)
-    VALUES (?, ?, ?, ?)
-  `).run(token, req.user.id, clean, days);
+  db.db.prepare(`INSERT INTO free_tokens (token, created_by, whatsapp, days) VALUES (?, ?, ?, ?)`)
+    .run(token, req.user.id, clean, days);
 
   try {
     await sendCheckinAlert(clean,
@@ -265,28 +223,20 @@ router.post('/send-free-token', requireAdmin, async (req, res) => {
     );
     res.json({ ok: true, token, days, sent_to: clean });
   } catch (e) {
-    // Token is saved even if WhatsApp fails — admin can copy it manually
     req.logErr('send_free_token', e);
-    res.json({ ok: true, token, days, sent_to: clean, whatsapp_warning: 'Token created but WhatsApp delivery failed — share the token manually.' });
+    res.json({ ok: true, token, days, sent_to: clean,
+               whatsapp_warning: 'Token created but WhatsApp delivery failed — share the token manually.' });
   }
 });
 
-// ─── Get current user profile ─────────────────────────────────────────────────
 router.get('/me', requireAuth, (req, res) => {
   const user = db.getUserById(req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-
   const countries = db.getUserCountries.all(user.id).map(c => c.country_code);
   const contacts  = db.getEmergencyContacts.all(user.id);
-  res.json({
-    user: sanitizeUser(user),
-    countries,
-    contacts,
-    ...trialStatus(user),
-  });
+  res.json({ user: sanitizeUser(user), countries, contacts, ...trialStatus(user) });
 });
 
-// ─── Update profile ───────────────────────────────────────────────────────────
 router.put('/profile', requireAuth, (req, res) => {
   const { name, email, state_origin, country_origin } = req.body;
   db.db.prepare(`

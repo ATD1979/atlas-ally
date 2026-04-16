@@ -1,4 +1,5 @@
 // Atlas Ally — Travel Checklist Templates
+// v2026.04.15 — clean slate
 // Each template has categories with items
 // Items have: id, text, priority (high/med/low), optional note
 

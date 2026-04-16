@@ -1,4 +1,5 @@
-// Atlas Ally — Security Event Ingestion
+// Atlas Ally — Event ingestion v2 — ACLED removed, UCDP primary
+// v2026.04.15 — clean slate
 // Sources:
 //   1. US Embassy RSS (shelter-in-place, missile alerts)
 //   2. UK FCDO travel alerts

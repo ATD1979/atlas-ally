@@ -1,4 +1,5 @@
 // Atlas Ally — WhatsApp alert dispatch via Twilio
+// v2026.04.15 — clean slate
 require('dotenv').config();
 const twilio = require('twilio');
 const { getSubscribersForCountry, isTrialActive, logNotify } = require('./db');

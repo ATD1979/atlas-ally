@@ -1,4 +1,5 @@
-// Atlas Ally — Data routes
+// Atlas Ally — Data routes v3 — parallel security news fetch + stats7d
+// v2026.04.15 — clean slate
 // Rule: specific routes ALWAYS before parameterized (/crime/:code)
 const router  = require('express').Router();
 const fetch   = require('node-fetch');

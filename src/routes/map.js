@@ -1,4 +1,5 @@
-// Atlas Ally — Map, events & country routes
+// Atlas Ally — Map, events & country routes  // Atlas Ally clean slate — built 2026-04-16 03:22
+// v2026.04.15 — clean slate
 const router  = require('express').Router();
 const fetch   = require('node-fetch');
 const db      = require('../db');

@@ -1,4 +1,5 @@
 // Atlas Ally — News Module
+// v2026.04.15 — clean slate
 // Uses Google News RSS as primary source — works for ANY country, no API key,
 // never blocks server requests. Falls back to country-specific feeds.
 // This means adding a new country automatically gets news with zero extra config.

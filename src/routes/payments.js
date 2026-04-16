@@ -1,4 +1,5 @@
 // Atlas Ally — Payment routes (Stripe checkout & webhooks)
+// v2026.04.15 — clean slate
 const router = require('express').Router();
 const express = require('express');
 const db      = require('../db');

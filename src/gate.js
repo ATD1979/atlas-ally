@@ -1,4 +1,5 @@
 // Atlas Ally — Preview Gate (password-only until DNS propagates for email OTP)
+// v2026.04.15 — clean slate
 'use strict';
 
 const crypto = require('crypto');
