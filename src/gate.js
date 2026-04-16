@@ -16,7 +16,7 @@ const validSessions = new Set();
 const pendingOTPs   = new Map(); // email → { code, expires }
 
 // ── SMTP transport via ImprovMX with defensive timeouts ──────────────────────
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   host:   'smtp.improvmx.com',
   port:   587,
   secure: false,
