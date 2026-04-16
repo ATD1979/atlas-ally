@@ -1,15 +1,55 @@
-// Atlas Ally — Preview Gate (password-only until DNS propagates for email OTP)
+// Atlas Ally — Preview Gate (full email OTP — DNS verified green)
 // v2026.04.15 — clean slate
 'use strict';
 
-const crypto = require('crypto');
-const path   = require('path');
+const crypto   = require('crypto');
+const path     = require('path');
+const nodemailer = require('nodemailer');
 
-const GATE_EMAIL    = 'info@atlas-ally.com';
-const GATE_PASSWORD = process.env.GATE_PASSWORD || 'TravelGuardian0405';
-const SESSION_SECRET = process.env.GATE_SECRET  || 'atlas-gate-secret-2026';
+const GATE_EMAIL     = 'info@atlas-ally.com';
+const GATE_PASSWORD  = process.env.GATE_PASSWORD  || 'TravelGuardian0405';
+const SESSION_SECRET = process.env.GATE_SECRET    || 'atlas-gate-secret-2026';
+const SMTP_PASSWORD  = process.env.IMPROVMX_PASSWORD || '6WkNttWW7kxd';
 
+// In-memory stores (fine for a single-instance preview gate)
 const validSessions = new Set();
+const pendingOTPs   = new Map(); // email → { code, expires }
+
+// ── SMTP transport via ImprovMX ───────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  host:   'smtp.improvmx.com',
+  port:   587,
+  secure: false,
+  auth: {
+    user: GATE_EMAIL,
+    pass: SMTP_PASSWORD,
+  },
+});
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendOTPEmail(toEmail, code) {
+  await transporter.sendMail({
+    from:    `"Atlas Ally" <${GATE_EMAIL}>`,
+    to:      toEmail,
+    subject: 'Your Atlas Ally access code',
+    text:    `Your verification code is: ${code}\n\nExpires in 10 minutes. Do not share this code.`,
+    html:    `
+      <div style="font-family:-apple-system,sans-serif;max-width:400px;margin:0 auto;padding:32px 24px;">
+        <div style="font-size:28px;margin-bottom:8px;">🌍</div>
+        <div style="font-size:20px;font-weight:700;color:#1A2332;margin-bottom:4px;">Atlas Ally</div>
+        <div style="font-size:13px;color:#6B7C93;margin-bottom:28px;">Global Travel Intelligence</div>
+        <div style="font-size:13px;color:#6B7C93;margin-bottom:12px;">Your verification code is:</div>
+        <div style="font-size:36px;font-weight:800;letter-spacing:6px;color:#0E7490;
+             background:#E0F2F7;border-radius:10px;padding:16px;text-align:center;
+             margin-bottom:20px;">${code}</div>
+        <div style="font-size:12px;color:#A8B5C4;">Expires in 10 minutes. Do not share this code.</div>
+      </div>
+    `,
+  });
+}
 
 function makeSessionToken(email) {
   const payload = `${email}:${Date.now()}:${SESSION_SECRET}`;
@@ -17,7 +57,8 @@ function makeSessionToken(email) {
 }
 
 const PUBLIC_PATHS = [
-  '/gate', '/gate/login', '/gate/logout', '/coming-soon', '/favicon.ico',
+  '/gate', '/gate/login', '/gate/verify', '/gate/logout',
+  '/coming-soon', '/favicon.ico',
 ];
 
 function isPublic(req) {
@@ -49,8 +90,8 @@ function setupGateRoutes(app) {
     res.sendFile(path.join(__dirname, '..', 'public', 'gate.html'));
   });
 
-  // Single-step login — password only (OTP via email coming once DNS propagates)
-  app.post('/gate/login', express.json(), (req, res) => {
+  // Step 1 — verify email + password, send OTP
+  app.post('/gate/login', express.json(), async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password)
       return res.json({ ok: false, error: 'Email and password required.' });
@@ -59,9 +100,55 @@ function setupGateRoutes(app) {
     if (password !== GATE_PASSWORD)
       return res.json({ ok: false, error: 'Invalid credentials.' });
 
-    // Password correct — set session immediately (no OTP until DNS resolves)
+    // Credentials correct — generate and email OTP
+    const code    = generateOTP();
+    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    pendingOTPs.set(email.toLowerCase(), { code, expires });
+
+    try {
+      await sendOTPEmail(email, code);
+      console.log(`Gate: OTP sent to ${email}`);
+      res.json({ ok: true, needs_otp: true, message: 'Verification code sent to your email.' });
+    } catch (e) {
+      console.error('Gate OTP email failed:', e.message);
+      // Fallback — grant session directly if email fails (avoids lockout)
+      const token = makeSessionToken(email);
+      validSessions.add(token);
+      res.cookie('atlas_gate', token, {
+        httpOnly: true,
+        secure:   process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge:   8 * 60 * 60 * 1000,
+        path:     '/',
+      });
+      console.warn('Gate: email failed, granting session directly');
+      res.json({ ok: true, skip_otp: true, warning: 'Email unavailable — access granted directly.' });
+    }
+  });
+
+  // Step 2 — verify OTP, create session
+  app.post('/gate/verify', express.json(), (req, res) => {
+    const { email, code } = req.body || {};
+    if (!email || !code)
+      return res.json({ ok: false, error: 'Email and code required.' });
+
+    const key     = email.toLowerCase();
+    const pending = pendingOTPs.get(key);
+
+    if (!pending)
+      return res.json({ ok: false, error: 'No code found. Please request a new one.' });
+    if (Date.now() > pending.expires) {
+      pendingOTPs.delete(key);
+      return res.json({ ok: false, error: 'Code expired. Please log in again.' });
+    }
+    if (pending.code !== code.toString().trim())
+      return res.json({ ok: false, error: 'Incorrect code. Please try again.' });
+
+    // OTP correct — create session
+    pendingOTPs.delete(key);
     const token = makeSessionToken(email);
     validSessions.add(token);
+
     res.cookie('atlas_gate', token, {
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
@@ -70,11 +157,6 @@ function setupGateRoutes(app) {
       path:     '/',
     });
     console.log(`Gate: session granted for ${email}`);
-    res.json({ ok: true, skip_otp: true });
-  });
-
-  // OTP verify endpoint kept for future use (no-op for now)
-  app.post('/gate/verify', express.json(), (req, res) => {
     res.json({ ok: true });
   });
 
