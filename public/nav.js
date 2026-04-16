@@ -592,22 +592,43 @@
     if (!body) return;
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    fetch('/api/news'+(country?'?country='+country:''))
-      .then(function(r) { return r.json(); })
+    var apiUrl = '/api/news' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    console.log('Loading news from:', apiUrl);
+    
+    fetch(apiUrl)
+      .then(function(r) { 
+        console.log('News API response status:', r.status);
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' - ' + r.statusText);
+        return r.json(); 
+      })
       .then(function(data) {
-        if (!data.articles || !data.articles.length) {
+        console.log('News data received:', data);
+        // Handle different response formats
+        var articles = data.articles || data.data || data || [];
+        if (!Array.isArray(articles)) articles = [articles];
+        
+        if (!articles.length) {
           body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noNews')+'</div>';
           return;
         }
-        body.innerHTML = data.articles.map(function(article) {
-          return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
-            '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+article.title+'</div>'+
-            '<div style="font-size:11px;color:'+T.muted+';">'+article.source+' · '+article.published+'</div>'+
-          '</div>';
-        }).join('');
+        body.innerHTML = '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+articles.length+' ARTICLES</div>' +
+          articles.map(function(article) {
+            var title = article.title || article.headline || 'Untitled';
+            var source = article.source || article.source_name || 'Unknown';
+            var published = article.published || article.published_at || article.date || 'Recent';
+            return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
+              '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+title+'</div>'+
+              '<div style="font-size:11px;color:'+T.muted+';">'+source+' · '+published+'</div>'+
+            '</div>';
+          }).join('');
       })
-      .catch(function() {
-        body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load news</div>';
+      .catch(function(err) {
+        console.error('News API error:', err);
+        body.innerHTML = '<div style="padding:20px;text-align:center;">'+
+          '<div style="font-size:13px;color:'+T.red+';margin-bottom:12px;">⚠️ News feed temporarily unavailable</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-bottom:16px;">API: '+apiUrl+'<br>Error: '+err.message+'</div>'+
+          '<button onclick="loadNews(window.activeCountry)" style="padding:8px 16px;background:'+T.teal+';color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Retry</button>'+
+        '</div>';
       });
   }
 
@@ -616,28 +637,49 @@
     if (!body) return;
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    fetch('/api/events'+(country?'?country='+country:''))
-      .then(function(r) { return r.json(); })
+    var apiUrl = '/api/events' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    console.log('Loading alerts from:', apiUrl);
+    
+    fetch(apiUrl)
+      .then(function(r) { 
+        console.log('Events API response status:', r.status);
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' - ' + r.statusText);
+        return r.json(); 
+      })
       .then(function(data) {
-        if (!data.events || !data.events.length) {
+        console.log('Events data received:', data);
+        // Handle different response formats
+        var events = data.events || data.data || data || [];
+        if (!Array.isArray(events)) events = [events];
+        
+        if (!events.length) {
           body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noIncidents')+'</div>';
           return;
         }
-        body.innerHTML = data.events.map(function(event) {
-          var sev = event.severity || 'info';
-          var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
-          return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
-              '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
-              '<div style="font-size:11px;color:'+color+';text-transform:uppercase;font-weight:700;">'+sev+'</div>'+
-            '</div>'+
-            '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+event.title+'</div>'+
-            '<div style="font-size:11px;color:'+T.muted+';">'+event.location+' · '+event.date+'</div>'+
-          '</div>';
-        }).join('');
+        body.innerHTML = '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
+          events.map(function(event) {
+            var sev = event.severity || event.level || 'info';
+            var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
+            var title = event.title || event.description || event.summary || 'Security incident';
+            var location = event.location || event.area || event.region || 'Unknown location';
+            var date = event.date || event.timestamp || event.occurred_at || 'Recent';
+            return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
+                '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
+                '<div style="font-size:11px;color:'+color+';text-transform:uppercase;font-weight:700;">'+sev+'</div>'+
+              '</div>'+
+              '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+title+'</div>'+
+              '<div style="font-size:11px;color:'+T.muted+';">'+location+' · '+date+'</div>'+
+            '</div>';
+          }).join('');
       })
-      .catch(function() {
-        body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load alerts</div>';
+      .catch(function(err) {
+        console.error('Events API error:', err);
+        body.innerHTML = '<div style="padding:20px;text-align:center;">'+
+          '<div style="font-size:13px;color:'+T.red+';margin-bottom:12px;">⚠️ Security alerts temporarily unavailable</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-bottom:16px;">API: '+apiUrl+'<br>Error: '+err.message+'</div>'+
+          '<button onclick="loadAlerts(window.activeCountry)" style="padding:8px 16px;background:'+T.teal+';color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Retry</button>'+
+        '</div>';
       });
   }
 
