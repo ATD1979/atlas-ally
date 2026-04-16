@@ -1,13 +1,15 @@
 /*
-  Atlas Ally — nav.js Enhanced
-  v2026.04.16 — Complete cleanup with Emergency Contacts
+  Atlas Ally — nav.js Complete
+  v2026.04.16 — All Features Working + Emergency Contacts
   
   Features:
-  ✅ Fixed I18N circular references
-  ✅ Emergency Contacts with WhatsApp
-  ✅ Proper language switching with UI refresh
-  ✅ Clean error handling
-  ✅ All features from handoff doc
+  ✅ Emergency Contacts with WhatsApp (NEW)
+  ✅ Full Countries browser with search
+  ✅ Complete Feed system (news/alerts/crime)
+  ✅ AI Pack Assistant with backend integration (ENHANCED)
+  ✅ Safe Check-in with messaging
+  ✅ Language switching with UI refresh (ENHANCED)
+  ✅ All original functionality preserved
 */
 (function () {
   'use strict';
@@ -24,7 +26,7 @@
     mono:      "'DM Mono',monospace",
   };
 
-  /* ── UNODC Baseline per 100k population ── */
+  // UNODC crime baseline data
   var UNODC = {
     AF:{homicide:6.5,assault:72,theft:95,robbery:38,year:2022},
     AE:{homicide:0.5,assault:10,theft:62,robbery:2,year:2022},
@@ -80,6 +82,7 @@
     YE:{homicide:21.8,assault:188,theft:195,robbery:128,year:2022},
     ZA:{homicide:45.5,assault:580,theft:2200,robbery:320,year:2022}
   };
+
   var COUNTRY_NAMES = {
     AF:'Afghanistan',AE:'UAE',AR:'Argentina',BD:'Bangladesh',BR:'Brazil',
     CD:'DR Congo',CN:'China',CO:'Colombia',DE:'Germany',DZ:'Algeria',
@@ -93,7 +96,7 @@
     TZ:'Tanzania',UA:'Ukraine',US:'United States',VE:'Venezuela',YE:'Yemen',ZA:'South Africa'
   };
 
-  // Tab order and state
+  // Tab state
   var tabNames = ['map','feed','pack','countries','account'];
   var mapWrap  = null;
   var navPanel = null;
@@ -119,7 +122,7 @@
     { code:'hi', label:'हिन्दी' },
   ];
 
-  // UI translations — Fixed I18N object literal (no circular references)
+  // Fixed I18N translations (no circular references)
   var I18N = {
     en:{
       feed:'Live Feed', news:'News', alerts:'Incidents', crime:'Crime', pack:'Pack Assistant',
@@ -294,10 +297,9 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
-     EMERGENCY CONTACTS MANAGEMENT
+     EMERGENCY CONTACTS MANAGEMENT (NEW FEATURE)
   ══════════════════════════════════════════════════════════════════════════════ */
 
-  // Emergency contacts stored in localStorage
   function getEmergencyContacts() {
     try {
       return JSON.parse(localStorage.getItem('atlas_emergency_contacts') || '[]');
@@ -308,7 +310,6 @@
 
   function saveEmergencyContacts(contacts) {
     localStorage.setItem('atlas_emergency_contacts', JSON.stringify(contacts));
-    // Sync to server if possible
     var token = localStorage.getItem('atlas_token');
     if (token) {
       fetch('/api/user/emergency-contacts', {
@@ -325,7 +326,6 @@
 
   function saveWhatsAppNumber(number) {
     localStorage.setItem('atlas_whatsapp', number);
-    // Sync to server if possible
     var token = localStorage.getItem('atlas_token');
     if (token) {
       fetch('/api/user/whatsapp', {
@@ -372,7 +372,6 @@
       '<div style="font-size:13px;color:'+T.muted+';margin-bottom:20px;">'+
         'Add trusted contacts who will receive safety alerts when you check in or report incidents.</div>'+
       
-      // WhatsApp Number Section
       '<div style="margin-bottom:20px;">'+
         '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+
           t('whatsappNumber')+'</div>'+
@@ -382,7 +381,6 @@
           'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
       '</div>'+
       
-      // Contacts List
       '<div style="margin-bottom:20px;">'+
         '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+
           'Contacts</div>'+
@@ -392,7 +390,6 @@
         '</div>'+
       '</div>'+
       
-      // Add Contact Form
       '<div style="margin-bottom:20px;">'+
         '<div style="display:flex;gap:8px;margin-bottom:8px;">'+
           '<input id="aa-contact-name" placeholder="'+t('contactName')+'" '+
@@ -440,11 +437,8 @@
         contacts.push({ name: name, phone: phone });
         saveEmergencyContacts(contacts);
         
-        // Clear inputs
         if (nameInput) nameInput.value = '';
         if (phoneInput) phoneInput.value = '';
-        
-        // Refresh the contacts list
         showEmergencyContacts();
       });
     }
@@ -457,7 +451,7 @@
           var contacts = getEmergencyContacts();
           contacts.splice(index, 1);
           saveEmergencyContacts(contacts);
-          showEmergencyContacts(); // Refresh
+          showEmergencyContacts();
         }
       });
     }
@@ -482,7 +476,7 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
-     CORE UI FUNCTIONS (existing code continues...)
+     UTILITY FUNCTIONS
   ══════════════════════════════════════════════════════════════════════════════ */
 
   function closeModal() {
@@ -493,7 +487,6 @@
   }
 
   function showToast(message, type) {
-    // Simple toast implementation
     var toast = document.createElement('div');
     toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);'+
       'background:' + (type === 'error' ? T.red : T.green) + ';color:#fff;'+
@@ -522,7 +515,7 @@
     overlay.innerHTML = content;
     overlay.style.display = 'block';
     overlay.style.pointerEvents = 'all';
-    setTimeout(function() { if (overlay) overlay.style.opacity = '1'; }, 10);
+    overlay.style.opacity = '1';
   }
 
   function hideOverlay() {
@@ -535,6 +528,396 @@
         overlay.innerHTML = '';
       }
     }, 200);
+  }
+
+  function hideMap() {
+    if (mapWrap) mapWrap.style.display = 'none';
+  }
+
+  function showMap() {
+    if (mapWrap) mapWrap.style.display = 'block';
+    hideOverlay();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════════
+     FEED PANEL (News/Alerts/Crime)
+  ══════════════════════════════════════════════════════════════════════════════ */
+
+  function buildFeed() {
+    return panelHdr('📡 '+t('feed'))+
+      '<div style="display:flex;background:#fff;border-bottom:1px solid '+T.border+';overflow-x:auto;-webkit-overflow-scrolling:touch;" id="aa-feed-tabs">'+
+        ['news','alerts','crime'].map(function(tab){
+          var on=tab===_feedTab;
+          return '<div data-ftab="'+tab+'" style="padding:12px 16px;cursor:pointer;color:'+(on?T.teal:T.muted)+';'+
+            'border-bottom:2px solid '+(on?T.teal:'transparent')+';font-weight:'+(on?'700':'600')+';'+
+            'font-size:13px;white-space:nowrap;transition:all 0.2s;text-transform:uppercase;letter-spacing:0.5px;">'+
+            t(tab)+'</div>';
+        }).join('')+
+      '</div>' +
+      '<div id="aa-feed-meta" style="display:flex;justify-content:space-between;padding:6px 14px 5px;background:'+T.bg+';border-bottom:1px solid '+T.border+';">' +
+        '<span style="font-size:9px;color:'+T.muted+';font-family:'+T.mono+';display:flex;align-items:center;gap:4px;">' +
+          '<span style="width:5px;height:5px;border-radius:50%;background:'+T.green+';display:inline-block;"></span>LIVE' +
+        '</span>' +
+        '<span style="font-size:9px;color:'+T.muted+';font-family:'+T.mono+';" id="aa-feed-country-label">🌍 ' + (window.activeCountry || 'Global') + '</span>' +
+      '</div>' +
+      '<div id="aa-feed-body" style="background:'+T.bg+';min-height:300px;"></div>';
+  }
+
+  function wireFeedTabs() {
+    var bar=document.getElementById('aa-feed-tabs');
+    if(!bar) return;
+    bar.addEventListener('click',function(e){
+      var btn=e.target.closest('[data-ftab]');
+      if(!btn) return;
+      var tab=btn.dataset.ftab;
+      _feedTab=tab;
+      bar.querySelectorAll('[data-ftab]').forEach(function(b){
+        var on=b.dataset.ftab===tab;
+        b.style.color       =on?T.teal:T.muted;
+        b.style.borderBottom=on?'2px solid '+T.teal:'2px solid transparent';
+        b.style.fontWeight  =on?'700':'600';
+      });
+      if(tab==='news')   loadNews(window.activeCountry);
+      if(tab==='alerts') loadAlerts(window.activeCountry);
+      if(tab==='crime')  loadCrime(window.activeCountry);
+    });
+  }
+
+  function loadNews(country) {
+    var body = document.getElementById('aa-feed-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
+    
+    fetch('/api/news'+(country?'?country='+country:''))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.articles || !data.articles.length) {
+          body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noNews')+'</div>';
+          return;
+        }
+        body.innerHTML = data.articles.map(function(article) {
+          return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
+            '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+article.title+'</div>'+
+            '<div style="font-size:11px;color:'+T.muted+';">'+article.source+' · '+article.published+'</div>'+
+          '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load news</div>';
+      });
+  }
+
+  function loadAlerts(country) {
+    var body = document.getElementById('aa-feed-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
+    
+    fetch('/api/events'+(country?'?country='+country:''))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.events || !data.events.length) {
+          body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noIncidents')+'</div>';
+          return;
+        }
+        body.innerHTML = data.events.map(function(event) {
+          var sev = event.severity || 'info';
+          var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
+          return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
+              '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
+              '<div style="font-size:11px;color:'+color+';text-transform:uppercase;font-weight:700;">'+sev+'</div>'+
+            '</div>'+
+            '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+event.title+'</div>'+
+            '<div style="font-size:11px;color:'+T.muted+';">'+event.location+' · '+event.date+'</div>'+
+          '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load alerts</div>';
+      });
+  }
+
+  function loadCrime(country) {
+    var body = document.getElementById('aa-feed-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
+    
+    fetch('/api/crime'+(country?'?country='+country:''))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        body.innerHTML = '<div style="padding:16px;">'+
+          '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;">'+
+            '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">Crime Statistics</div>'+
+            '<div style="font-size:12px;color:'+T.muted+';">'+
+              'Homicide: '+(data.homicide||'N/A')+' per 100k<br>'+
+              'Assault: '+(data.assault||'N/A')+' per 100k<br>'+
+              'Theft: '+(data.theft||'N/A')+' per 100k<br>'+
+              'Robbery: '+(data.robbery||'N/A')+' per 100k'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      })
+      .catch(function() {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load crime data</div>';
+      });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════════
+     ENHANCED PACK PANEL WITH AI INTEGRATION
+  ══════════════════════════════════════════════════════════════════════════════ */
+
+  function buildPack() {
+    var country = window.activeCountry;
+    var countryName = country ? (COUNTRY_NAMES[country] || country) : '';
+    
+    return panelHdr('🎒 '+t('packTitle'))+
+      '<div style="padding:16px;background:'+T.bg+';">'+
+        // Destination selector
+        '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;margin-bottom:16px;">'+
+          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">AI Pack Assistant</div>'+
+          '<div style="margin-bottom:12px;">'+
+            '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Destination</div>'+
+            '<input id="aa-pack-dest" type="text" placeholder="Enter destination..." value="'+countryName+'" '+
+              'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+              'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
+              'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
+          '</div>'+
+          '<div style="display:flex;gap:8px;margin-bottom:12px;">'+
+            '<div style="flex:1;">'+
+              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Days</div>'+
+              '<input id="aa-pack-days" type="number" value="7" min="1" max="30" '+
+                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
+                'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
+            '</div>'+
+            '<div style="flex:1;">'+
+              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Trip Type</div>'+
+              '<select id="aa-pack-type" '+
+                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
+                'box-sizing:border-box;font-family:-apple-system,sans-serif;appearance:none;">'+
+                '<option value="leisure">Leisure</option>'+
+                '<option value="business">Business</option>'+
+                '<option value="adventure">Adventure</option>'+
+                '<option value="family">Family</option>'+
+                '<option value="solo">Solo</option>'+
+              '</select>'+
+            '</div>'+
+          '</div>'+
+          '<button id="aa-generate-pack" style="width:100%;padding:10px;background:'+T.teal+';color:#fff;'+
+            'border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">'+
+            '🤖 Generate AI Pack List</button>'+
+        '</div>'+
+        
+        // Pack list container
+        '<div id="aa-pack-results" style="display:none;">'+
+        '</div>'+
+        
+        // Default essentials
+        '<div id="aa-pack-default">'+
+          '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
+            '<div style="font-size:13px;font-weight:700;color:'+T.teal+';margin-bottom:4px;">Essential Travel Checklist</div>'+
+            '<div style="font-size:12px;color:'+T.teal+';opacity:0.8;">Tap "Generate AI Pack List" for personalized recommendations</div>'+
+          '</div>'+
+          getDefaultPackItems().map(function(item) {
+            return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;'+
+              'background:#fff;border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
+              '<div style="font-size:24px;width:40px;text-align:center;flex-shrink:0;">'+item[0]+'</div>'+
+              '<div style="flex:1;">'+
+                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item[1]+'</div>'+
+                '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+item[2]+'</div>'+
+              '</div>'+
+              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+T.border+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background?\'\':\'' + T.teal + '\';this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
+            '</div>';
+          }).join('')+
+        '</div>'+
+      '</div>';
+  }
+
+  function getDefaultPackItems() {
+    return [
+      ['🛂','Passport & Visas','All travel documents and entry requirements'],
+      ['🔌','Power Adapter','Check destination voltage and plug type'],
+      ['📱','Local SIM / Data','International plan or local SIM card'],
+      ['💊','Medications','Prescriptions + first aid kit'],
+      ['💵','Emergency Cash','Local currency for power outages / no signal'],
+      ['📋','Document Copies','Photos of passport, insurance, contacts'],
+      ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
+      ['🌊','Water Purification','Tablets or filter for high-risk areas'],
+      ['🔦','Torch / Headlamp','For power cuts and night navigation'],
+      ['🗺️','Offline Maps','Download before you go — no data needed']
+    ];
+  }
+
+  function wirePackGenerator() {
+    var generateBtn = document.getElementById('aa-generate-pack');
+    if (!generateBtn) return;
+    
+    generateBtn.addEventListener('click', function() {
+      var destInput = document.getElementById('aa-pack-dest');
+      var daysInput = document.getElementById('aa-pack-days');
+      var typeSelect = document.getElementById('aa-pack-type');
+      
+      var destination = destInput ? destInput.value.trim() : '';
+      var days = daysInput ? parseInt(daysInput.value) || 7 : 7;
+      var tripType = typeSelect ? typeSelect.value : 'leisure';
+      
+      if (!destination) {
+        showToast('❌ Please enter a destination', 'error');
+        return;
+      }
+      
+      generateBtn.textContent = '🤖 Generating...';
+      generateBtn.disabled = true;
+      
+      fetch('/api/pack/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destination: destination,
+          duration: days,
+          trip_type: tripType,
+          country_code: window.activeCountry
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showToast('❌ '+data.error, 'error');
+          return;
+        }
+        displayPackResults(data);
+      })
+      .catch(function() {
+        showToast('❌ Failed to generate pack list', 'error');
+      })
+      .finally(function() {
+        generateBtn.textContent = '🤖 Generate AI Pack List';
+        generateBtn.disabled = false;
+      });
+    });
+  }
+
+  function displayPackResults(packData) {
+    var resultsDiv = document.getElementById('aa-pack-results');
+    var defaultDiv = document.getElementById('aa-pack-default');
+    
+    if (!resultsDiv || !packData.categories) return;
+    
+    resultsDiv.innerHTML = 
+      '<div style="background:'+T.greenLight+';border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
+        '<div style="font-size:13px;font-weight:700;color:'+T.green+';margin-bottom:4px;">AI Pack List Generated</div>'+
+        '<div style="font-size:12px;color:'+T.green+';opacity:0.8;">'+(packData.summary || 'Customized for your trip')+'</div>'+
+      '</div>'+
+      packData.categories.map(function(category) {
+        return '<div style="margin-bottom:20px;">'+
+          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;display:flex;align-items:center;gap:8px;">'+
+            '<span style="font-size:18px;">'+category.icon+'</span>'+category.name+
+          '</div>'+
+          category.items.map(function(item) {
+            var essential = item.essential ? 'border:2px solid '+T.teal+';background:'+T.tealLight : 'border:2px solid '+T.border+';background:#fff';
+            return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;'+
+              essential+';border-radius:10px;margin-bottom:8px;">'+
+              '<div style="flex:1;">'+
+                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item.text+'</div>'+
+                (item.essential ? '<div style="font-size:10px;color:'+T.teal+';font-weight:700;text-transform:uppercase;margin-top:2px;">Essential</div>' : '')+
+              '</div>'+
+              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+(item.essential?T.teal:T.border)+';background:'+(item.essential?T.teal:'transparent')+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background===\'transparent\'?\'' + T.teal + '\':(this.style.background?\'\':\'transparent\');this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
+            '</div>';
+          }).join('')+
+        '</div>';
+      }).join('');
+    
+    resultsDiv.style.display = 'block';
+    if (defaultDiv) defaultDiv.style.display = 'none';
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════════════
+     COUNTRIES PANEL (World Browser)
+  ══════════════════════════════════════════════════════════════════════════════ */
+
+  function buildWorld() {
+    return panelHdr('🌍 '+t('countries'))+
+      '<div style="padding:12px 16px;background:#fff;border-bottom:1px solid '+T.border+';position:sticky;top:54px;z-index:9;">'+
+        '<input id="aa-csearch" placeholder="Search countries…" '+
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+          'padding:9px 12px;font-size:13px;color:'+T.text+';background:'+T.bg+';'+
+          'outline:none;box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
+      '</div>'+
+      '<div id="aa-clist" style="background:'+T.bg+';padding:0 16px 80px;">'+
+        '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>'+
+      '</div>';
+  }
+
+  function wireCountriesSearch() {
+    var searchInput = document.getElementById('aa-csearch');
+    if (!searchInput) return;
+    
+    // Load initial countries list
+    loadCountries();
+    
+    searchInput.addEventListener('input', function() {
+      var query = this.value.toLowerCase().trim();
+      loadCountries(query);
+    });
+  }
+
+  function loadCountries(searchQuery) {
+    fetch('/api/countries'+(searchQuery ? '?search='+encodeURIComponent(searchQuery) : ''))
+      .then(function(r) { return r.json(); })
+      .then(function(countries) {
+        renderCountries(countries);
+      })
+      .catch(function() {
+        var el = document.getElementById('aa-clist');
+        if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Failed to load countries</div>';
+      });
+  }
+
+  function renderCountries(list) {
+    var el = document.getElementById('aa-clist');
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">No countries found</div>';
+      return;
+    }
+    
+    el.innerHTML = list.slice(0, 200).map(function(c) {
+      var lat = (c.center && c.center.length === 2) ? c.center[0] : '';
+      var lng = (c.center && c.center.length === 2) ? c.center[1] : '';
+      return '<div class="aa-crow" data-code="'+c.code+'" data-lat="'+lat+'" data-lng="'+lng+'" '+
+        'style="display:flex;align-items:center;gap:12px;padding:14px 0;'+
+        'border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;">'+
+        '<div style="font-size:28px;width:44px;text-align:center;flex-shrink:0;pointer-events:none;">'+(c.flag||'🌍')+'</div>'+
+        '<div style="flex:1;pointer-events:none;">'+
+          '<div style="font-size:14px;font-weight:600;color:'+T.text+';">'+c.name+'</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+(c.advisoryLabel||'')+(c.capital?' · '+c.capital:'')+'</div>'+
+        '</div>'+
+        '<div style="color:'+T.muted+';font-size:18px;pointer-events:none;">›</div>'+
+      '</div>';
+    }).join('');
+    
+    el.addEventListener('click', function(e) {
+      var row = e.target.closest('.aa-crow');
+      if (!row) return;
+      
+      var code = row.dataset.code;
+      var lat = parseFloat(row.dataset.lat);
+      var lng = parseFloat(row.dataset.lng);
+      
+      // Set active country
+      window.activeCountry = code;
+      
+      // Update map if available
+      if (window.map && lat && lng) {
+        window.map.setView([lat, lng], 6);
+      }
+      
+      // Close overlay and show map
+      switchTab('map');
+      
+      showToast('🌍 Selected: ' + (COUNTRY_NAMES[code] || code), 'ok');
+    });
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
@@ -558,7 +941,7 @@
     var contacts = getEmergencyContacts();
     var contactsCount = contacts.length ? contacts.length + ' contacts' : 'No contacts yet';
     
-    return panelHdr('👤 My Account')+
+    return panelHdr('👤 '+t('account'))+
       '<div style="background:'+T.bg+';">'+
         '<div style="background:linear-gradient(135deg,'+T.teal+','+T.tealDark+');padding:20px 20px 24px;color:#fff;">'+
           '<div style="font-size:18px;font-weight:800;margin-bottom:4px;font-family:-apple-system,sans-serif;">Atlas Ally</div>'+
@@ -571,7 +954,7 @@
         '<div style="margin:16px;background:#fff;border-radius:12px;border:1px solid '+T.border+';overflow:hidden;" id="aa-acct-rows">'+
           arow('🌍',t('profile'),t('profileSub'),'profile')+
           arow('👥',t('emergencyContacts'),contactsCount,'emergency')+
-          arow('✅','Safe Check-in','Let your circle know you\'re safe','checkin')+
+          arow('✅',t('safeCheckin'),'Let your circle know you\'re safe','checkin')+
           arow('🔔','Notifications','Manage safety alerts and push notifications','notifications')+
           arow('📍','Saved Countries','Manage your monitored countries','countries')+
           arow('💳','Subscription','Upgrade to Premium — $3/mo','subscription')+
@@ -588,24 +971,25 @@
   }
 
   function wireAccount() {
-    var rows=document.getElementById('aa-acct-rows');
-    if(rows){
-      rows.addEventListener('click',function(e){
-        var row=e.target.closest('.aa-arow');
-        if(!row) return;
-        var a=row.dataset.action;
-        if(a==='profile')       showProfileSettings();
-        if(a==='emergency')     showEmergencyContacts();
-        if(a==='checkin')       showCheckin();
-        if(a==='notifications') showInfoModal('Notifications','Push notification management coming soon.\n\nYou will be able to set alert thresholds for safety events in your monitored countries.');
-        if(a==='countries')     switchTab('countries');
-        if(a==='subscription')  showInfoModal('Subscription','Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
-        if(a==='privacy')       showInfoModal('Privacy Policy','Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
-        if(a==='about')         showInfoModal('About Atlas Ally','Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\nBuilt to keep travelers informed and safe with real-time crime tracking, safety alerts, and country-level intelligence.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
+    var rows = document.getElementById('aa-acct-rows');
+    if (rows) {
+      rows.addEventListener('click', function(e) {
+        var row = e.target.closest('.aa-arow');
+        if (!row) return;
+        var a = row.dataset.action;
+        if (a === 'profile')       showProfileSettings();
+        if (a === 'emergency')     showEmergencyContacts();
+        if (a === 'checkin')       showCheckin();
+        if (a === 'notifications') showInfoModal('Notifications','Push notification management coming soon.\n\nYou will be able to set alert thresholds for safety events in your monitored countries.');
+        if (a === 'countries')     switchTab('countries');
+        if (a === 'subscription')  showInfoModal('Subscription','Premium Plan — $3/month\n\n✅ Unlimited country monitoring\n✅ Real-time push alerts\n✅ Crime trend tracker\n✅ Journey mode\n✅ Priority support\n\nSubscription management coming soon.');
+        if (a === 'privacy')       showInfoModal('Privacy Policy','Atlas Ally collects only data necessary to provide safety intelligence.\n\n• Your location is never stored without consent\n• We do not sell your data to third parties\n• All data is encrypted in transit and at rest\n• You can delete your account at any time\n\nFull policy: atlas-ally.com/privacy');
+        if (a === 'about')         showInfoModal('About Atlas Ally','Atlas Ally v1.0\nGlobal travel safety intelligence platform.\n\nBuilt to keep travelers informed and safe with real-time crime tracking, safety alerts, and country-level intelligence.\n\n📧 support@atlas-ally.com\n🌐 atlas-ally.com');
       });
     }
-    var so=document.getElementById('aa-signout');
-    if(so) so.addEventListener('click',function(){showToast('👋 Sign out coming soon','ok');});
+    
+    var so = document.getElementById('aa-signout');
+    if (so) so.addEventListener('click', function() { showToast('👋 Sign out coming soon','ok'); });
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
@@ -667,6 +1051,7 @@
   function wireProfileSave(isOnboarding) {
     var saveBtn = document.getElementById('aa-prof-save');
     if (!saveBtn) return;
+    
     saveBtn.addEventListener('click', function() {
       var originSel = document.getElementById('aa-prof-origin');
       var langSel   = document.getElementById('aa-prof-lang');
@@ -698,17 +1083,18 @@
         var currentTab = 'account'; // default
         if (overlay.innerHTML.includes('aa-feed-body')) {
           currentTab = 'feed';
-        } else if (overlay.innerHTML.includes('aa-pack-body')) {
+        } else if (overlay.innerHTML.includes('aa-pack-results') || overlay.innerHTML.includes('aa-pack-default')) {
           currentTab = 'pack';
-        } else if (overlay.innerHTML.includes('aa-countries-body')) {
+        } else if (overlay.innerHTML.includes('aa-clist')) {
           currentTab = 'countries';
-        } else if (overlay.innerHTML.includes('aa-account-body')) {
+        } else if (overlay.innerHTML.includes('aa-acct-rows')) {
           currentTab = 'account';
         }
         // Refresh with new language
-        switchTab(currentTab);
+        setTimeout(function() { switchTab(currentTab); }, 100);
       }
     });
+    
     var cancelBtn = document.getElementById('aa-prof-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
   }
@@ -732,25 +1118,113 @@
     modal.innerHTML = buildProfileHTML(true);
     document.body.appendChild(modal);
     wireProfileSave(true);
-    // No dismiss on backdrop click for onboarding — must complete it
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
-     SIMPLIFIED PLACEHOLDER FUNCTIONS (add full implementations as needed)
+     SAFE CHECK-IN MODAL (Enhanced with WhatsApp integration)
   ══════════════════════════════════════════════════════════════════════════════ */
 
-  function buildFeed() { return panelHdr('📡 '+t('feed'))+'<div style="padding:20px;">Feed content...</div>'; }
-  function buildPack() { return panelHdr('🎒 '+t('pack'))+'<div style="padding:20px;">Pack assistant...</div>'; }
-  function buildWorld() { return panelHdr('🌍 '+t('countries'))+'<div style="padding:20px;">Countries...</div>'; }
-  
   function showCheckin() {
     var whatsapp = getWhatsAppNumber();
-    if (!whatsapp) {
-      showToast('❌ Set your WhatsApp number in Emergency Contacts first', 'error');
+    var contacts = getEmergencyContacts();
+    
+    if (!whatsapp && !contacts.length) {
+      showToast('❌ Set up Emergency Contacts first', 'error');
+      setTimeout(function() { showEmergencyContacts(); }, 1000);
       return;
     }
-    showToast('✅ Check-in sent to your contacts', 'ok');
+    
+    closeModal();
+    modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);'+
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+    modal.innerHTML = 
+      '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;'+
+        'padding:24px 24px 40px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">'+
+        '<div style="width:40px;height:4px;background:'+T.border+';border-radius:2px;margin:0 auto 20px;"></div>'+
+        '<div style="font-size:20px;font-weight:800;color:'+T.text+';margin-bottom:6px;font-family:-apple-system,sans-serif;">✅ '+t('safeCheckin')+'</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:20px;line-height:1.5;">Let your emergency contacts know you\'re safe.</div>'+
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Your Status</div>'+
+          '<div id="aa-ci-status" style="display:flex;gap:8px;">'+
+            '<button data-status="safe" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.green+';background:'+T.greenLight+';color:'+T.green+';font-weight:700;font-size:13px;cursor:pointer;touch-action:manipulation;">🟢 Safe</button>'+
+            '<button data-status="help" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.border+';background:#fff;color:'+T.muted+';font-weight:600;font-size:13px;cursor:pointer;touch-action:manipulation;">🆘 Help</button>'+
+            '<button data-status="caution" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.border+';background:#fff;color:'+T.muted+';font-weight:600;font-size:13px;cursor:pointer;touch-action:manipulation;">⚠️ Caution</button>'+
+          '</div>'+
+        '</div>'+
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Message (optional)</div>'+
+          '<textarea id="aa-ci-msg" placeholder="Add a message to your contacts…" '+
+            'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;'+
+            'font-size:13px;color:'+T.text+';background:'+T.bg+';outline:none;resize:none;'+
+            'height:80px;box-sizing:border-box;font-family:-apple-system,sans-serif;"></textarea>'+
+        '</div>'+
+        '<div style="margin-bottom:20px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Location</div>'+
+          '<div style="font-size:13px;color:'+T.muted+';background:'+T.bg+';border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;">'+
+            (window.activeCountry ? '📍 '+(COUNTRY_NAMES[window.activeCountry] || window.activeCountry) : 'Location not set')+
+          '</div>'+
+        '</div>'+
+        '<button id="aa-ci-send" style="width:100%;padding:14px;background:'+T.green+';color:#fff;'+
+          'border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;'+
+          'touch-action:manipulation;font-family:-apple-system,sans-serif;margin-bottom:10px;">'+
+          '✅ Send Check-in</button>'+
+        '<button id="aa-ci-cancel" style="width:100%;padding:12px;background:none;color:'+T.muted+';'+
+          'border:none;font-size:14px;cursor:pointer;touch-action:manipulation;">Cancel</button>'+
+      '</div>';
+    document.body.appendChild(modal);
+
+    var selStatus = 'safe';
+    modal.querySelectorAll('[data-status]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selStatus = btn.dataset.status;
+        var colors = {safe:[T.green,T.greenLight], help:[T.red,T.redLight], caution:[T.gold,T.goldLight]};
+        modal.querySelectorAll('[data-status]').forEach(function(b) {
+          var on = b.dataset.status === selStatus;
+          var c = colors[b.dataset.status];
+          b.style.borderColor = on ? c[0] : T.border;
+          b.style.background  = on ? c[1] : '#fff';
+          b.style.color       = on ? c[0] : T.muted;
+          b.style.fontWeight  = on ? '700' : '600';
+        });
+      });
+    });
+    
+    var send = document.getElementById('aa-ci-send');
+    if (send) {
+      send.addEventListener('click', function() {
+        var msgInput = document.getElementById('aa-ci-msg');
+        var message = msgInput ? msgInput.value.trim() : '';
+        
+        // Send check-in via API
+        fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: selStatus,
+            message: message,
+            country: window.activeCountry,
+            whatsapp: whatsapp
+          })
+        })
+        .then(function() {
+          var statusText = selStatus === 'safe' ? 'SAFE' : selStatus === 'help' ? 'NEED HELP' : 'CAUTION';
+          showToast('✅ Check-in sent · '+statusText+' · '+(window.activeCountry||'Unknown'), 'ok');
+          closeModal();
+        })
+        .catch(function() {
+          showToast('⚠️ Could not send check-in', 'error');
+        });
+      });
+    }
+    
+    var cancel = document.getElementById('aa-ci-cancel');
+    if (cancel) cancel.addEventListener('click', closeModal);
   }
+
+  /* ══════════════════════════════════════════════════════════════════════════════
+     INFO MODAL
+  ══════════════════════════════════════════════════════════════════════════════ */
 
   function showInfoModal(title, content) {
     closeModal();
@@ -760,19 +1234,12 @@
     modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;">'+
       '<h3 style="margin:0 0 12px;color:'+T.text+';">'+title+'</h3>'+
       '<p style="margin:0;color:'+T.muted+';line-height:1.5;white-space:pre-line;">'+content+'</p>'+
-      '<button onclick="this.closest(\'.modal\').remove()" style="margin-top:16px;padding:10px 20px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;cursor:pointer;">OK</button>'+
+      '<button id="aa-info-ok" style="margin-top:16px;padding:10px 20px;background:'+T.teal+';color:#fff;border:none;border-radius:8px;cursor:pointer;">OK</button>'+
     '</div>';
     document.body.appendChild(modal);
-    modal.addEventListener('click', function(e){ if(e.target===modal) closeModal(); });
-  }
-
-  function hideMap() {
-    if (mapWrap) mapWrap.style.display = 'none';
-  }
-
-  function showMap() {
-    if (mapWrap) mapWrap.style.display = 'block';
-    hideOverlay();
+    
+    document.getElementById('aa-info-ok').addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) closeModal(); });
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
@@ -782,34 +1249,59 @@
   function switchTab(name) {
     // Update active states
     document.querySelectorAll('.main-tab').forEach(function(btn, i) {
-      var on = tabNames[i]===name;
+      var on = tabNames[i] === name;
       btn.style.opacity = on ? '1' : '0.5';
     });
 
-    if(name==='map') { showMap(); return; }
+    if (name === 'map') { 
+      showMap(); 
+      return; 
+    }
 
     hideMap();
-    if(name==='feed')      showOverlay(buildFeed());
-    else if(name==='pack')      showOverlay(buildPack());
-    else if(name==='countries') showOverlay(buildWorld());
-    else if(name==='account')   showOverlay(buildAccount());
-
-    setTimeout(function(){
-      var cb=document.getElementById('aa-close-btn');
-      if(cb) cb.addEventListener('click',function(){switchTab('map');});
-      if(name==='account') wireAccount();
-    }, 10);
+    
+    if (name === 'feed') {
+      showOverlay(buildFeed());
+      setTimeout(function() {
+        var cb = document.getElementById('aa-close-btn');
+        if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+        wireFeedTabs();
+        loadNews(window.activeCountry);
+      }, 10);
+    } else if (name === 'pack') {
+      showOverlay(buildPack());
+      setTimeout(function() {
+        var cb = document.getElementById('aa-close-btn');
+        if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+        wirePackGenerator();
+      }, 10);
+    } else if (name === 'countries') {
+      showOverlay(buildWorld());
+      setTimeout(function() {
+        var cb = document.getElementById('aa-close-btn');
+        if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+        wireCountriesSearch();
+      }, 10);
+    } else if (name === 'account') {
+      showOverlay(buildAccount());
+      setTimeout(function() {
+        var cb = document.getElementById('aa-close-btn');
+        if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+        wireAccount();
+      }, 10);
+    }
   }
 
   function init() {
-    // Add basic styles
-    if(!document.getElementById('aa-nav-styles')) {
-      var st=document.createElement('style');
-      st.id='aa-nav-styles';
+    // Add styles
+    if (!document.getElementById('aa-nav-styles')) {
+      var st = document.createElement('style');
+      st.id = 'aa-nav-styles';
       st.textContent = [
         '.aa-overlay{transition:opacity 0.2s ease;}',
         '.main-tab{transition:opacity 0.2s ease;}',
         '.aa-arow:hover{background:#f8f9fa !important;}',
+        '.aa-crow:hover{background:#f8f9fa !important;}',
       ].join('\n');
       document.head.appendChild(st);
     }
@@ -817,37 +1309,78 @@
     mapWrap  = document.getElementById('map-wrap');
     navPanel = document.getElementById('nav-panel');
 
-    overlay=document.createElement('div');
-    overlay.id='aa-overlay';
-    overlay.style.cssText='display:none;position:fixed;top:0;left:0;right:0;bottom:62px;'+
+    overlay = document.createElement('div');
+    overlay.id = 'aa-overlay';
+    overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:62px;'+
       'z-index:500000;background:'+T.bg+';overflow-y:auto;-webkit-overflow-scrolling:touch;pointer-events:none;opacity:0;transition:opacity 0.2s;';
     document.body.appendChild(overlay);
 
-    var hamburger=document.getElementById('hamburger');
-    if(hamburger){
+    var hamburger = document.getElementById('hamburger');
+    if (hamburger) {
       hamburger.removeAttribute('onclick');
-      hamburger.addEventListener('click',function(e){e.stopPropagation();if(navPanel)navPanel.classList.toggle('open');});
+      hamburger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (navPanel) navPanel.classList.toggle('open');
+      });
     }
 
-    document.querySelectorAll('.main-tab').forEach(function(btn,i){
-      btn.addEventListener('click',function(e){e.stopPropagation();switchTab(tabNames[i]);});
+    document.querySelectorAll('.main-tab').forEach(function(btn, i) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        switchTab(tabNames[i]);
+      });
     });
 
-    document.addEventListener('click',function(e){
-      if(!navPanel||!navPanel.classList.contains('open')) return;
-      if(!navPanel.contains(e.target)&&e.target.id!=='hamburger') navPanel.classList.remove('open');
+    document.addEventListener('click', function(e) {
+      if (!navPanel || !navPanel.classList.contains('open')) return;
+      if (!navPanel.contains(e.target) && e.target.id !== 'hamburger') {
+        navPanel.classList.remove('open');
+      }
     });
 
     // Global window functions
     window.switchTab         = switchTab;
-    window.openPanel         = function(id){switchTab(id.replace('-panel',''));};
-    window.closePanel        = function(){switchTab('map');};
-    window.closeAllPanels    = function(){switchTab('map');};
-    window.toggleNav         = function(){if(navPanel)navPanel.classList.toggle('open');};
-    window.closeNav          = function(){if(navPanel)navPanel.classList.remove('open');};
+    window.openPanel         = function(id) { switchTab(id.replace('-panel', '')); };
+    window.closePanel        = function() { switchTab('map'); };
+    window.closeAllPanels    = function() { switchTab('map'); };
+    window.toggleNav         = function() { if (navPanel) navPanel.classList.toggle('open'); };
+    window.closeNav          = function() { if (navPanel) navPanel.classList.remove('open'); };
     window.openCheckin       = showCheckin;
     window.showEmergencyContacts = showEmergencyContacts;
     window.toast             = showToast;
+    window.openRouteSheet    = function() { 
+      closeNav(); 
+      setTimeout(function() { showInfoModal('Route Planner', 'Safe route planning feature coming soon.\n\nThis will provide real-time route analysis with:\n• Security checkpoint locations\n• Road condition updates\n• Alternative safe routes\n• Local authority contacts'); }, 200); 
+    };
+
+    // Update feed country labels when country changes
+    var origSet = window.setActiveCountry;
+    window.setActiveCountry = function(code, pos) {
+      var r = origSet ? origSet(code, pos) : null;
+      window.activeCountry = code;
+      window.activeCountryPos = pos;
+      
+      // Update feed country label
+      var label = document.getElementById('aa-feed-country-label');
+      if (label) {
+        label.textContent = '🌍 ' + (code ? (COUNTRY_NAMES[code] || code) : 'Global');
+      }
+      
+      // Auto-refresh feed data if feed is open
+      if (overlay && overlay.style.display !== 'none' && document.getElementById('aa-feed-body')) {
+        if (_feedTab === 'news')   loadNews(code);
+        if (_feedTab === 'alerts') loadAlerts(code);
+        if (_feedTab === 'crime')  loadCrime(code);
+      }
+      
+      // Auto-update pack destination if pack is open
+      var packDest = document.getElementById('aa-pack-dest');
+      if (packDest && code) {
+        packDest.value = COUNTRY_NAMES[code] || code;
+      }
+      
+      return r;
+    };
 
     switchTab('map');
 
@@ -857,7 +1390,10 @@
     }
   }
 
-  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}
-  else{init();}
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
 })();
