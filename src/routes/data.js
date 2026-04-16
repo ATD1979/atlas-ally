@@ -489,6 +489,47 @@ router.post('/route', async (req, res) => {
   } catch { res.status(500).json({ error: 'Route service unavailable' }); }
 });
 
+// ── Country keyword relevance filter (serve-time safety net) ─────────────────
+const NEWS_KEYWORDS = {
+  JO: ['jordan','jordanian','amman','zarqa','aqaba','irbid','petra','wadi rum','hashemite'],
+  LB: ['lebanon','lebanese','beirut','tripoli','sidon','hezbollah'],
+  IL: ['israel','israeli','jerusalem','tel aviv','gaza','haifa','idf'],
+  SY: ['syria','syrian','damascus','aleppo','homs','idlib'],
+  IQ: ['iraq','iraqi','baghdad','mosul','basra','erbil'],
+  EG: ['egypt','egyptian','cairo','alexandria','sinai'],
+  SA: ['saudi','riyadh','jeddah','mecca','medina','aramco'],
+  AE: ['uae','dubai','abu dhabi','emirati','emirates'],
+  TR: ['turkey','turkish','türkiye','ankara','istanbul'],
+  IR: ['iran','iranian','tehran','isfahan','khamenei'],
+  YE: ['yemen','yemeni','sanaa','aden','houthi'],
+  LY: ['libya','libyan','tripoli','benghazi'],
+  MA: ['morocco','moroccan','rabat','casablanca','marrakech'],
+  UA: ['ukraine','ukrainian','kyiv','kharkiv','odessa','zelensky'],
+  RU: ['russia','russian','moscow','kremlin','putin'],
+  PK: ['pakistan','pakistani','islamabad','karachi','lahore'],
+  AF: ['afghanistan','afghan','kabul','taliban'],
+  MX: ['mexico','mexican','cartel','sinaloa','jalisco'],
+  CO: ['colombia','colombian','bogota','medellin','farc'],
+  BR: ['brazil','brazilian','brasilia','rio','sao paulo'],
+  NG: ['nigeria','nigerian','abuja','lagos','boko haram'],
+  KE: ['kenya','kenyan','nairobi','mombasa'],
+  ZA: ['south africa','south african','johannesburg','cape town'],
+  US: ['united states','american','washington','new york'],
+  GB: ['uk','britain','british','london','england'],
+  FR: ['france','french','paris','macron'],
+  DE: ['germany','german','berlin','munich'],
+  PH: ['philippines','philippine','manila','shabu'],
+  TH: ['thailand','thai','bangkok'],
+  MM: ['myanmar','burma','burmese','yangon'],
+  CN: ['china','chinese','beijing','shanghai'],
+};
+
+function isNewsRelevant(title, code, countryName) {
+  const t = (title || '').toLowerCase();
+  const kws = NEWS_KEYWORDS[code] || [countryName.toLowerCase()];
+  return kws.some(kw => t.includes(kw));
+}
+
 // ── News ──────────────────────────────────────────────────────────────────────
 router.get('/news', (req, res) => {
   const { country_code, lat, lng, lang = 'en' } = req.query;
@@ -500,6 +541,10 @@ router.get('/news', (req, res) => {
   const RADIUS  = 300; // km — hard filter
 
   let items = db.getNewsByCountry(code, lang);
+
+  // Serve-time relevance filter — removes cached articles that don't mention the country
+  const countryName = COUNTRY_NAMES[code] || code;
+  items = items.filter(a => isNewsRelevant(a.title, code, countryName));
 
   // Trigger background refresh if cache is thin
   if (items.length < 5) {

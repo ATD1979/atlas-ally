@@ -125,6 +125,74 @@ async function fetchRSS(url) {
   }
 }
 
+// Country-specific keywords — article title must contain at least one to be cached.
+// Prevents "Jordan Peterson", "Michael Jordan", etc. from polluting JO feed.
+const COUNTRY_TITLE_KEYWORDS = {
+  JO: ['jordan','jordanian','amman','zarqa','aqaba','irbid','petra','wadi rum','hashemite'],
+  LB: ['lebanon','lebanese','beirut','tripoli','sidon','tyre','hezbollah'],
+  IL: ['israel','israeli','jerusalem','tel aviv','gaza','haifa','netanyahu','idf'],
+  SY: ['syria','syrian','damascus','aleppo','homs','idlib'],
+  IQ: ['iraq','iraqi','baghdad','mosul','basra','erbil','kurdistan'],
+  EG: ['egypt','egyptian','cairo','alexandria','sinai'],
+  SA: ['saudi','riyadh','jeddah','mecca','medina','aramco'],
+  AE: ['uae','dubai','abu dhabi','emirati','emirates'],
+  TR: ['turkey','turkish','türkiye','ankara','istanbul','erdogan'],
+  IR: ['iran','iranian','tehran','isfahan','khamenei','rouhani'],
+  YE: ['yemen','yemeni','sanaa','aden','houthi'],
+  LY: ['libya','libyan','tripoli','benghazi'],
+  MA: ['morocco','moroccan','rabat','casablanca','marrakech'],
+  DZ: ['algeria','algerian','algiers','oran'],
+  TN: ['tunisia','tunisian','tunis'],
+  UA: ['ukraine','ukrainian','kyiv','kharkiv','odessa','zelensky','zelenskyy'],
+  RU: ['russia','russian','moscow','kremlin','putin'],
+  PK: ['pakistan','pakistani','islamabad','karachi','lahore','peshawar'],
+  AF: ['afghanistan','afghan','kabul','kandahar','taliban'],
+  IN: ['india','indian','delhi','mumbai','modi','bangladesh'], // IN/BD often confused
+  MX: ['mexico','mexican','cartel','sinaloa','jalisco','juarez','tijuana'],
+  CO: ['colombia','colombian','bogota','medellin','farc','coca'],
+  BR: ['brazil','brazilian','brasilia','rio','sao paulo'],
+  VE: ['venezuela','venezuelan','caracas','maduro'],
+  NG: ['nigeria','nigerian','abuja','lagos','boko haram'],
+  KE: ['kenya','kenyan','nairobi','mombasa'],
+  ET: ['ethiopia','ethiopian','addis ababa','tigray'],
+  SO: ['somalia','somali','mogadishu','al shabaab'],
+  SD: ['sudan','sudanese','khartoum','darfur'],
+  ZA: ['south africa','south african','johannesburg','cape town','pretoria','zuma','ramaphosa'],
+  US: ['united states','american','washington','new york','trump','biden','harris','congress'],
+  GB: ['uk','britain','british','london','england','scotland','wales','sunak'],
+  FR: ['france','french','paris','macron','lyon','marseille'],
+  DE: ['germany','german','berlin','munich','scholz'],
+  PH: ['philippines','philippine','manila','duterte','marcos','shabu'],
+  TH: ['thailand','thai','bangkok','pattaya','chiang mai'],
+  MM: ['myanmar','burma','burmese','yangon','naypyidaw','junta'],
+  KR: ['south korea','korean','seoul','yoon'],
+  JP: ['japan','japanese','tokyo','osaka','kishida'],
+  CN: ['china','chinese','beijing','shanghai','xi jinping','ccp'],
+  ID: ['indonesia','indonesian','jakarta','bali'],
+  BD: ['bangladesh','bangladeshi','dhaka'],
+  NP: ['nepal','nepalese','kathmandu'],
+  HT: ['haiti','haitian','port-au-prince'],
+  HN: ['honduras','honduran','tegucigalpa'],
+  GT: ['guatemala','guatemalan','guatemala city'],
+  CD: ['congo','drc','kinshasa','democratic republic'],
+  ML: ['mali','malian','bamako'],
+  GH: ['ghana','ghanaian','accra'],
+  TZ: ['tanzania','tanzanian','dar es salaam'],
+  PL: ['poland','polish','warsaw','krakow'],
+  GR: ['greece','greek','athens','thessaloniki'],
+  RS: ['serbia','serbian','belgrade'],
+  IT: ['italy','italian','rome','milan','naples'],
+  ES: ['spain','spanish','madrid','barcelona'],
+  AR: ['argentina','argentine','buenos aires'],
+};
+
+// Returns true if the article title is relevant to the target country
+function isTitleRelevant(title, countryCode, countryName) {
+  const t = (title || '').toLowerCase();
+  const keywords = COUNTRY_TITLE_KEYWORDS[countryCode] || [countryName.toLowerCase()];
+  return keywords.some(kw => t.includes(kw));
+}
+
 // Domains clearly outside any of our 20 country regions — drop their articles
 // (These outlets cover the world but aren't local sources)
 const REMOTE_DOMAINS = [
@@ -188,6 +256,7 @@ async function refreshNewsForCountry(countryCode, langOverride) {
       const item = extractItem(raw);
       if (!item.title || item.title.length < 10) continue;
       if (isRemoteSource(item)) continue;
+      if (!isTitleRelevant(item.title, countryCode, country.name)) continue; // skip off-topic
       const titleKey = item.title.toLowerCase().slice(0, 60);
       if (seen.has(item.url) || seen.has(titleKey)) continue;
       seen.add(item.url); seen.add(titleKey);
