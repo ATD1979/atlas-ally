@@ -113,68 +113,368 @@
     { code:'hi', label:'हिन्दी' },
   ];
 
-  // UI label translations for core strings
+  // UI translations — 12 languages, ~60 strings each
   var I18N = {
-    en:{ feed:'Live Feed', news:'News', alerts:'Alerts', crime:'Crime', pack:'Pack Assistant',
-         countries:'World Browser', account:'My Account', selectCountry:'Select a Country',
-         loading:'Loading', noNews:'No News Found', safeCheckin:'Safe Check-in',
-         language:'Language', homeCountry:'Home Country', save:'Save', cancel:'Cancel',
-         profile:'Profile & Language', profileSub:'Set your home country and language' },
-    es:{ feed:'Feed en Vivo', news:'Noticias', alerts:'Alertas', crime:'Crimen', pack:'Asistente de Equipaje',
-         countries:'Navegador Mundial', account:'Mi Cuenta', selectCountry:'Seleccionar País',
-         loading:'Cargando', noNews:'No se encontraron noticias', safeCheckin:'Check-in Seguro',
-         language:'Idioma', homeCountry:'País de Origen', save:'Guardar', cancel:'Cancelar',
-         profile:'Perfil e Idioma', profileSub:'Establece tu país de origen e idioma' },
-    fr:{ feed:'Fil en Direct', news:'Actualités', alerts:'Alertes', crime:'Criminalité', pack:'Assistant Bagages',
-         countries:'Navigateur Mondial', account:'Mon Compte', selectCountry:'Sélectionner un Pays',
-         loading:'Chargement', noNews:'Aucune actualité trouvée', safeCheckin:'Check-in Sécurisé',
-         language:'Langue', homeCountry:'Pays d\'origine', save:'Enregistrer', cancel:'Annuler',
-         profile:'Profil & Langue', profileSub:'Définissez votre pays d\'origine et langue' },
-    ar:{ feed:'البث المباشر', news:'أخبار', alerts:'تنبيهات', crime:'جريمة', pack:'مساعد الحقيبة',
-         countries:'متصفح العالم', account:'حسابي', selectCountry:'اختر دولة',
-         loading:'جار التحميل', noNews:'لا توجد أخبار', safeCheckin:'تسجيل وصول آمن',
-         language:'اللغة', homeCountry:'بلد الأصل', save:'حفظ', cancel:'إلغاء',
-         profile:'الملف الشخصي واللغة', profileSub:'حدد بلد أصلك ولغتك' },
-    pt:{ feed:'Feed ao Vivo', news:'Notícias', alerts:'Alertas', crime:'Crime', pack:'Assistente de Mala',
-         countries:'Navegador Mundial', account:'Minha Conta', selectCountry:'Selecionar País',
-         loading:'Carregando', noNews:'Nenhuma notícia encontrada', safeCheckin:'Check-in Seguro',
-         language:'Idioma', homeCountry:'País de Origem', save:'Salvar', cancel:'Cancelar',
-         profile:'Perfil e Idioma', profileSub:'Defina seu país de origem e idioma' },
-    ru:{ feed:'Лента', news:'Новости', alerts:'Оповещения', crime:'Преступность', pack:'Помощник по упаковке',
-         countries:'Обозреватель мира', account:'Мой аккаунт', selectCountry:'Выбрать страну',
-         loading:'Загрузка', noNews:'Новости не найдены', safeCheckin:'Регистрация безопасности',
-         language:'Язык', homeCountry:'Страна происхождения', save:'Сохранить', cancel:'Отмена',
-         profile:'Профиль и язык', profileSub:'Укажите страну происхождения и язык' },
-    zh:{ feed:'实时动态', news:'新闻', alerts:'警报', crime:'犯罪', pack:'行李助手',
-         countries:'世界浏览器', account:'我的账户', selectCountry:'选择国家',
-         loading:'加载中', noNews:'未找到新闻', safeCheckin:'安全签到',
-         language:'语言', homeCountry:'原籍国', save:'保存', cancel:'取消',
-         profile:'个人资料和语言', profileSub:'设置您的原籍国和语言' },
-    de:{ feed:'Live-Feed', news:'Nachrichten', alerts:'Warnungen', crime:'Kriminalität', pack:'Packassistent',
-         countries:'Weltbrowser', account:'Mein Konto', selectCountry:'Land auswählen',
-         loading:'Laden', noNews:'Keine Nachrichten gefunden', safeCheckin:'Sicher einchecken',
-         language:'Sprache', homeCountry:'Heimatland', save:'Speichern', cancel:'Abbrechen',
-         profile:'Profil & Sprache', profileSub:'Heimatland und Sprache festlegen' },
-    ja:{ feed:'ライブフィード', news:'ニュース', alerts:'アラート', crime:'犯罪', pack:'パックアシスタント',
-         countries:'ワールドブラウザ', account:'マイアカウント', selectCountry:'国を選択',
-         loading:'読み込み中', noNews:'ニュースが見つかりません', safeCheckin:'安全チェックイン',
-         language:'言語', homeCountry:'出身国', save:'保存', cancel:'キャンセル',
-         profile:'プロフィールと言語', profileSub:'出身国と言語を設定' },
-    ko:{ feed:'라이브 피드', news:'뉴스', alerts:'알림', crime:'범죄', pack:'짐 도우미',
-         countries:'세계 브라우저', account:'내 계정', selectCountry:'국가 선택',
-         loading:'로딩 중', noNews:'뉴스 없음', safeCheckin:'안전 체크인',
-         language:'언어', homeCountry:'출신 국가', save:'저장', cancel:'취소',
-         profile:'프로필 및 언어', profileSub:'출신 국가와 언어를 설정하세요' },
-    tr:{ feed:'Canlı Akış', news:'Haberler', alerts:'Uyarılar', crime:'Suç', pack:'Bavul Asistanı',
-         countries:'Dünya Tarayıcı', account:'Hesabım', selectCountry:'Ülke Seç',
-         loading:'Yükleniyor', noNews:'Haber bulunamadı', safeCheckin:'Güvenli Giriş',
-         language:'Dil', homeCountry:'Menşei Ülke', save:'Kaydet', cancel:'İptal',
-         profile:'Profil ve Dil', profileSub:'Ana ülkenizi ve dilinizi ayarlayın' },
-    hi:{ feed:'लाइव फ़ीड', news:'समाचार', alerts:'अलर्ट', crime:'अपराध', pack:'पैक सहायक',
-         countries:'विश्व ब्राउज़र', account:'मेरा खाता', selectCountry:'देश चुनें',
-         loading:'लोड हो रहा है', noNews:'कोई समाचार नहीं', safeCheckin:'सुरक्षित चेक-इन',
-         language:'भाषा', homeCountry:'मूल देश', save:'सहेजें', cancel:'रद्द करें',
-         profile:'प्रोफ़ाइल और भाषा', profileSub:'अपना मूल देश और भाषा सेट करें' },
+    en:{
+      feed:'Live Feed', news:'News', alerts:t('incidents'), crime:'Crime', pack:'Pack Assistant',
+      countries:'World Browser', account:'My Account', map:'Map',
+      selectCountry:'Select a Country', loading:'Loading\u2026', noNews:'No News Found',
+      safeCheckin:'Safe Check-in', language:'Language', homeCountry:'Home Country',
+      save:'Save', cancel:'Cancel', profile:'Profile & Language',
+      profileSub:'Set your home country and language',
+      threatLevel:'Threat Level', total:t('total'), last7:t('last7'),
+      incidents:t('incidents'), perDay:t('perDay'), critical:t('critical'), highAlert:t('highAlert'),
+      highThreat:t('highThreat'), elevated:t('elevated'), monitor:t('monitor'), clear:t('clear'),
+      safetyScore:t('safetyScore'), generallySafe:t('generallySafe'),
+      exerciseCaution:t('exerciseCaution'), highRisk:t('highRisk'),
+      recentIncidents:t('recentIncidents'), noIncidents:'No active incidents',
+      travelAdvisory:'Travel Advisory', doNotTravel:'DO NOT TRAVEL \u2014 contact your embassy',
+      totalReports:t('totalReports'), last90:t('last90'), trend:t('trend'),
+      sources:t('sources'), dataProviders:t('dataProviders'), vsPrior:t('vsPrior'),
+      monthBreakdown:t('monthBreakdown'), category:t('category'),
+      worldBankData:t('worldBankData'), worldBankSrc:t('worldBankSrc'),
+      benchmarkNote:t('benchmarkNote'),
+      rising:t('rising'), falling:t('falling'), stable:t('stable'), high:'HIGH', med:'MED', low:'LOW',
+      packTitle:'Pack Assistant', clothing:'CLOTHING', essentials:'ESSENTIALS',
+      selectFirst:'Select a country on the map first',
+      desert:'Desert / Arid', tropical:'Tropical', monsoon:'Monsoon',
+      arctic:'Arctic / Subarctic', temperate:'Temperate',
+      winter:'Winter', summer:'Summer', spring:'Spring', autumn:'Autumn',
+      catAir:'Air/Missile', catExplosion:'Explosions', catArmed:'Armed',
+      catUnrest:'Unrest', catDrug:'Drug Crime', catCrime:'Crime', catWeather:'Weather',
+      retry:'Retry', urgent:'Urgent', advisory:'Advisory', info:'Info',
+      official:'Official', noData:'No data available',
+    },
+    es:{
+      feed:'Feed en Vivo', news:'Noticias', alerts:'Incidentes', crime:'Crimen', pack:'Asistente de Equipaje',
+      countries:'Navegador Mundial', account:'Mi Cuenta', map:'Mapa',
+      selectCountry:'Seleccionar Pa\u00eds', loading:'Cargando\u2026', noNews:'Sin noticias',
+      safeCheckin:'Check-in Seguro', language:'Idioma', homeCountry:'Pa\u00eds de Origen',
+      save:'Guardar', cancel:'Cancelar', profile:'Perfil e Idioma',
+      profileSub:'Establece tu pa\u00eds de origen e idioma',
+      threatLevel:'Nivel de Amenaza', total:t('total'), last7:'\u00daNTIMOS 7 D\u00cdAS',
+      incidents:'Incidentes', perDay:'Por D\u00eda', critical:'Cr\u00edtico', highAlert:'Alta Alerta',
+      highThreat:'AMENAZA ALTA', elevated:'ELEVADO', monitor:'MONITOREAR', clear:'DESPEJADO',
+      safetyScore:'Puntuaci\u00f3n de Seguridad', generallySafe:'Generalmente Seguro',
+      exerciseCaution:'Tenga Precauci\u00f3n', highRisk:'Alto Riesgo',
+      recentIncidents:'INCIDENTES RECIENTES', noIncidents:'Sin incidentes activos',
+      travelAdvisory:'Aviso de Viaje', doNotTravel:'NO VIAJAR \u2014 contacte su embajada',
+      totalReports:'Total de Reportes', last90:'\u00daltimos 90 d\u00edas', trend:'Tendencia',
+      sources:'Fuentes', dataProviders:'Proveedores de datos', vsPrior:'vs per\u00edodo anterior',
+      monthBreakdown:'RESUMEN 3 MESES \u00b7 MEDIOS', category:'CATEGOR\u00cdA',
+      worldBankData:'DATOS BANCO MUNDIAL EN VIVO', worldBankSrc:'Banco Mundial \u00b7 A\u00f1o m\u00e1s reciente',
+      benchmarkNote:'Barras escaladas \u00b7 + indica m\u00e1s incidentes probables',
+      rising:'Subiendo', falling:'Bajando', stable:'Estable', high:'ALTO', med:'MEDIO', low:'BAJO',
+      packTitle:'Asistente de Equipaje', clothing:'ROPA', essentials:'ESENCIALES',
+      selectFirst:'Selecciona un pa\u00eds en el mapa primero',
+      desert:'Desierto / \u00c1rido', tropical:'Tropical', monsoon:'Monz\u00f3n',
+      arctic:'\u00c1rtico / Sub\u00e1rtico', temperate:'Templado',
+      winter:'Invierno', summer:'Verano', spring:'Primavera', autumn:'Oto\u00f1o',
+      catAir:'Aire/Misil', catExplosion:'Explosiones', catArmed:'Armado',
+      catUnrest:'Disturbios', catDrug:'Narcotr\u00e1fico', catCrime:'Crimen', catWeather:'Clima',
+      retry:'Reintentar', urgent:'Urgente', advisory:'Aviso', info:'Info',
+      official:'Oficial', noData:'Sin datos disponibles',
+    },
+    fr:{
+      feed:'Fil en Direct', news:'Actualit\u00e9s', alerts:t('incidents'), crime:'Criminalit\u00e9', pack:'Assistant Bagages',
+      countries:'Navigateur Mondial', account:'Mon Compte', map:'Carte',
+      selectCountry:'S\u00e9lectionner un Pays', loading:'Chargement\u2026', noNews:'Aucune actualit\u00e9',
+      safeCheckin:'Check-in S\u00e9curis\u00e9', language:'Langue', homeCountry:"Pays d'origine",
+      save:'Enregistrer', cancel:'Annuler', profile:'Profil & Langue',
+      profileSub:"D\u00e9finissez votre pays d'origine et langue",
+      threatLevel:'Niveau de Menace', total:t('total'), last7:'7 DERNIERS JOURS',
+      incidents:t('incidents'), perDay:'Par Jour', critical:'Critique', highAlert:'Haute Alerte',
+      highThreat:'MENACE \u00c9LEV\u00c9E', elevated:'\u00c9LEV\u00c9', monitor:'SURVEILLER', clear:'D\u00c9GAG\u00c9',
+      safetyScore:'Score de S\u00e9curit\u00e9', generallySafe:'G\u00e9n\u00e9ralement S\u00fbr',
+      exerciseCaution:'Faire Preuve de Prudence', highRisk:'Risque \u00c9lev\u00e9',
+      recentIncidents:'INCIDENTS R\u00c9CENTS', noIncidents:'Aucun incident actif',
+      travelAdvisory:'Avis de Voyage', doNotTravel:'NE PAS VOYAGER \u2014 contactez votre ambassade',
+      totalReports:'Total des Rapports', last90:'90 derniers jours', trend:'Tendance',
+      sources:t('sources'), dataProviders:'Fournisseurs de donn\u00e9es', vsPrior:'vs p\u00e9riode pr\u00e9c\u00e9dente',
+      monthBreakdown:'BILAN 3 MOIS \u00b7 M\u00c9DIAS', category:'CAT\u00c9GORIE',
+      worldBankData:'DONN\u00c9ES BANQUE MONDIALE', worldBankSrc:'Banque Mondiale \u00b7 Ann\u00e9e la plus r\u00e9cente',
+      benchmarkNote:"Barres \u00e0 l'\u00e9chelle \u00b7 + indique plus d'incidents probables",
+      rising:'En hausse', falling:'En baisse', stable:t('stable'), high:'\u00c9LEV\u00c9', med:'MOYEN', low:'FAIBLE',
+      packTitle:'Assistant Bagages', clothing:'V\u00caTEMENTS', essentials:'ESSENTIELS',
+      selectFirst:"S\u00e9lectionnez un pays sur la carte d'abord",
+      desert:'D\u00e9sert / Aride', tropical:'Tropical', monsoon:'Mousson',
+      arctic:'Arctique / Subarctique', temperate:'Temp\u00e9r\u00e9',
+      winter:'Hiver', summer:'\u00c9t\u00e9', spring:'Printemps', autumn:'Automne',
+      catAir:'Air/Missile', catExplosion:'Explosions', catArmed:'Arm\u00e9',
+      catUnrest:'Troubles', catDrug:'Trafic de drogues', catCrime:'Crime', catWeather:'M\u00e9t\u00e9o',
+      retry:'R\u00e9essayer', urgent:'Urgent', advisory:'Avis', info:'Info',
+      official:'Officiel', noData:'Aucune donn\u00e9e disponible',
+    },
+    ar:{
+      feed:'\u0627\u0644\u0628\u062b \u0627\u0644\u0645\u0628\u0627\u0634\u0631', news:'\u0623\u062e\u0628\u0627\u0631', alerts:'\u062d\u0648\u0627\u062f\u062b', crime:'\u062c\u0631\u064a\u0645\u0629', pack:'\u0645\u0633\u0627\u0639\u062f \u0627\u0644\u062d\u0642\u064a\u0628\u0629',
+      countries:'\u0645\u062a\u0635\u0641\u062d \u0627\u0644\u0639\u0627\u0644\u0645', account:'\u062d\u0633\u0627\u0628\u064a', map:'\u062e\u0631\u064a\u0637\u0629',
+      selectCountry:'\u0627\u062e\u062a\u0631 \u062f\u0648\u0644\u0629', loading:'\u062c\u0627\u0631 \u0627\u0644\u062a\u062d\u0645\u064a\u0644\u2026', noNews:'\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u062e\u0628\u0627\u0631',
+      safeCheckin:'\u062a\u0633\u062c\u064a\u0644 \u0648\u0635\u0648\u0644 \u0622\u0645\u0646', language:'\u0627\u0644\u0644\u063a\u0629', homeCountry:'\u0628\u0644\u062f \u0627\u0644\u0623\u0635\u0644',
+      save:'\u062d\u0641\u0638', cancel:'\u0625\u0644\u063a\u0627\u0621', profile:'\u0627\u0644\u0645\u0644\u0641 \u0627\u0644\u0634\u062e\u0635\u064a \u0648\u0627\u0644\u0644\u063a\u0629',
+      profileSub:'\u062d\u062f\u062f \u0628\u0644\u062f \u0623\u0635\u0644\u0643 \u0648\u0644\u063a\u062a\u0643',
+      threatLevel:'\u0645\u0633\u062a\u0648\u0649 \u0627\u0644\u062a\u0647\u062f\u064a\u062f', total:'\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a', last7:'\u0622\u062e\u0631 7 \u0623\u064a\u0627\u0645',
+      incidents:'\u062d\u0648\u0627\u062f\u062b', perDay:'\u064a\u0648\u0645\u064a\u0627', critical:'\u062d\u0631\u062c', highAlert:'\u062a\u0646\u0628\u064a\u0647 \u0639\u0627\u0644',
+      highThreat:'\u062a\u0647\u062f\u064a\u062f \u0639\u0627\u0644', elevated:'\u0645\u0631\u062a\u0641\u0639', monitor:'\u0645\u0631\u0627\u0642\u0628\u0629', clear:'\u0622\u0645\u0646',
+      safetyScore:'\u062f\u0631\u062c\u0629 \u0627\u0644\u0623\u0645\u0627\u0646', generallySafe:'\u0622\u0645\u0646 \u0628\u0634\u0643\u0644 \u0639\u0627\u0645',
+      exerciseCaution:'\u062a\u0648\u062e \u0627\u0644\u062d\u0630\u0631', highRisk:'\u062e\u0637\u0631 \u0645\u0631\u062a\u0641\u0639',
+      recentIncidents:'\u0627\u0644\u062d\u0648\u0627\u062f\u062b \u0627\u0644\u0623\u062e\u064a\u0631\u0629', noIncidents:'\u0644\u0627 \u062a\u0648\u062c\u062f \u062d\u0648\u0627\u062f\u062b \u0646\u0634\u0637\u0629',
+      travelAdvisory:'\u062a\u062d\u0630\u064a\u0631 \u0633\u0641\u0631', doNotTravel:'\u0644\u0627 \u062a\u0633\u0627\u0641\u0631 \u2014 \u062a\u0648\u0627\u0635\u0644 \u0645\u0639 \u0633\u0641\u0627\u0631\u062a\u0643',
+      totalReports:'\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0642\u0627\u0631\u064a\u0631', last90:'\u0622\u062e\u0631 90 \u064a\u0648\u0645\u0627', trend:'\u0627\u0644\u0627\u062a\u062c\u0627\u0647',
+      sources:'\u0627\u0644\u0645\u0635\u0627\u062f\u0631', dataProviders:'\u0645\u0632\u0648\u062f\u0648 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a', vsPrior:'\u0645\u0642\u0627\u0631\u0646\u0629 \u0628\u0627\u0644\u0641\u062a\u0631\u0629 \u0627\u0644\u0633\u0627\u0628\u0642\u0629',
+      monthBreakdown:'\u062a\u062d\u0644\u064a\u0644 3 \u0623\u0634\u0647\u0631', category:'\u0627\u0644\u0641\u0626\u0629',
+      worldBankData:'\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0628\u0646\u0643 \u0627\u0644\u062f\u0648\u0644\u064a', worldBankSrc:'\u0627\u0644\u0628\u0646\u0643 \u0627\u0644\u062f\u0648\u0644\u064a \u00b7 \u0623\u062d\u062f\u062b \u0633\u0646\u0629',
+      benchmarkNote:'\u0627\u0644\u0623\u0634\u0631\u0637\u0629 \u0645\u0642\u064a\u0627\u0633\u064a\u0629 \u00b7 + \u064a\u0639\u0646\u064a \u062d\u0648\u0627\u062f\u062b \u0625\u0636\u0627\u0641\u064a\u0629 \u0645\u062d\u062a\u0645\u0644\u0629',
+      rising:'\u0627\u0631\u062a\u0641\u0627\u0639', falling:'\u0627\u0646\u062e\u0641\u0627\u0636', stable:'\u0645\u0633\u062a\u0642\u0631', high:'\u0645\u0631\u062a\u0641\u0639', med:'\u0645\u062a\u0648\u0633\u0637', low:'\u0645\u0646\u062e\u0641\u0636',
+      packTitle:'\u0645\u0633\u0627\u0639\u062f \u0627\u0644\u062d\u0642\u064a\u0628\u0629', clothing:'\u0627\u0644\u0645\u0644\u0627\u0628\u0633', essentials:'\u0627\u0644\u0623\u0633\u0627\u0633\u064a\u0627\u062a',
+      selectFirst:'\u0627\u062e\u062a\u0631 \u062f\u0648\u0644\u0629 \u0639\u0644\u0649 \u0627\u0644\u062e\u0631\u064a\u0637\u0629 \u0623\u0648\u0644\u0627',
+      desert:'\u0635\u062d\u0631\u0627\u0648\u064a', tropical:'\u0627\u0633\u062a\u0648\u0627\u0626\u064a', monsoon:'\u0645\u0648\u0633\u0645\u064a',
+      arctic:'\u0642\u0637\u0628\u064a', temperate:'\u0645\u0639\u062a\u062f\u0644',
+      winter:'\u0634\u062a\u0627\u0621', summer:'\u0635\u064a\u0641', spring:'\u0631\u0628\u064a\u0639', autumn:'\u062e\u0631\u064a\u0641',
+      catAir:'\u062c\u0648\u064a', catExplosion:'\u0627\u0646\u0641\u062c\u0627\u0631\u0627\u062a', catArmed:'\u0645\u0633\u0644\u062d',
+      catUnrest:'\u0627\u0636\u0637\u0631\u0627\u0628\u0627\u062a', catDrug:'\u0645\u062e\u062f\u0631\u0627\u062a', catCrime:'\u062c\u0631\u064a\u0645\u0629', catWeather:'\u0637\u0642\u0633',
+      retry:'\u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629', urgent:'\u0639\u0627\u062c\u0644', advisory:'\u062a\u062d\u0630\u064a\u0631', info:'\u0645\u0639\u0644\u0648\u0645\u0629',
+      official:'\u0631\u0633\u0645\u064a', noData:'\u0644\u0627 \u062a\u0648\u062c\u062f \u0628\u064a\u0627\u0646\u0627\u062a',
+    },
+    pt:{
+      feed:'Feed ao Vivo', news:'Not\u00edcias', alerts:'Incidentes', crime:'Crime', pack:'Assistente de Mala',
+      countries:'Navegador Mundial', account:'Minha Conta', map:'Mapa',
+      selectCountry:'Selecionar Pa\u00eds', loading:'Carregando\u2026', noNews:'Sem not\u00edcias',
+      safeCheckin:'Check-in Seguro', language:'Idioma', homeCountry:'Pa\u00eds de Origem',
+      save:'Salvar', cancel:'Cancelar', profile:'Perfil e Idioma',
+      profileSub:'Defina seu pa\u00eds de origem e idioma',
+      threatLevel:'N\u00edvel de Amea\u00e7a', total:t('total'), last7:'\u00dALTIMOS 7 DIAS',
+      incidents:'Incidentes', perDay:'Por Dia', critical:'Cr\u00edtico', highAlert:'Alta Alerta',
+      highThreat:'AMEA\u00c7A ALTA', elevated:'ELEVADO', monitor:'MONITORAR', clear:'SEGURO',
+      safetyScore:'Pontua\u00e7\u00e3o de Seguran\u00e7a', generallySafe:'Geralmente Seguro',
+      exerciseCaution:'Tome Precau\u00e7\u00f5es', highRisk:'Alto Risco',
+      recentIncidents:'INCIDENTES RECENTES', noIncidents:'Sem incidentes ativos',
+      travelAdvisory:'Aviso de Viagem', doNotTravel:'N\u00c3O VIAJE \u2014 contate sua embaixada',
+      totalReports:'Total de Relat\u00f3rios', last90:'\u00daltimos 90 dias', trend:'Tend\u00eancia',
+      sources:'Fontes', dataProviders:'Fornecedores de dados', vsPrior:'vs per\u00edodo anterior',
+      monthBreakdown:'RESUMO 3 MESES \u00b7 M\u00cdDIA', category:'CATEGORIA',
+      worldBankData:'DADOS BANCO MUNDIAL AO VIVO', worldBankSrc:'Banco Mundial \u00b7 Ano mais recente',
+      benchmarkNote:'Barras em escala \u00b7 + indica mais incidentes prov\u00e1veis',
+      rising:'Subindo', falling:'Caindo', stable:'Est\u00e1vel', high:'ALTO', med:'M\u00c9DIO', low:'BAIXO',
+      packTitle:'Assistente de Mala', clothing:'ROUPAS', essentials:'ESSENCIAIS',
+      selectFirst:'Selecione um pa\u00eds no mapa primeiro',
+      desert:'Deserto / \u00c1rido', tropical:'Tropical', monsoon:'Mon\u00e7\u00e3o',
+      arctic:'\u00c1rtico / Sub\u00e1rtico', temperate:'Temperado',
+      winter:'Inverno', summer:'Ver\u00e3o', spring:'Primavera', autumn:'Outono',
+      catAir:'A\u00e9reo/M\u00edssil', catExplosion:'Explos\u00f5es', catArmed:'Armado',
+      catUnrest:'Dist\u00farbios', catDrug:'Tr\u00e1fico', catCrime:'Crime', catWeather:'Clima',
+      retry:'Tentar Novamente', urgent:'Urgente', advisory:'Aviso', info:'Info',
+      official:'Oficial', noData:'Sem dados dispon\u00edveis',
+    },
+    ru:{
+      feed:'\u041b\u0435\u043d\u0442\u0430', news:'\u041d\u043e\u0432\u043e\u0441\u0442\u0438', alerts:'\u0418\u043d\u0446\u0438\u0434\u0435\u043d\u0442\u044b', crime:'\u041f\u0440\u0435\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c', pack:'\u041f\u043e\u043c\u043e\u0449\u043d\u0438\u043a',
+      countries:'\u041e\u0431\u043e\u0437\u0440\u0435\u0432\u0430\u0442\u0435\u043b\u044c \u043c\u0438\u0440\u0430', account:'\u041c\u043e\u0439 \u0430\u043a\u043a\u0430\u0443\u043d\u0442', map:'\u041a\u0430\u0440\u0442\u0430',
+      selectCountry:'\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0441\u0442\u0440\u0430\u043d\u0443', loading:'\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430\u2026', noNews:'\u041d\u043e\u0432\u043e\u0441\u0442\u0435\u0439 \u043d\u0435\u0442',
+      safeCheckin:'\u0411\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u044b\u0439 \u0447\u0435\u043a\u0438\u043d', language:'\u042f\u0437\u044b\u043a', homeCountry:'\u0421\u0442\u0440\u0430\u043d\u0430 \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u044f',
+      save:'\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c', cancel:'\u041e\u0442\u043c\u0435\u043d\u0430', profile:'\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u0438 \u044f\u0437\u044b\u043a',
+      profileSub:'\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0443 \u043f\u0440\u043e\u0438\u0441\u0445\u043e\u0436\u0434\u0435\u043d\u0438\u044f \u0438 \u044f\u0437\u044b\u043a',
+      threatLevel:'\u0423\u0440\u043e\u0432\u0435\u043d\u044c \u0443\u0433\u0440\u043e\u0437\u044b', total:'\u0418\u0422\u041e\u0413\u041e', last7:'\u041f\u041e\u0421\u041b\u0415\u0414\u041d\u0418\u0415 7 \u0414\u041d\u0415\u0419',
+      incidents:'\u0418\u043d\u0446\u0438\u0434\u0435\u043d\u0442\u044b', perDay:'\u0412 \u0434\u0435\u043d\u044c', critical:'\u041a\u0440\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439', highAlert:'\u0412\u044b\u0441\u043e\u043a\u0430\u044f \u0442\u0440\u0435\u0432\u043e\u0433\u0430',
+      highThreat:'\u0412\u042b\u0421\u041e\u041a\u0410\u042f \u0423\u0413\u0420\u041e\u0417\u0410', elevated:'\u041f\u041e\u0412\u042b\u0428\u0415\u041d\u041d\u042b\u0419', monitor:'\u041d\u0410\u0411\u041b\u042e\u0414\u0415\u041d\u0418\u0415', clear:'\u0427\u0418\u0421\u0422\u041e',
+      safetyScore:'\u041e\u0446\u0435\u043d\u043a\u0430 \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u0438', generallySafe:'\u0412 \u0446\u0435\u043b\u043e\u043c \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e',
+      exerciseCaution:'\u0421\u043e\u0431\u043b\u044e\u0434\u0430\u0439\u0442\u0435 \u043e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e\u0441\u0442\u044c', highRisk:'\u0412\u044b\u0441\u043e\u043a\u0438\u0439 \u0440\u0438\u0441\u043a',
+      recentIncidents:'\u041f\u041e\u0421\u041b\u0415\u0414\u041d\u0418\u0415 \u0418\u041d\u0426\u0418\u0414\u0415\u041d\u0422\u042b', noIncidents:'\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0438\u043d\u0446\u0438\u0434\u0435\u043d\u0442\u043e\u0432 \u043d\u0435\u0442',
+      travelAdvisory:'\u041f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u0435 \u043e \u043f\u043e\u0435\u0437\u0434\u043a\u0435', doNotTravel:'\u041d\u0415 \u0415\u0425\u0410\u0422\u042c \u2014 \u0441\u0432\u044f\u0436\u0438\u0442\u0435\u0441\u044c \u0441 \u043f\u043e\u0441\u043e\u043b\u044c\u0441\u0442\u0432\u043e\u043c',
+      totalReports:'\u0412\u0441\u0435\u0433\u043e \u043e\u0442\u0447\u0451\u0442\u043e\u0432', last90:'\u0417\u0430 90 \u0434\u043d\u0435\u0439', trend:'\u0422\u0435\u043d\u0434\u0435\u043d\u0446\u0438\u044f',
+      sources:'\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438', dataProviders:'\u041f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a\u0438 \u0434\u0430\u043d\u043d\u044b\u0445', vsPrior:'\u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 \u043f\u0440\u0435\u0434\u044b\u0434\u0443\u0449\u0438\u043c',
+      monthBreakdown:'\u0421\u0412\u041e\u0414\u041a\u0410 3 \u041c\u0415\u0421\u042f\u0426\u0410', category:'\u041a\u0410\u0422\u0415\u0413\u041e\u0420\u0418\u042f',
+      worldBankData:'\u0414\u0410\u041d\u041d\u042b\u0415 \u0412\u0421\u0415\u041c\u0418\u0420\u041d\u041e\u0413\u041e \u0411\u0410\u041d\u041a\u0410', worldBankSrc:'\u0412\u0441\u0435\u043c\u0438\u0440\u043d\u044b\u0439 \u0431\u0430\u043d\u043a \u00b7 \u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u0433\u043e\u0434',
+      benchmarkNote:'\u0428\u043a\u0430\u043b\u0430 \u043f\u043e \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u044e \u00b7 + \u043e\u0437\u043d\u0430\u0447\u0430\u0435\u0442 \u0432\u0435\u0440\u043e\u044f\u0442\u043d\u043e \u0431\u043e\u043b\u044c\u0448\u0435 \u0438\u043d\u0446\u0438\u0434\u0435\u043d\u0442\u043e\u0432',
+      rising:'\u0420\u043e\u0441\u0442', falling:'\u0421\u043d\u0438\u0436\u0435\u043d\u0438\u0435', stable:'\u0421\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e', high:'\u0412\u042b\u0421\u041e\u041a\u0418\u0419', med:'\u0421\u0420\u0415\u0414\u041d\u0418\u0419', low:'\u041d\u0418\u0417\u041a\u0418\u0419',
+      packTitle:'\u041f\u043e\u043c\u043e\u0449\u043d\u0438\u043a', clothing:'\u041e\u0414\u0415\u0416\u0414\u0410', essentials:'\u041d\u0415\u041e\u0411\u0425\u041e\u0414\u0418\u041c\u041e\u0415',
+      selectFirst:'\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0443 \u043d\u0430 \u043a\u0430\u0440\u0442\u0435',
+      desert:'\u041f\u0443\u0441\u0442\u044b\u043d\u044f', tropical:'\u0422\u0440\u043e\u043f\u0438\u0447\u0435\u0441\u043a\u0438\u0439', monsoon:'\u041c\u0443\u0441\u0441\u043e\u043d\u043d\u044b\u0439',
+      arctic:'\u0410\u0440\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439', temperate:'\u0423\u043c\u0435\u0440\u0435\u043d\u043d\u044b\u0439',
+      winter:'\u0417\u0438\u043c\u0430', summer:'\u041b\u0435\u0442\u043e', spring:'\u0412\u0435\u0441\u043d\u0430', autumn:'\u041e\u0441\u0435\u043d\u044c',
+      catAir:'\u0412\u043e\u0437\u0434\u0443\u0445/\u0420\u0430\u043a\u0435\u0442\u044b', catExplosion:'\u0412\u0437\u0440\u044b\u0432\u044b', catArmed:'\u0412\u043e\u043e\u0440\u0443\u0436\u0451\u043d\u043d\u044b\u0435',
+      catUnrest:'\u0411\u0435\u0441\u043f\u043e\u0440\u044f\u0434\u043a\u0438', catDrug:'\u041d\u0430\u0440\u043a\u043e\u0442\u0438\u043a\u0438', catCrime:'\u041f\u0440\u0435\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c', catWeather:'\u041f\u043e\u0433\u043e\u0434\u0430',
+      retry:'\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c', urgent:'\u0421\u0440\u043e\u0447\u043d\u043e', advisory:'\u041f\u0440\u0435\u0434\u0443\u043f\u0440\u0435\u0436\u0434\u0435\u043d\u0438\u0435', info:'\u0418\u043d\u0444\u043e',
+      official:'\u041e\u0444\u0438\u0446\u0438\u0430\u043b\u044c\u043d\u043e', noData:'\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445',
+    },
+    zh:{
+      feed:'\u5b9e\u65f6\u52a8\u6001', news:'\u65b0\u95fb', alerts:'\u4e8b\u4ef6', crime:'\u72af\u7f6a', pack:'\u884c\u674e\u52a9\u624b',
+      countries:'\u4e16\u754c\u6d4f\u89c8\u5668', account:'\u6211\u7684\u8d26\u6237', map:'\u5730\u56fe',
+      selectCountry:'\u9009\u62e9\u56fd\u5bb6', loading:'\u52a0\u8f7d\u4e2d\u2026', noNews:'\u672a\u627e\u5230\u65b0\u95fb',
+      safeCheckin:'\u5b89\u5168\u7b7e\u5230', language:'\u8bed\u8a00', homeCountry:'\u539f\u7c4d\u56fd',
+      save:'\u4fdd\u5b58', cancel:'\u53d6\u6d88', profile:'\u4e2a\u4eba\u8d44\u6599\u548c\u8bed\u8a00',
+      profileSub:'\u8bbe\u7f6e\u60a8\u7684\u539f\u7c4d\u56fd\u548c\u8bed\u8a00',
+      threatLevel:'\u5a01\u80c1\u7ea7\u522b', total:'\u603b\u8ba1', last7:'\u6700\u8fd17\u5929',
+      incidents:'\u4e8b\u4ef6', perDay:'\u6bcf\u5929', critical:'\u4e25\u91cd', highAlert:'\u9ad8\u5ea6\u8b66\u6212',
+      highThreat:'\u9ad8\u5a01\u80c1', elevated:'\u5347\u7ea7', monitor:'\u76d1\u63a7', clear:'\u5b89\u5168',
+      safetyScore:'\u5b89\u5168\u8bc4\u5206', generallySafe:'\u603b\u4f53\u5b89\u5168',
+      exerciseCaution:'\u4fdd\u6301\u8c28\u614e', highRisk:'\u9ad8\u98ce\u9669',
+      recentIncidents:'\u8fd1\u671f\u4e8b\u4ef6', noIncidents:'\u65e0\u6d3b\u8dc3\u4e8b\u4ef6',
+      travelAdvisory:'\u65c5\u884c\u8b66\u544a', doNotTravel:'\u7981\u6b62\u524d\u5f80 \u2014 \u8054\u7cfb\u60a8\u7684\u5927\u4f7f\u9986',
+      totalReports:'\u62a5\u544a\u603b\u6570', last90:'\u8fc790\u5929', trend:'\u8d8b\u52bf',
+      sources:'\u6765\u6e90', dataProviders:'\u6570\u636e\u63d0\u4f9b\u8005', vsPrior:'\u4e0e\u4e0a\u671f\u76f8\u6bd4',
+      monthBreakdown:'3\u4e2a\u6708\u5206\u6790', category:'\u7c7b\u522b',
+      worldBankData:'\u4e16\u754c\u9280\u884c\u5b9e\u65f6\u6570\u636e', worldBankSrc:'\u4e16\u754c\u9280\u884c \u00b7 \u6700\u65b0\u5e74\u4efd',
+      benchmarkNote:'\u6761\u5f62\u56fe\u6309\u57fa\u51c6\u7f29\u653e \u00b7 +\u8868\u793a\u53ef\u80fd\u5b58\u5728\u66f4\u591a\u4e8b\u4ef6',
+      rising:'\u4e0a\u5347', falling:'\u4e0b\u964d', stable:'\u7a33\u5b9a', high:'\u9ad8', med:'\u4e2d', low:'\u4f4e',
+      packTitle:'\u884c\u674e\u52a9\u624b', clothing:'\u670d\u88c5', essentials:'\u5fc5\u5907\u54c1',
+      selectFirst:'\u8bf7\u5148\u5728\u5730\u56fe\u4e0a\u9009\u62e9\u56fd\u5bb6',
+      desert:'\u6c99\u6f20', tropical:'\u70ed\u5e26', monsoon:'\u5b63\u98ce',
+      arctic:'\u5317\u6781', temperate:'\u6e29\u5e26',
+      winter:'\u51ac\u5b63', summer:'\u590f\u5b63', spring:'\u6625\u5b63', autumn:'\u79cb\u5b63',
+      catAir:'\u7a7a\u4e2d/\u5bfc\u5f39', catExplosion:'\u7206\u70b8', catArmed:'\u6b66\u88c5',
+      catUnrest:'\u52a8\u4e71', catDrug:'\u6bd2\u54c1\u72af\u7f6a', catCrime:'\u72af\u7f6a', catWeather:'\u5929\u6c14',
+      retry:'\u91cd\u8bd5', urgent:'\u7d27\u6025', advisory:'\u8b66\u544a', info:'\u4fe1\u606f',
+      official:'\u5b98\u65b9', noData:'\u6682\u65e0\u6570\u636e',
+    },
+    de:{
+      feed:'Live-Feed', news:'Nachrichten', alerts:'Vorf\u00e4lle', crime:'Kriminalit\u00e4t', pack:'Packassistent',
+      countries:'Weltbrowser', account:'Mein Konto', map:'Karte',
+      selectCountry:'Land ausw\u00e4hlen', loading:'Laden\u2026', noNews:'Keine Nachrichten',
+      safeCheckin:'Sicher einchecken', language:'Sprache', homeCountry:'Heimatland',
+      save:'Speichern', cancel:'Abbrechen', profile:'Profil & Sprache',
+      profileSub:'Heimatland und Sprache festlegen',
+      threatLevel:'Bedrohungsstufe', total:'GESAMT', last7:'LETZTE 7 TAGE',
+      incidents:'Vorf\u00e4lle', perDay:'Pro Tag', critical:'Kritisch', highAlert:'Hohe Alarmbereitschaft',
+      highThreat:'HOHE BEDROHUNG', elevated:'ERHOHT', monitor:'BEOBACHTEN', clear:'SICHER',
+      safetyScore:'Sicherheitsbewertung', generallySafe:'Im Allgemeinen sicher',
+      exerciseCaution:'Vorsicht walten lassen', highRisk:'Hohes Risiko',
+      recentIncidents:'AKTUELLE VORF\u00c4LLE', noIncidents:'Keine aktiven Vorf\u00e4lle',
+      travelAdvisory:'Reisewarnung', doNotTravel:'NICHT REISEN \u2014 Botschaft kontaktieren',
+      totalReports:'Berichte gesamt', last90:'Letzte 90 Tage', trend:'Tendenz',
+      sources:'Quellen', dataProviders:'Datenanbieter', vsPrior:'vs. Vorperiode',
+      monthBreakdown:'3-MONATS-\u00dcBERSICHT \u00b7 MEDIEN', category:'KATEGORIE',
+      worldBankData:'WELTBANK-LIVEDATEN', worldBankSrc:'Weltbank \u00b7 Aktuellstes Jahr',
+      benchmarkNote:'Balken skaliert \u00b7 + bedeutet wahrscheinlich mehr Vorf\u00e4lle',
+      rising:'Steigend', falling:'Fallend', stable:'Stabil', high:'HOCH', med:'MITTEL', low:'NIEDRIG',
+      packTitle:'Packassistent', clothing:'KLEIDUNG', essentials:'NOTWENDIGES',
+      selectFirst:'W\u00e4hlen Sie zuerst ein Land auf der Karte',
+      desert:'W\u00fcste', tropical:'Tropisch', monsoon:'Monsun',
+      arctic:'Arktisch', temperate:'Gem\u00e4\u00dfigt',
+      winter:'Winter', summer:'Sommer', spring:'Fr\u00fchling', autumn:'Herbst',
+      catAir:'Luft/Rakete', catExplosion:'Explosionen', catArmed:'Bewaffnet',
+      catUnrest:'Unruhen', catDrug:'Drogenhandel', catCrime:'Kriminalit\u00e4t', catWeather:'Wetter',
+      retry:'Erneut versuchen', urgent:'Dringend', advisory:'Warnung', info:'Info',
+      official:'Offiziell', noData:'Keine Daten',
+    },
+    ja:{
+      feed:'\u30e9\u30a4\u30d6\u30d5\u30a3\u30fc\u30c9', news:'\u30cb\u30e5\u30fc\u30b9', alerts:'\u30a4\u30f3\u30b7\u30c7\u30f3\u30c8', crime:'\u72af\u7f6a', pack:'\u30d1\u30c3\u30af\u30a2\u30b7\u30b9\u30bf\u30f3\u30c8',
+      countries:'\u30ef\u30fc\u30eb\u30c9\u30d6\u30e9\u30a6\u30b6', account:'\u30de\u30a4\u30a2\u30ab\u30a6\u30f3\u30c8', map:'\u5730\u56f3',
+      selectCountry:'\u56fd\u3092\u9078\u629e', loading:'\u8aad\u307f\u8fbc\u307f\u4e2d\u2026', noNews:'\u30cb\u30e5\u30fc\u30b9\u306a\u3057',
+      safeCheckin:'\u5b89\u5168\u30c1\u30a7\u30c3\u30af\u30a4\u30f3', language:'\u8a00\u8a9e', homeCountry:'\u51fa\u8eab\u56fd',
+      save:'\u4fdd\u5b58', cancel:'\u30ad\u30e3\u30f3\u30bb\u30eb', profile:'\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u3068\u8a00\u8a9e',
+      profileSub:'\u51fa\u8eab\u56fd\u3068\u8a00\u8a9e\u3092\u8a2d\u5b9a',
+      threatLevel:'\u8105\u5a01\u30ec\u30d9\u30eb', total:'\u5408\u8a08', last7:'\u904e\u53bb7\u65e5\u9593',
+      incidents:'\u30a4\u30f3\u30b7\u30c7\u30f3\u30c8', perDay:'1\u65e5\u3042\u305f\u308a', critical:'\u7dca\u6025', highAlert:'\u9ad8\u8b66\u6212',
+      highThreat:'\u9ad8\u8105\u5a01', elevated:'\u4e0a\u6607', monitor:'\u76e3\u8996', clear:'\u5b89\u5168',
+      safetyScore:'\u5b89\u5168\u30b9\u30b3\u30a2', generallySafe:'\u6982\u306d\u5b89\u5168',
+      exerciseCaution:'\u6ce8\u610f\u304c\u5fc5\u8981', highRisk:'\u9ad8\u30ea\u30b9\u30af',
+      recentIncidents:'\u6700\u8fd1\u306e\u30a4\u30f3\u30b7\u30c7\u30f3\u30c8', noIncidents:'\u6d3b\u767a\u306a\u30a4\u30f3\u30b7\u30c7\u30f3\u30c8\u306a\u3057',
+      travelAdvisory:'\u6e21\u822a\u5371\u967a\u60c5\u5831', doNotTravel:'\u6e21\u822a\u7981\u6b62 \u2014 \u5927\u4f7f\u9928\u306b\u9023\u7d61',
+      totalReports:'\u7dcf\u30ec\u30dd\u30fc\u30c8\u6570', last90:'\u904e\u53bb90\u65e5\u9593', trend:'\u50be\u5411',
+      sources:'\u30bd\u30fc\u30b9', dataProviders:'\u30c7\u30fc\u30bf\u30d7\u30ed\u30d0\u30a4\u30c0\u30fc', vsPrior:'\u524d\u671f\u6bd4',
+      monthBreakdown:'3\u30f6\u6708\u5206\u6790', category:'\u30ab\u30c6\u30b4\u30ea\u30fc',
+      worldBankData:'\u4e16\u754c\u9280\u884c\u30e9\u30a4\u30d6\u30c7\u30fc\u30bf', worldBankSrc:'\u4e16\u754c\u9280\u884c \u00b7 \u6700\u65b0\u5e74',
+      benchmarkNote:'\u30d0\u30fc\u306f\u30d9\u30f3\u30c1\u30de\u30fc\u30af\u6bd4 \u00b7 +\u306f\u3055\u3089\u306b\u591a\u304f\u306e\u4e8b\u4f8b\u304c\u3042\u308b\u53ef\u80fd\u6027',
+      rising:'\u4e0a\u6607', falling:'\u4f4e\u4e0b', stable:'\u5b89\u5b9a', high:'\u9ad8', med:'\u4e2d', low:'\u4f4e',
+      packTitle:'\u30d1\u30c3\u30af\u30a2\u30b7\u30b9\u30bf\u30f3\u30c8', clothing:'\u8863\u985e', essentials:'\u5fc5\u9700\u54c1',
+      selectFirst:'\u307e\u305a\u5730\u56f3\u3067\u56fd\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044',
+      desert:'\u7802\u6f20', tropical:'\u71b1\u5e2f', monsoon:'\u30e2\u30f3\u30b9\u30fc\u30f3',
+      arctic:'\u5317\u6975', temperate:'\u6e29\u5e2f',
+      winter:'\u51ac', summer:'\u590f', spring:'\u6625', autumn:'\u79cb',
+      catAir:'\u822a\u7a7a/\u30df\u30b5\u30a4\u30eb', catExplosion:'\u7206\u767a', catArmed:'\u6b66\u88c5',
+      catUnrest:'\u9a12\u4e71', catDrug:'\u9ebb\u85ac\u72af\u7f6a', catCrime:'\u72af\u7f6a', catWeather:'\u6c17\u8c58',
+      retry:'\u518d\u8a66\u884c', urgent:'\u7dca\u6025', advisory:'\u8b66\u544a', info:'\u60c5\u5831',
+      official:'\u516c\u5f0f', noData:'\u30c7\u30fc\u30bf\u306a\u3057',
+    },
+    ko:{
+      feed:'\ub77c\uc774\ube0c \ud53c\ub4dc', news:'\ub274\uc2a4', alerts:'\uc0ac\uac74', crime:'\ubc94\uc8c4', pack:'\uc9d0 \ub3c4\uc6b0\ubbf8',
+      countries:'\uc138\uacc4 \ube0c\ub77c\uc6b0\uc800', account:'\ub0b4 \uacc4\uc815', map:'\uc9c0\ub3c4',
+      selectCountry:'\uad6d\uac00 \uc120\ud0dd', loading:'\ub85c\ub529 \uc911\u2026', noNews:'\ub274\uc2a4 \uc5c6\uc74c',
+      safeCheckin:'\uc548\uc804 \uccb4\ud06c\uc778', language:'\uc5b8\uc5b4', homeCountry:'\ucd9c\uc2e0 \uad6d\uac00',
+      save:'\uc800\uc7a5', cancel:'\ucde8\uc18c', profile:'\ud504\ub85c\ud544 \ubc0f \uc5b8\uc5b4',
+      profileSub:'\ucd9c\uc2e0 \uad6d\uac00\uc640 \uc5b8\uc5b4\ub97c \uc124\uc815\ud558\uc138\uc694',
+      threatLevel:'\uc704\ud611 \uc218\uc900', total:'\ud569\uacc4', last7:'\ucd5c\uadfc 7\uc77c',
+      incidents:'\uc0ac\uac74', perDay:'\ud558\ub8e8 \uae30\uc900', critical:'\uc704\uae09', highAlert:'\uace0\ub3c4 \uacbd\uacc4',
+      highThreat:'\ub192\uc740 \uc704\ud611', elevated:'\uc0c1\uc2b9', monitor:'\ubaa8\ub2c8\ud130\ub9c1', clear:'\uc548\uc804',
+      safetyScore:'\uc548\uc804 \uc810\uc218', generallySafe:'\uc77c\ubc18\uc801\uc73c\ub85c \uc548\uc804',
+      exerciseCaution:'\uc8fc\uc758 \ud544\uc694', highRisk:'\ub192\uc740 \uc704\ud5d8',
+      recentIncidents:'\ucd5c\uadfc \uc0ac\uac74', noIncidents:'\ud65c\uc131 \uc0ac\uac74 \uc5c6\uc74c',
+      travelAdvisory:'\uc5ec\ud589 \uacbd\ubcf4', doNotTravel:'\uc5ec\ud589 \uae08\uc9c0 \u2014 \ub300\uc0ac\uad00\uc5d0 \uc5f0\ub77d',
+      totalReports:'\ucd1d \ubcf4\uace0\uc11c', last90:'\ucd5c\uadfc 90\uc77c', trend:'\ucd94\uc138',
+      sources:'\ucd9c\uccb4', dataProviders:'\ub370\uc774\ud130 \uc81c\uacf5\uc790', vsPrior:'\uc774\uc804 \uae30\uac04 \ub300\ube44',
+      monthBreakdown:'3\uac1c\uc6d4 \ubd84\uc11d', category:'\uce74\ud14c\uace0\ub9ac',
+      worldBankData:'\uc138\uacc4\uc740\ud589 \ub77c\uc774\ube0c \ub370\uc774\ud130', worldBankSrc:'\uc138\uacc4\uc740\ud589 \u00b7 \ucd5c\uadfc \uc5f0\ub3c4',
+      benchmarkNote:'\ubc14 \uae30\uc900 \ucca5\ub3c4 \u00b7 +\ub294 \ub354 \ub9ce\uc740 \uc0ac\uac74 \uac00\ub2a5\uc131',
+      rising:'\uc0c1\uc2b9', falling:'\ud558\ub77d', stable:'\uc548\uc815', high:'\ub192\uc74c', med:'\uc911\uac04', low:'\ub099\uc74c',
+      packTitle:'\uc9d0 \ub3c4\uc6b0\ubbf8', clothing:'\uc758\ub958', essentials:'\ud544\uc218\ud488',
+      selectFirst:'\uba3c\uc800 \uc9c0\ub3c4\uc5d0\uc11c \uad6d\uac00\ub97c \uc120\ud0dd\ud558\uc138\uc694',
+      desert:'\uc0ac\ub9c9', tropical:'\uc5f4\ub300', monsoon:'\ubaa8\ub860',
+      arctic:'\ubd81\uadf9', temperate:'\uc628\ub300',
+      winter:'\uaca8\uc6b8', summer:'\uc5ec\ub984', spring:'\ubd04', autumn:'\uac00\uc744',
+      catAir:'\uacf5\uc911/\ubbf8\uc0ac\uc77c', catExplosion:'\ud3ed\ubc1c', catArmed:'\ubb34\uc7a5',
+      catUnrest:'\ubd88\uc548', catDrug:'\ub9c8\uc57d \ubc94\uc8c4', catCrime:'\ubc94\uc8c4', catWeather:'\ub0a0\uc528',
+      retry:'\ub2e4\uc2dc \uc2dc\ub3c4', urgent:'\uae34\uae09', advisory:'\uacbd\ubcf4', info:'\uc815\ubcf4',
+      official:'\uacf5\uc2dd', noData:'\ub370\uc774\ud130 \uc5c6\uc74c',
+    },
+    tr:{
+      feed:'Canl\u0131 Ak\u0131\u015f', news:'Haberler', alerts:'Olaylar', crime:'Su\u00e7', pack:'Bavul Asistan\u0131',
+      countries:'D\u00fcnya Taray\u0131c\u0131', account:'Hesab\u0131m', map:'Harita',
+      selectCountry:'\u00dclke Se\u00e7', loading:'Y\u00fckleniyor\u2026', noNews:'Haber bulunamad\u0131',
+      safeCheckin:'G\u00fcvenli Giri\u015f', language:'Dil', homeCountry:'Men\u015fei \u00dclke',
+      save:'Kaydet', cancel:'\u0130ptal', profile:'Profil ve Dil',
+      profileSub:'Ana \u00fclkenizi ve dilinizi ayarlay\u0131n',
+      threatLevel:'Tehdit Seviyesi', total:'TOPLAM', last7:'SON 7 G\u00dcN',
+      incidents:'Olaylar', perDay:'G\u00fcnl\u00fck', critical:'Kritik', highAlert:'Y\u00fcksek Alarm',
+      highThreat:'Y\u00dcKSEK TEHD\u0130T', elevated:'Y\u00dcKSELM\u0130\u015e', monitor:'\u0130ZLE', clear:'G\u00dcVENL\u0130',
+      safetyScore:'G\u00fcvenlik Puan\u0131', generallySafe:'Genel olarak G\u00fcvenli',
+      exerciseCaution:'Dikkatli Olun', highRisk:'Y\u00fcksek Risk',
+      recentIncidents:'SON OLAYLAR', noIncidents:'Aktif olay yok',
+      travelAdvisory:'Seyahat Uyard\u0131s\u0131', doNotTravel:'SEYAHAT ETMEY\u0130N \u2014 B\u00fcy\u00fckelbiseli\u011finizi aray\u0131n',
+      totalReports:'Toplam Rapor', last90:'Son 90 g\u00fcn', trend:'E\u011filim',
+      sources:'Kaynaklar', dataProviders:'Veri sa\u011flay\u0131c\u0131lar\u0131', vsPrior:'\u00f6nceki d\u00f6neme k\u0131yasla',
+      monthBreakdown:'3 AYLIK \u00d6ZET \u00b7 MEDYA', category:'KATEGOR\u0130',
+      worldBankData:'D\u00dcNYA BANKASI CANLI VER\u0130', worldBankSrc:'D\u00fcnya Bankas\u0131 \u00b7 En g\u00fcncel y\u0131l',
+      benchmarkNote:'\u00c7ubuklar \u00f6l\u00e7ekli \u00b7 + daha fazla olay olabilece\u011fini g\u00f6sterir',
+      rising:'Y\u00fckseliyor', falling:'D\u00fc\u015f\u00fcyor', stable:'Stabil', high:'Y\u00dcKSEK', med:'ORTA', low:'D\u00dc\u015e\u00dcK',
+      packTitle:'Bavul Asistan\u0131', clothing:'G\u0130YS\u0130', essentials:'TEMEL E\u015eYALAR',
+      selectFirst:'\u00d6nce haritadan bir \u00fclke se\u00e7in',
+      desert:'\u00c7\u00f6l', tropical:'Tropikal', monsoon:'Muson',
+      arctic:'Arktik', temperate:'\u0131l\u0131man',
+      winter:'K\u0131\u015f', summer:'Yaz', spring:'\u0130lkbahar', autumn:'Sonbahar',
+      catAir:'Hava/F\u00fcze', catExplosion:'Patlamalar', catArmed:'Silahl\u0131',
+      catUnrest:'Karga\u015fa', catDrug:'Uyu\u015fturucu Su\u00e7u', catCrime:'Su\u00e7', catWeather:'Hava Durumu',
+      retry:'Tekrar Dene', urgent:'Acil', advisory:'Uyar\u0131', info:'Bilgi',
+      official:'Resmi', noData:'Veri yok',
+    },
+    hi:{
+      feed:'\u0932\u093e\u0907\u0935 \u092b\u093c\u0940\u0921', news:'\u0938\u092e\u093e\u091a\u093e\u0930', alerts:'\u0918\u091f\u0928\u093e\u090f\u0902', crime:'\u0905\u092a\u0930\u093e\u0927', pack:'\u092a\u0948\u0915 \u0938\u0939\u093e\u092f\u0915',
+      countries:'\u0935\u093f\u0936\u094d\u0935 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930', account:'\u092e\u0947\u0930\u093e \u0916\u093e\u0924\u093e', map:'\u0928\u0915\u094d\u0936\u093e',
+      selectCountry:'\u0926\u0947\u0936 \u091a\u0941\u0928\u0947\u0902', loading:'\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u093e \u0939\u0948\u2026', noNews:'\u0915\u094b\u0908 \u0938\u092e\u093e\u091a\u093e\u0930 \u0928\u0939\u0940\u0902',
+      safeCheckin:'\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u091a\u0947\u0915-\u0907\u0928', language:'\u092d\u093e\u0937\u093e', homeCountry:'\u092e\u0942\u0932 \u0926\u0947\u0936',
+      save:'\u0938\u0939\u0947\u091c\u0947\u0902', cancel:'\u0930\u0926\u094d\u0926 \u0915\u0930\u0947\u0902', profile:'\u092a\u094d\u0930\u094b\u092b\u093c\u093e\u0907\u0932 \u0914\u0930 \u092d\u093e\u0937\u093e',
+      profileSub:'\u0905\u092a\u0928\u093e \u092e\u0942\u0932 \u0926\u0947\u0936 \u0914\u0930 \u092d\u093e\u0937\u093e \u0938\u0947\u091f \u0915\u0930\u0947\u0902',
+      threatLevel:'\u0916\u0924\u0930\u0947 \u0915\u093e \u0938\u094d\u0924\u0930', total:'\u0915\u0941\u0932', last7:'\u092a\u093f\u091b\u0932\u0947 7 \u0926\u093f\u0928',
+      incidents:'\u0918\u091f\u0928\u093e\u090f\u0902', perDay:'\u092a\u094d\u0930\u0924\u093f \u0926\u093f\u0928', critical:'\u0917\u0902\u092d\u0940\u0930', highAlert:'\u0909\u091a\u094d\u091a \u0938\u0924\u0930\u094d\u0915\u0924\u093e',
+      highThreat:'\u0909\u091a\u094d\u091a \u0916\u0924\u0930\u093e', elevated:'\u092c\u0922\u093c\u093e \u0939\u0941\u0906', monitor:'\u0928\u093f\u0917\u0930\u093e\u0928\u0940', clear:'\u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924',
+      safetyScore:'\u0938\u0941\u0930\u0915\u094d\u0937\u093e \u0938\u094d\u0915\u094b\u0930', generallySafe:'\u0938\u093e\u092e\u093e\u0928\u094d\u092f\u0924\u0903 \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924',
+      exerciseCaution:'\u0938\u093e\u0935\u0927\u093e\u0928\u0940 \u092c\u0930\u0924\u0947\u0902', highRisk:'\u0909\u091a\u094d\u091a \u091c\u094b\u0916\u093f\u092e',
+      recentIncidents:'\u0939\u093e\u0932 \u0915\u0940 \u0918\u091f\u0928\u093e\u090f\u0902', noIncidents:'\u0915\u094b\u0908 \u0938\u0915\u094d\u0930\u093f\u092f \u0918\u091f\u0928\u093e \u0928\u0939\u0940\u0902',
+      travelAdvisory:'\u092f\u093e\u0924\u094d\u0930\u093e \u0938\u0932\u093e\u0939', doNotTravel:'\u092f\u093e\u0924\u094d\u0930\u093e \u0928 \u0915\u0930\u0947\u0902 \u2014 \u0905\u092a\u0928\u0947 \u0926\u0942\u0924\u093e\u0935\u093e\u0938 \u0938\u0947 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902',
+      totalReports:'\u0915\u0941\u0932 \u0930\u093f\u092a\u094b\u0930\u094d\u091f', last90:'\u092a\u093f\u091b\u0932\u0947 90 \u0926\u093f\u0928', trend:'\u0930\u0941\u091d\u093e\u0928',
+      sources:'\u0938\u094d\u0930\u094b\u0924', dataProviders:'\u0921\u0947\u091f\u093e \u092a\u094d\u0930\u0926\u093e\u0924\u093e', vsPrior:'\u092a\u093f\u091b\u0932\u0940 \u0905\u0935\u0927\u093f \u0915\u0940 \u0924\u0941\u0932\u0928\u093e \u092e\u0947\u0902',
+      monthBreakdown:'3 \u092e\u0939\u0940\u0928\u0947 \u0915\u093e \u0935\u093f\u0936\u094d\u0932\u0947\u0937\u0923', category:'\u0936\u094d\u0930\u0947\u0923\u0940',
+      worldBankData:'\u0935\u093f\u0936\u094d\u0935 \u092c\u0948\u0902\u0915 \u0921\u0947\u091f\u093e', worldBankSrc:'\u0935\u093f\u0936\u094d\u0935 \u092c\u0948\u0902\u0915 \u00b7 \u0938\u092c\u0938\u0947 \u0939\u093e\u0932\u093f\u092f\u093e \u0935\u0930\u094d\u0937',
+      benchmarkNote:'\u092c\u093e\u0930 \u092c\u0947\u0902\u091a\u092e\u093e\u0930\u094d\u0915 \u092a\u0930 \u0906\u0927\u093e\u0930\u093f\u0924 \u00b7 + \u0915\u093e \u0905\u0930\u094d\u0925 \u0905\u0927\u093f\u0915 \u0918\u091f\u0928\u093e\u090f\u0902 \u0938\u0902\u092d\u0935 \u0939\u0948\u0902',
+      rising:'\u092c\u0922\u093c \u0930\u0939\u093e \u0939\u0948', falling:'\u0918\u091f \u0930\u0939\u093e \u0939\u0948', stable:'\u0938\u094d\u0925\u093f\u0930', high:'\u0909\u091a\u094d\u091a', med:'\u092e\u0927\u094d\u092f\u092e', low:'\u0928\u093f\u092e\u094d\u0928',
+      packTitle:'\u092a\u0948\u0915 \u0938\u0939\u093e\u092f\u0915', clothing:'\u0915\u092a\u0921\u093c\u0947', essentials:'\u0906\u0935\u0936\u094d\u092f\u0915 \u0935\u0938\u094d\u0924\u0941\u090f\u0902',
+      selectFirst:'\u092a\u0939\u0932\u0947 \u0928\u0915\u094d\u0936\u0947 \u092a\u0930 \u0926\u0947\u0936 \u091a\u0941\u0928\u0947\u0902',
+      desert:'\u0930\u0947\u0917\u093f\u0938\u094d\u0924\u093e\u0928', tropical:'\u0909\u0937\u094d\u0923\u0915\u091f\u093f\u092c\u0902\u0927\u0940\u092f', monsoon:'\u092e\u093e\u0928\u0938\u0942\u0928',
+      arctic:'\u0906\u0930\u094d\u0915\u091f\u093f\u0915', temperate:'\u0938\u092e\u0936\u0940\u0924\u094b\u0937\u094d\u0923',
+      winter:'\u0938\u0930\u094d\u0926\u0940', summer:'\u0917\u0930\u094d\u092e\u0940', spring:'\u0935\u0938\u0902\u0924', autumn:'\u0936\u0930\u0926 \u0943\u0924\u0941',
+      catAir:'\u0935\u093e\u092f\u0941/\u092e\u093f\u0938\u093e\u0907\u0932', catExplosion:'\u0935\u093f\u0938\u094d\u092b\u094b\u091f', catArmed:'\u0938\u0936\u0938\u094d\u0924\u094d\u0930',
+      catUnrest:'\u0905\u0936\u093e\u0902\u0924\u093f', catDrug:'\u0928\u0936\u0940\u0932\u0947 \u092a\u0926\u093e\u0930\u094d\u0925', catCrime:'\u0905\u092a\u0930\u093e\u0927', catWeather:'\u092e\u094c\u0938\u092e',
+      retry:'\u092a\u0941\u0928\u0903 \u092a\u094d\u0930\u092f\u093e\u0938', urgent:'\u0905\u0924\u094d\u092f\u093e\u0935\u0936\u094d\u092f\u0915', advisory:'\u0938\u0932\u093e\u0939', info:'\u091c\u093e\u0928\u0915\u093e\u0930\u0940',
+      official:'\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915', noData:'\u0921\u0947\u091f\u093e \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902',
+    },
   };
 
   function t(key) {
@@ -375,7 +675,7 @@
         // Overall threat level
         var critical = events.filter(function(e){ return e.severity==='critical'; }).length;
         var high     = events.filter(function(e){ return e.severity==='high'; }).length;
-        var threatLevel = critical > 0 ? ['HIGH THREAT',T.red] : high > 2 ? ['ELEVATED',T.gold] : events.length > 0 ? ['MONITOR','#3B82F6'] : ['CLEAR',T.green];
+        var threatLevel = critical > 0 ? [t('highThreat'),T.red] : high > 2 ? [t('elevated'),T.gold] : events.length > 0 ? [t('monitor'),'#3B82F6'] : [t('clear'),T.green];
 
         var countryName = COUNTRY_NAMES[country] || country;
         var html = '';
@@ -464,78 +764,68 @@
         // ── Safety score bar ──────────────────────────────────
         var safeScore = Math.max(0, Math.min(100, 100 - (critical * 25) - (high * 8) - (events.length * 2)));
         var scoreColor = safeScore >= 70 ? T.green : safeScore >= 40 ? T.gold : T.red;
-        var scoreLabel = safeScore >= 70 ? 'Generally Safe' : safeScore >= 40 ? 'Exercise Caution' : 'High Risk';
+        var scoreLabel = safeScore >= 70 ? t('generallySafe') : safeScore >= 40 ? t('exerciseCaution') : t('highRisk');
         html += '<div style="margin:8px 12px 0;background:#fff;border-radius:10px;border:1px solid '+T.border+';padding:12px 14px;">';
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-        html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';">Safety Score</div>';
+        html += '<div style="font-size:11px;font-weight:600;color:'+T.text+';">'+t('safetyScore')+'</div>';
         html += '<div style="font-size:13px;font-weight:800;color:'+scoreColor+';">'+safeScore+' <span style="font-size:10px;font-weight:600;">'+scoreLabel+'</span></div>';
         html += '</div>';
         html += '<div style="height:6px;background:'+T.border+';border-radius:3px;">';
         html += '<div style="height:100%;width:'+safeScore+'%;background:'+scoreColor+';border-radius:3px;transition:width 0.6s;"></div>';
         html += '</div></div>';
 
-        // ── Tourist safety tips (country-specific) ────────────────────────
+        // ── Tourist safety tips — country-specific ────────────
         var tips = [];
         var cData = (window.allCountries||[]).find(function(c){ return c.code===code; }) || {};
         var advisoryLevel = cData.advisoryLevel || 1;
-
         // Incident-driven tips first
         if (buckets.air && buckets.air.length)       tips.push('🚀 Air threat activity detected — know your nearest shelter and follow local emergency broadcasts');
         if (buckets.explosion && buckets.explosion.length) tips.push('💥 Explosion reports in the area — avoid crowded public spaces and markets');
-        if (buckets.armed && buckets.armed.length)   tips.push('🔫 Armed incident reports — stay indoors, avoid confrontations, follow local authority guidance');
+        if (buckets.armed && buckets.armed.length)   tips.push('🔫 Armed incident reports — stay indoors, avoid confrontations, follow authority guidance');
         if (buckets.protest && buckets.protest.length) tips.push('✊ Civil unrest reported — avoid demonstrations even if peaceful, they can escalate rapidly');
         if (buckets.weather && buckets.weather.length) tips.push('⛈️ Adverse weather alerts active — check local forecasts before travel, follow evacuation orders');
-        if (buckets.drug && buckets.drug.length)     tips.push('💊 Drug-related criminal activity reported — avoid isolated areas at night, do not accept items from strangers');
+        if (buckets.drug && buckets.drug.length)     tips.push('💊 Drug-related activity reported — avoid isolated areas at night, do not accept items from strangers');
         if (buckets.crime && buckets.crime.length)   tips.push('🔴 Crime activity reported — secure valuables, avoid displaying expensive items, use reputable transport');
-
         // Country-specific standing advice
         var countryTips = {
-          JO: ['🕌 Dress modestly near religious sites — cover shoulders and knees', '🚗 Border areas with Syria and Iraq — avoid unless essential', '💊 Captagon and drug trafficking is a serious issue — do not carry unexplained packages'],
-          UA: ['🚨 Active conflict zones — do not approach front-line regions', '💣 UXO risk in liberated areas — stay on paved roads', '📻 Keep emergency radio for air raid alerts'],
-          LB: ['⚡ Power outages are frequent — carry a power bank', '🚧 Avoid south near Israeli border — active tension', '💵 Carry USD — banking system is unstable'],
-          SY: ['🚫 Travel strongly discouraged — active conflict throughout', '🏥 Medical infrastructure severely damaged', '📞 Register with your embassy before any entry'],
-          IQ: ['💣 IED risk in rural areas — stay on established routes', '🕌 Respect religious sites and Shia holy days', '📱 VPN recommended — internet monitoring common'],
-          IL: ['🚀 Rocket alert app (Red Alert) — install before arrival', '🕌 Religious site protocols — appropriate dress required', '🚗 Gaza border and West Bank — check security before travel'],
-          EG: ['🌅 Sinai Peninsula — heightened risk, travel only to resort areas', '📷 Photography restrictions near military sites', '🐪 Tourist scams common near major sites — agree on prices upfront'],
-          MX: ['🚗 Avoid driving at night — carjacking risk on highway', '🍺 Only buy sealed drinks — drink-spiking incidents reported', '💳 Use ATMs inside banks or hotels only'],
-          CO: ['🌿 Coca-growing regions — avoid rural areas in Putumayo, Nariño', '🚕 Use app-based taxis only — never hail street taxis', '🏔️ Altitude sickness risk in Bogotá and Medellín — acclimatize slowly'],
-          NG: ['✈️ Port Harcourt and northeast — high kidnapping risk', '💵 Keep cash in multiple locations', '🚗 Do not drive after dark outside major cities'],
-          PH: ['🌊 Typhoon season June-November — monitor PAGASA warnings', '🏝️ Mindanao and Sulu — terrorist and kidnapping risk', '🛵 Only use registered tricycles and jeepneys'],
-          TH: ['🚗 Road traffic deaths among highest in Asia — wear helmets on bikes', '🌊 Tsunami coast — know evacuation routes in beach areas', '👮 Strict lèse-majesté laws — do not comment on monarchy'],
-          MM: ['🚫 Travel advisories active — conflict ongoing in multiple states', '📵 Internet shutdowns common — download content offline', '💵 USD cash only — card machines unreliable'],
-          VE: ['🔦 Power cuts frequent — carry torch and power bank', '🚗 Carjacking common — keep windows up, doors locked', '🏥 Medical supplies scarce — bring all medications from home'],
-          HT: ['🚫 Gang control of major roads — avoid all non-essential travel', '🏥 Medical infrastructure collapsed — carry full first aid kit', '✈️ Departure taxes and airport scams — use official channels only'],
-          IN: ['🌡️ Heatwave risk May-June — stay hydrated, avoid midday sun', '💧 Only drink bottled or purified water', '🚕 Use app-based taxis — meter fraud common in older taxis'],
-          PK: ['📍 FATA regions and Balochistan — do not travel without security escort', '📷 Photography near military — strictly prohibited', '🕌 During Ramadan — respect fasting rules in public'],
-          AF: ['🚫 Do not travel — ongoing security crisis', '🏥 Medical evacuation extremely difficult', '📞 Emergency contacts: ICRC +93 20 210 2288'],
-          BR: ['🏖️ Beware of beach robberies — do not bring valuables to beach', '🚗 Avoid favelas unless on guided tour', '💊 Yellow fever vaccination recommended for Amazon region'],
-          ZA: ['🚗 Smash-and-grab common — keep windows up at traffic lights', '🏥 Private hospitals far superior to public — ensure insurance', '⚡ Load shedding (power cuts) 2-12 hours daily — plan accordingly'],
-          KE: ['🦟 Malaria risk — take prophylaxis, use repellent', '🌊 Coastal flooding risk in long rains (March-May)', '🚕 Matatu minibus — official but often reckless — ride-apps safer'],
+          JO:['🕌 Dress modestly near religious sites — cover shoulders and knees','🚗 Border areas with Syria and Iraq — avoid unless essential','💊 Drug trafficking is a serious issue — do not carry unexplained packages'],
+          UA:['🚨 Active conflict zones — do not approach front-line regions','💣 UXO risk in liberated areas — stay on paved roads','📻 Keep emergency radio for air raid alerts'],
+          LB:['⚡ Power outages are frequent — carry a power bank','🚧 Avoid south near Israeli border — active tension','💵 Carry USD — banking system is unstable'],
+          SY:['🚫 Travel strongly discouraged — active conflict throughout','🏥 Medical infrastructure severely damaged','📞 Register with your embassy before any entry'],
+          IQ:['💣 IED risk in rural areas — stay on established routes','🕌 Respect religious sites and holy days','📱 VPN recommended — internet monitoring common'],
+          IL:['🚀 Red Alert app — install before arrival','🕌 Dress appropriately at religious sites','🚗 Check security before travel near Gaza border'],
+          EG:['🌅 Sinai — only travel to resort areas','📷 Photography restrictions near military sites','🐪 Agree on prices upfront near tourist sites'],
+          MX:['🚗 Avoid driving at night — carjacking risk on highways','🍺 Only buy sealed drinks — drink-spiking reported','💳 Use ATMs inside banks or hotels only'],
+          CO:['🌿 Avoid rural coca-growing regions','🚕 Only use app-based taxis — never hail street taxis','🏔️ Altitude sickness risk in Bogotá — acclimatize slowly'],
+          NG:['✈️ Northeast and Port Harcourt — high kidnapping risk','💵 Keep cash in multiple locations','🚗 Do not drive after dark outside major cities'],
+          PH:['🌊 Typhoon season June-November — monitor PAGASA warnings','🏝️ Mindanao and Sulu — kidnapping and terrorism risk','🛵 Only use registered transport'],
+          TH:['🚗 Road fatalities among highest in Asia — wear helmets on bikes','🌊 Tsunami coast — know evacuation routes','👮 Strict laws regarding the monarchy'],
+          MM:['🚫 Travel advisories active — conflict ongoing in multiple states','📵 Internet shutdowns common — download content offline','💵 USD cash only — card machines unreliable'],
+          VE:['🔦 Power cuts frequent — carry torch and power bank','🚗 Carjacking common — keep windows up and doors locked','🏥 Medical supplies scarce — bring all medications from home'],
+          HT:['🚫 Gang control of major roads — avoid all non-essential travel','🏥 Medical infrastructure collapsed — carry full first aid kit','✈️ Use official channels only at airport'],
+          IN:['🌡️ Heatwave risk May-June — stay hydrated, avoid midday sun','💧 Only drink bottled or purified water','🚕 Use app-based taxis — meter fraud common'],
+          PK:['📍 FATA and Balochistan — only travel with security escort','📷 Photography near military — strictly prohibited','🕌 Respect fasting rules in public during Ramadan'],
+          AF:['🚫 Do not travel — ongoing security crisis','🏥 Medical evacuation extremely difficult','📞 Emergency: ICRC +93 20 210 2288'],
+          BR:['🏖️ No valuables on beach — robberies are common','🚗 Avoid favelas unless on guided tour','💊 Yellow fever vaccination recommended for Amazon'],
+          ZA:['🚗 Smash-and-grab common — keep windows up at traffic lights','🏥 Use private hospitals — ensure insurance','⚡ Load shedding 2-12 hours daily — plan accordingly'],
+          KE:['🦟 Malaria risk — take prophylaxis, use repellent','🌊 Coastal flooding risk in long rains (March-May)','🚕 Ride-apps safer than matatu minibus'],
         };
-
         var standing = countryTips[code] || [];
-
-        // Add advisory-level advice
-        if (advisoryLevel >= 3 && !buckets.air.length && standing.length === 0) {
-          tips.push('⚠️ This destination has a high travel advisory — register your trip with your embassy');
-        }
-        if (advisoryLevel >= 4) {
-          tips.unshift('🚨 DO NOT TRAVEL advisory in effect — contact your embassy before any movement');
-        }
-
-        // Merge standing tips (up to 3)
-        standing.slice(0, 3).forEach(function(t){ tips.push(t); });
-
+        if (advisoryLevel >= 4) tips.unshift('🚨 '+t('doNotTravel'));
+        standing.slice(0,3).forEach(function(tip){ tips.push(tip); });
         if (!tips.length) {
-          tips.push('✅ No active incidents — normal travel precautions apply for ' + (cData.name || code));
+          tips.push('✅ '+t('noIncidents')+' — '+( cData.name || code || t('selectCountry')));
           tips.push('📋 Register your trip with your home country\'s embassy online');
-          tips.push('📱 Save local emergency numbers: ' + (cData.emergency ? Object.entries(cData.emergency||{}).slice(0,2).map(function(e){return e[0]+': '+e[1]}).join(' · ') : '112'));
+          if (cData.emergency) {
+            var em=cData.emergency;
+            tips.push('📱 Emergency: '+(em.police?'Police '+em.police:'')+(em.ambulance?' · Ambulance '+em.ambulance:''));
+          }
         }
-
         if (tips.length) {
           html += '<div style="margin:8px 12px 0;background:'+T.tealLight+';border-radius:10px;border:1px solid rgba(14,116,144,0.2);padding:12px 14px;">';
-          html += '<div style="font-size:10px;font-weight:700;color:'+T.teal+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">'+
-            (cData.name ? '📍 ' + cData.name + ' — Travel Advisory' : 'Tourist Advisory') + '</div>';
+          html += '<div style="font-size:10px;font-weight:700;color:'+T.teal+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">';
+          html += cData.name ? '📍 '+cData.name+' \u2014 '+t('travelAdvisory') : t('travelAdvisory');
+          html += '</div>';
           tips.forEach(function(tip) {
             html += '<div style="font-size:12px;color:'+T.text+';padding:5px 0;border-bottom:1px solid rgba(14,116,144,0.12);line-height:1.5;">'+tip+'</div>';
           });
@@ -602,9 +892,9 @@
 
         // Summary cards
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
-        html += summaryCard('\uD83D\uDD0D','Total Reports',total,'Last 90 days',T.teal);
-        html += summaryCard(trendIcon,'Trend',trend.charAt(0).toUpperCase()+trend.slice(1),'vs prior period',trendColor);
-        html += summaryCard('\uD83D\uDCE1','Sources',(d.sources||[]).length,'Data providers',T.muted);
+        html += summaryCard('\uD83D\uDD0D',t('totalReports'),total,t('last90'),T.teal);
+        html += summaryCard(trendIcon,t('trend'),trend.charAt(0).toUpperCase()+trend.slice(1),t('vsPrior'),trendColor);
+        html += summaryCard('\uD83D\uDCE1',t('sources'),(d.sources||[]).length,t('dataProviders'),T.muted);
         html += '</div>';
 
         // Category breakdown table
@@ -791,9 +1081,9 @@
 
     // ── Summary cards ──
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 12px 0;">';
-    html += summaryCard('🔍','Total Events',total,'Last 90 days',T.teal);
-    html += summaryCard(trendIcon,'Trend',trendLabel,'vs prior period',trendColor);
-    html += summaryCard('📊','Sources',sources||'GDELT','Data providers',T.muted);
+    html += summaryCard('🔍','Total Events',total,t('last90'),T.teal);
+    html += summaryCard(trendIcon,t('trend'),trendLabel,t('vsPrior'),trendColor);
+    html += summaryCard('📊',t('sources'),sources||'GDELT',t('dataProviders'),T.muted);
     html += '</div>';
 
     // ── Monthly bar chart ──
@@ -940,193 +1230,37 @@
   /* ═══════════════════════════════════════════
      PACK PANEL
   ═══════════════════════════════════════════ */
-  // ── Pack: seasonal + destination intelligence ─────────────────────────────
-  function getClimateProfile(countryCode, lat) {
-    // Climate zones by latitude and known country overrides
-    var tropical = ['JO','EG','MX','CO','VE','HT','GT','HN','NG','KE','ET','SO','PH','TH','ID','MM','BD','IN','SY','IQ','YE','LY','SD','ML','GH','TZ','CD','AF'];
-    var desert   = ['JO','EG','SA','AE','OM','IQ','LY','DZ','MA','AF','PK'];
-    var arctic   = ['NO','IS','GL','FI','SE','RU','CA'];
-    var monsoon  = ['IN','BD','MM','TH','PH','ID','VN','KH','LA'];
-
-    if (desert.indexOf(countryCode) >= 0)  return 'desert';
-    if (arctic.indexOf(countryCode) >= 0)  return 'arctic';
-    if (monsoon.indexOf(countryCode) >= 0) return 'monsoon';
-    if (tropical.indexOf(countryCode) >= 0) return 'tropical';
-    if (Math.abs(lat) < 23.5)              return 'tropical';
-    if (Math.abs(lat) > 60)                return 'arctic';
-    return 'temperate';
-  }
-
-  function getSeasonForCountry(lat) {
-    // Returns local season based on hemisphere + current month
-    var month = new Date().getMonth(); // 0=Jan
-    var southern = lat < 0;
-    // Northern: DJF=winter, MAM=spring, JJA=summer, SON=autumn
-    // Southern: flipped
-    var northSeason = (month <= 1 || month === 11) ? 'winter'
-                    : (month <= 4) ? 'spring'
-                    : (month <= 7) ? 'summer'
-                    : 'autumn';
-    if (!southern) return northSeason;
-    var flip = { winter:'summer', summer:'winter', spring:'autumn', autumn:'spring' };
-    return flip[northSeason];
-  }
-
-  function buildClothingItems(climate, season, countryCode) {
-    var items = [];
-
-    // Base clothing always needed
-    items.push(['👕', 'Moisture-wicking T-shirts', '3-5 lightweight, quick-dry']);
-    items.push(['🩲', 'Underwear & socks', '5-7 days worth, quick-dry']);
-
-    if (climate === 'desert') {
-      items.push(['👘', 'Loose long-sleeve shirts', 'Sun protection + modesty in conservative areas']);
-      items.push(['👒', 'Wide-brim hat', 'Essential sun protection in desert heat']);
-      items.push(['🕶️', 'UV sunglasses', 'Desert glare is intense']);
-      items.push(['🧥', 'Light jacket or fleece', 'Desert nights get cold even in summer']);
-      items.push(['👟', 'Closed-toe walking shoes', 'Hot sand and uneven terrain']);
-      if (['JO','SA','AE','EG','IR','PK'].indexOf(countryCode) >= 0)
-        items.push(['👗', 'Conservative clothing', 'Cover shoulders and knees — cultural respect']);
-
-    } else if (climate === 'tropical') {
-      items.push(['🩱', 'Swimwear', 'Beach and pool access']);
-      items.push(['🩴', 'Sandals', 'Casual footwear for warm weather']);
-      items.push(['☂️', 'Compact rain jacket', 'Sudden tropical downpours']);
-      items.push(['🧴', 'SPF 50+ sunscreen', 'Strong equatorial UV']);
-      items.push(['👟', 'Breathable sneakers', 'For walking and day trips']);
-
-    } else if (climate === 'monsoon') {
-      items.push(['🌂', 'Packable umbrella', 'Daily monsoon rains']);
-      items.push(['🥾', 'Waterproof shoes', 'Flooded streets and muddy trails']);
-      items.push(['☂️', 'Waterproof jacket', 'Heavy rain periods']);
-      items.push(['🧴', 'Insect repellent clothing', 'Mosquito protection in wet season']);
-      items.push(['🩴', 'Flip flops / sandals', 'For when shoes get soaked']);
-
-    } else if (climate === 'arctic') {
-      items.push(['🧥', 'Heavy insulated coat', 'Rated for sub-zero temperatures']);
-      items.push(['🧤', 'Thermal gloves + hat', 'Frostbite prevention']);
-      items.push(['🧣', 'Scarf or neck gaiter', 'Wind protection']);
-      items.push(['🥾', 'Insulated waterproof boots', 'Snow and ice surfaces']);
-      items.push(['🧦', 'Wool thermal socks', 'Moisture-wicking + warm']);
-      items.push(['🩲', 'Thermal base layers', 'Top and bottom, merino wool ideal']);
-
-    } else {
-      // Temperate — season-specific
-      if (season === 'winter') {
-        items.push(['🧥', 'Warm winter coat', 'Waterproof and insulated']);
-        items.push(['🧤', 'Gloves + hat', 'Essential for cold days']);
-        items.push(['🥾', 'Waterproof boots', 'Rain, sleet and cold ground']);
-        items.push(['🩲', 'Thermal layers', 'Base layer top and bottom']);
-        items.push(['🧣', 'Scarf', 'Wind and cold protection']);
-      } else if (season === 'summer') {
-        items.push(['🩱', 'Light summer clothes', 'Shorts, dresses, breathable fabrics']);
-        items.push(['👒', 'Hat or cap', 'Sun protection outdoors']);
-        items.push(['🕶️', 'Sunglasses', 'UV protection']);
-        items.push(['👟', 'Breathable sneakers or sandals', 'Comfortable walking shoes']);
-        items.push(['🧴', 'Sunscreen SPF 30+', 'Daily UV protection']);
-      } else {
-        // Spring / Autumn
-        items.push(['🧥', 'Light jacket or raincoat', 'Variable weather — layer up']);
-        items.push(['👖', 'Jeans or light trousers', 'Versatile for warm/cool days']);
-        items.push(['👟', 'Comfortable walking shoes', 'For day trips and exploration']);
-        items.push(['☂️', 'Compact umbrella', 'Unpredictable spring/autumn showers']);
-      }
-    }
-
-    return items;
-  }
-
   function buildPack() {
-    var code    = window.activeCountry || '';
-    var pos     = window.activeCountryPos || null;
-    var lat     = pos ? pos.lat : 30; // default mid-latitude
-    var country = (window.allCountries || []).find(function(c){ return c.code === code; });
-    var cName   = country ? country.name : (code || 'your destination');
-    var cFlag   = country ? country.flag : '🌍';
-    var advisoryLabel = country ? (country.advisoryLabel || '') : '';
-    var advisoryColor = country ? (country.advisoryColor || T.teal) : T.teal;
-
-    var climate  = getClimateProfile(code, lat);
-    var season   = getSeasonForCountry(lat);
-    var clothing = buildClothingItems(climate, season, code);
-
-    var climateLabels = {
-      desert:'Desert / Arid', tropical:'Tropical', monsoon:'Monsoon',
-      arctic:'Arctic / Subarctic', temperate:'Temperate'
-    };
-    var seasonLabels = { winter:'Winter ❄️', summer:'Summer ☀️', spring:'Spring 🌸', autumn:'Autumn 🍂' };
-
-    // Core essentials — always shown
-    var essentials = [
-      ['🛂', 'Passport & Visas', 'Valid 6+ months · check entry requirements for ' + cName],
-      ['🔌', 'Power Adapter', 'Check voltage and plug type before departure'],
-      ['📱', 'Local SIM / Data', 'International plan or buy local SIM on arrival'],
-      ['💊', 'Medications', 'Prescriptions + first aid kit + any required vaccines'],
-      ['💵', 'Emergency Cash', 'Local currency — ATMs may be unavailable'],
-      ['📋', 'Document Copies', 'Photos of passport, insurance policy, emergency contacts'],
-      ['🏥', 'Travel Insurance', 'Medical + emergency evacuation coverage'],
-      ['📍', 'Atlas Ally Offline', 'Download ' + cName + ' brief before you go'],
+    var items=[
+      ['🛂','Passport & Visas','All travel documents and entry requirements'],
+      ['🔌','Power Adapter','Check destination voltage and plug type'],
+      ['📱','Local SIM / Data','International plan or local SIM card'],
+      ['💊','Medications','Prescriptions + first aid kit'],
+      ['💵','Emergency Cash','Local currency for power outages / no signal'],
+      ['📋','Document Copies','Photos of passport, insurance, contacts'],
+      ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
+      ['🌊','Water Purification','Tablets or filter for high-risk areas'],
+      ['🔦','Torch / Headlamp','For power cuts and night navigation'],
+      ['🗺️','Offline Maps','Download before you go — no data needed']
     ];
-
-    // Destination-specific additions
-    if (code === 'JO' || code === 'EG' || code === 'MA' || code === 'SA') {
-      essentials.push(['🕌', 'Respect local customs', 'Remove shoes at mosques · dress modestly · avoid public displays of affection']);
-    }
-    if (code === 'UA' || code === 'SY' || code === 'IQ' || code === 'YE' || code === 'LY') {
-      essentials.push(['🚨', 'Emergency protocols', 'Know nearest shelter · save embassy number offline · register your trip']);
-      essentials.push(['🔋', 'Power bank (high capacity)', 'Power outages common — keep devices charged']);
-    }
-    if (code === 'PH' || code === 'ID' || code === 'TH' || code === 'MM' || code === 'IN') {
-      essentials.push(['🦟', 'Mosquito protection', 'DEET repellent + long sleeves at dusk · malaria risk in some areas']);
-    }
-    if (code === 'MX' || code === 'CO' || code === 'VE' || code === 'HN' || code === 'GT' || code === 'HT') {
-      essentials.push(['🔒', 'Anti-theft measures', 'Slash-proof bag · money belt · avoid flashing valuables']);
-    }
-
-    var hasCountry = !!code;
-
-    var html = panelHdr('🎒 Pack Assistant');
-    html += '<div style="padding:14px 16px 80px;background:' + T.bg + ';">';
-
-    // Destination header
-    html += '<div style="background:#fff;border:1px solid ' + T.border + ';border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">';
-    html += '<div style="font-size:32px;">' + cFlag + '</div>';
-    html += '<div style="flex:1;">';
-    html += '<div style="font-size:15px;font-weight:700;color:' + T.text + ';">' + cName + '</div>';
-    if (advisoryLabel) html += '<div style="font-size:11px;font-weight:600;color:' + advisoryColor + ';margin-top:2px;">' + advisoryLabel + '</div>';
-    html += '<div style="font-size:11px;color:' + T.muted + ';margin-top:2px;">' + climateLabels[climate] + ' · ' + seasonLabels[season] + '</div>';
-    html += '</div>';
-    if (!hasCountry) {
-      html += '<div style="font-size:11px;color:' + T.muted + ';text-align:center;padding:4px 8px;background:' + T.bg + ';border-radius:8px;">Select a country<br>on the map first</div>';
-    }
-    html += '</div>';
-
-    // Clothing section
-    html += '<div style="font-size:10px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-left:2px;">👕 CLOTHING · ' + seasonLabels[season] + ' in ' + climateLabels[climate] + '</div>';
-    clothing.forEach(function(it) {
-      html += packItem(it[0], it[1], it[2]);
-    });
-
-    // Essentials section
-    html += '<div style="font-size:10px;font-weight:700;color:' + T.muted + ';text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;padding-left:2px;">✅ ESSENTIALS' + (hasCountry ? ' · ' + cName.toUpperCase() : '') + '</div>';
-    essentials.forEach(function(it) {
-      html += packItem(it[0], it[1], it[2]);
-    });
-
-    html += '</div>';
-    return html;
-  }
-
-  function packItem(icon, label, desc) {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;' +
-      'background:#fff;border:1px solid ' + T.border + ';border-radius:10px;margin-bottom:8px;">' +
-      '<div style="font-size:22px;width:36px;text-align:center;flex-shrink:0;">' + icon + '</div>' +
-      '<div style="flex:1;">' +
-        '<div style="font-size:13px;font-weight:600;color:' + T.text + ';">' + label + '</div>' +
-        '<div style="font-size:11px;color:' + T.muted + ';margin-top:2px;line-height:1.4;">' + desc + '</div>' +
-      '</div>' +
-      '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + T.border + ';flex-shrink:0;flex-shrink:0;" onclick="this.style.background=this.style.background?\'\':\'' + T.teal + '\';this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>' +
-    '</div>';
+    return panelHdr('🎒 Pack Assistant')+
+      '<div style="padding:16px;background:'+T.bg+';">'+
+        '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
+          '<div style="font-size:13px;font-weight:700;color:'+T.teal+';margin-bottom:4px;">Essential Travel Checklist</div>'+
+          '<div style="font-size:12px;color:'+T.teal+';opacity:0.8;">AI-powered custom lists based on destination coming soon</div>'+
+        '</div>'+
+        items.map(function(it){
+          return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;'+
+            'background:#fff;border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
+            '<div style="font-size:24px;width:40px;text-align:center;flex-shrink:0;">'+it[0]+'</div>'+
+            '<div style="flex:1;">'+
+              '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+it[1]+'</div>'+
+              '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+it[2]+'</div>'+
+            '</div>'+
+            '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+T.border+';flex-shrink:0;"></div>'+
+          '</div>';
+        }).join('')+
+      '</div>';
   }
 
   /* ═══════════════════════════════════════════
