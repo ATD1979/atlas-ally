@@ -32,3 +32,9 @@ build/
 
 # OS junk
 Thumbs.db
+
+# SQLite WAL/SHM runtime files
+data/*.db-shm
+data/*.db-wal
+*.db-shm
+*.db-wal
