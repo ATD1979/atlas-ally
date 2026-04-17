@@ -44,7 +44,7 @@ router.get('/country/:code', (req, res) => {
     ...c, code,
     advisoryLevel: level, advisoryText: override.text || c.advisoryText, advisoryConfig: cfg,
     events: db.getEventsByCountry.all(code),
-    news:   db.getNewsByCountry.all(code),
+    news:   db.getNewsByCountry(code, 'en'),
     crime:  db.getCrimeStatsByCountry.all(code),
   });
 });
