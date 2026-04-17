@@ -94,7 +94,13 @@ class IncidentIngestion {
         startDate.setDate(startDate.getDate() - 7); // Last 7 days
         const dateStr = startDate.toISOString().split('T')[0].replace(/-/g, '');
         
-        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(country + ' ' + keywords)}&mode=artlist&maxrecords=50&startdatetime=${dateStr}000000&format=json`;
+        // Enhanced query to exclude sports/person names for Jordan
+        let query = country + ' ' + keywords;
+        if (countryCode === 'JO') {
+          query += ' -basketball -NBA -"Jordan Ott" -"Jordan Harrison" -sports -athlete -player';
+        }
+        
+        const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=50&startdatetime=${dateStr}000000&format=json`;
         
         console.log(`GDELT: Fetching ${country} - ${keywords}`);
         const response = await fetch(url, { timeout: 10000 });
