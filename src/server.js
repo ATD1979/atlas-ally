@@ -84,7 +84,6 @@ app.use('/api', softAuth, paymentRoutes);
 app.use('/api/admin',       adminRoutes);
 // Force news cache refresh
 app.get('/api/admin/refresh-news', async (req, res) => {
-  const { refreshAllNews } = require('./news');
   db.clearOldNews.run();
   refreshAllNews().catch(console.error);
   res.json({ ok: true, message: 'News cache cleared and refresh started' });
@@ -106,7 +105,7 @@ app.get('/api/offline/:code', softAuth, (req, res) => {
   res.json({
     ...c, code, advisoryConfig: cfg,
     events: db.getEventsByCountry.all(code),
-    news:   db.getNewsByCountry.all(code),
+    news:   db.getNewsByCountry(code, 'en'),
   });
 });
 
