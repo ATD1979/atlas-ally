@@ -270,9 +270,18 @@ async function getNews(req, res) {
   }
 }
 
+// Compatibility function for server.js
+async function refreshAllNews() {
+  console.log('NEWS: Background refresh triggered');
+  // The new system fetches news on-demand per country
+  // This is just a placeholder for server.js compatibility
+  return { success: true, message: 'News system uses on-demand fetching' };
+}
+
 module.exports = {
   getNews,
   fetchFromMultipleSources,
   isRelevantToCountry,
-  getNewsQueries
+  getNewsQueries,
+  refreshAllNews // Add compatibility function
 };
