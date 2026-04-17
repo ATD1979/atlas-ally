@@ -1,8 +1,8 @@
-// Atlas Ally — Enhanced News Feed API
-// v2026.04.16 — Fixed country filtering + multiple sources
+// Atlas Ally — Enhanced News Feed API  
+// v2026.04.16 — Using existing xml2js + node-fetch dependencies
 
-const axios = require('axios');
-const { parse } = require('rss-to-json');
+const fetch = require('node-fetch');
+const xml2js = require('xml2js');
 
 // Country name variations to improve filtering
 const COUNTRY_VARIATIONS = {
@@ -27,6 +27,45 @@ const COUNTRY_VARIATIONS = {
   'AE': ['UAE', 'Emirates', 'Dubai', 'Abu Dhabi'],
   'IL': ['Israel', 'Israeli', 'Jerusalem', 'Tel Aviv']
 };
+
+// RSS feed parser using xml2js
+async function parseRSS(url) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Atlas Ally News Bot 1.0'
+      },
+      timeout: 10000
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const xml = await response.text();
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const result = await parser.parseStringPromise(xml);
+    
+    // Handle different RSS formats
+    let items = [];
+    if (result.rss && result.rss.channel && result.rss.channel.item) {
+      items = Array.isArray(result.rss.channel.item) ? result.rss.channel.item : [result.rss.channel.item];
+    } else if (result.feed && result.feed.entry) {
+      items = Array.isArray(result.feed.entry) ? result.feed.entry : [result.feed.entry];
+    }
+    
+    return items.map(item => ({
+      title: item.title || item.title && item.title._ || '',
+      description: item.description || item.summary || '',
+      link: item.link || (item.link && item.link.href) || '',
+      published: item.pubDate || item.published || item.updated || new Date().toISOString()
+    }));
+    
+  } catch (error) {
+    console.error(`RSS parse error for ${url}:`, error.message);
+    return [];
+  }
+}
 
 // Google News RSS queries (more specific)
 function getNewsQueries(countryCode) {
@@ -143,16 +182,16 @@ async function fetchFromMultipleSources(countryCode) {
       const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en&gl=US&ceid=US:en`;
       console.log(`Fetching Google News: ${query}`);
       
-      const feed = await parse(url);
-      const filtered = feed.items
+      const items = await parseRSS(url);
+      const filtered = items
         .filter(item => isRelevantToCountry(item, countryCode))
         .slice(0, 10)
         .map(item => ({
           title: item.title,
           description: item.description || '',
           url: item.link,
-          source: 'Google News',
-          published: item.published || new Date().toISOString(),
+          source_name: 'Google News',
+          published_at: item.published,
           country_code: countryCode
         }));
       
@@ -165,23 +204,22 @@ async function fetchFromMultipleSources(countryCode) {
   // 2. Global backup sources (filtered)
   const globalSources = [
     'https://feeds.bbci.co.uk/news/world/rss.xml',
-    'https://www.aljazeera.com/xml/rss/all.xml',
-    'https://rss.reuters.com/news/world'
+    'https://www.aljazeera.com/xml/rss/all.xml'
   ];
 
   for (const sourceUrl of globalSources) {
     try {
       console.log(`Fetching global source: ${sourceUrl}`);
-      const feed = await parse(sourceUrl);
-      const filtered = feed.items
+      const items = await parseRSS(sourceUrl);
+      const filtered = items
         .filter(item => isRelevantToCountry(item, countryCode))
         .slice(0, 5)
         .map(item => ({
           title: item.title,
           description: item.description || '',
           url: item.link,
-          source: sourceUrl.includes('bbc') ? 'BBC' : sourceUrl.includes('aljazeera') ? 'Al Jazeera' : 'Reuters',
-          published: item.published || new Date().toISOString(),
+          source_name: sourceUrl.includes('bbc') ? 'BBC' : 'Al Jazeera',
+          published_at: item.published,
           country_code: countryCode
         }));
       
@@ -197,7 +235,7 @@ async function fetchFromMultipleSources(countryCode) {
   );
 
   return unique
-    .sort((a, b) => new Date(b.published) - new Date(a.published))
+    .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
     .slice(0, 20); // Return top 20 most recent relevant articles
 }
 
@@ -213,12 +251,12 @@ async function getNews(req, res) {
     
     console.log(`NEWS API: Found ${articles.length} relevant articles for ${countryCode}`);
     
-    // Return in expected format
+    // Return in expected format (compatible with existing frontend)
     res.json({
       articles: articles,
       country_code: countryCode,
       total: articles.length,
-      sources_used: [...new Set(articles.map(a => a.source))],
+      sources_used: [...new Set(articles.map(a => a.source_name))],
       timestamp: new Date().toISOString()
     });
     

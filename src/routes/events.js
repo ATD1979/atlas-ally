@@ -1,8 +1,42 @@
-// Atlas Ally — Enhanced Incidents/Events API
-// v2026.04.16 — Drug crime + conflict sources + 7-day rolling dashboard
+// Atlas Ally — Enhanced Events/Incidents API
+// v2026.04.16 — Using existing node-fetch + xml2js dependencies
 
-const axios = require('axios');
-const { parse } = require('rss-to-json');
+const fetch = require('node-fetch');
+const xml2js = require('xml2js');
+
+// RSS parser using xml2js
+async function parseRSS(url) {
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Atlas Ally Security Bot 1.0' },
+      timeout: 10000
+    });
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const xml = await response.text();
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const result = await parser.parseStringPromise(xml);
+    
+    let items = [];
+    if (result.rss && result.rss.channel && result.rss.channel.item) {
+      items = Array.isArray(result.rss.channel.item) ? result.rss.channel.item : [result.rss.channel.item];
+    } else if (result.feed && result.feed.entry) {
+      items = Array.isArray(result.feed.entry) ? result.feed.entry : [result.feed.entry];
+    }
+    
+    return items.map(item => ({
+      title: item.title || item.title && item.title._ || '',
+      description: item.description || item.summary || '',
+      link: item.link || (item.link && item.link.href) || '',
+      published: item.pubDate || item.published || item.updated || new Date().toISOString()
+    }));
+    
+  } catch (error) {
+    console.error(`RSS parse error for ${url}:`, error.message);
+    return [];
+  }
+}
 
 // Multiple data sources for comprehensive incident coverage
 class IncidentIngestion {
@@ -25,26 +59,14 @@ class IncidentIngestion {
 
       // Drug trafficking and organized crime feeds
       crimeFeeds: [
-        'https://www.insightcrime.org/feed/', // Best for cartel/drug trafficking
-        'https://www.unodc.org/rss/en/frontpage.xml', // UN drug & crime reports
-        'https://www.osac.gov/rss/events', // US State Dept security alerts
-        'https://www.globalinitiative.net/feed/', // Organized crime research
-        'https://www.occrp.org/en/feed' // Organized Crime Reporting Project
+        'https://www.insightcrime.org/feed/',
+        'https://www.unodc.org/rss/en/frontpage.xml',
+        'https://reliefweb.int/updates/rss.xml'
       ],
 
-      // Conflict and violence sources
-      conflictFeeds: [
-        'https://reliefweb.int/updates/rss.xml', // UN humanitarian alerts
-        'https://www.crisisgroup.org/crisiswatch/rss', // International Crisis Group
-        'https://www.amnesty.org/en/rss/', // Human rights violations
-        'https://www.hrw.org/rss' // Human Rights Watch
-      ],
-
-      // Weather and natural disaster alerts
+      // Weather and disaster alerts  
       weatherFeeds: [
-        'https://alerts.weather.gov/rss/', // US weather alerts
-        'https://www.gdacs.org/xml/rss.xml', // Global disaster alerts
-        'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.atom' // Earthquake alerts
+        'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.atom'
       ]
     };
   }
@@ -63,9 +85,7 @@ class IncidentIngestion {
       // Protests & unrest  
       'protest OR riot OR demonstration OR strike OR unrest OR violence',
       // Security incidents
-      'security OR police OR military OR arrest OR raid OR operation',
-      // Terrorism
-      'terrorist OR terrorism OR extremist OR militant OR insurgent'
+      'security OR police OR military OR arrest OR raid OR operation'
     ];
 
     for (const keywords of keywordSets) {
@@ -77,24 +97,26 @@ class IncidentIngestion {
         const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(country + ' ' + keywords)}&mode=artlist&maxrecords=50&startdatetime=${dateStr}000000&format=json`;
         
         console.log(`GDELT: Fetching ${country} - ${keywords}`);
-        const response = await axios.get(url, { timeout: 10000 });
+        const response = await fetch(url, { timeout: 10000 });
         
-        if (response.data && response.data.articles) {
-          const processed = response.data.articles.map(article => ({
-            title: article.title,
-            description: article.title, // GDELT doesn't provide descriptions
-            url: article.url,
-            source: 'GDELT',
-            type: this.categorizeIncident(article.title, keywords),
-            severity: this.assessSeverity(article.title),
-            location: article.location || country,
-            country_code: countryCode,
-            coordinates: this.extractCoordinates(article),
-            occurred_at: new Date(article.seendate).toISOString(),
-            keywords: keywords
-          }));
-          
-          events.push(...processed);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.articles) {
+            const processed = data.articles.map(article => ({
+              title: article.title,
+              description: article.title,
+              url: article.url,
+              source: 'GDELT',
+              type: this.categorizeIncident(article.title, keywords),
+              severity: this.assessSeverity(article.title),
+              location: article.location || country,
+              country_code: countryCode,
+              occurred_at: new Date(article.seendate).toISOString(),
+              keywords: keywords
+            }));
+            
+            events.push(...processed);
+          }
         }
       } catch (error) {
         console.error(`GDELT query failed for ${country} - ${keywords}:`, error.message);
@@ -104,42 +126,6 @@ class IncidentIngestion {
     return events;
   }
 
-  // UCDP (Uppsala University) free conflict data
-  async fetchUCDPEvents(countryCode) {
-    try {
-      const country = this.getCountryName(countryCode);
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30); // Last 30 days
-      
-      const url = `https://ucdpapi.pcr.uu.se/api/gedevents/22.1?country=${encodeURIComponent(country)}&from=${startDate.toISOString().split('T')[0]}`;
-      
-      console.log(`UCDP: Fetching conflict data for ${country}`);
-      const response = await axios.get(url, { timeout: 15000 });
-      
-      if (response.data && response.data.result) {
-        return response.data.result.map(event => ({
-          title: `Armed conflict incident in ${event.where_description}`,
-          description: `${event.type_of_violence} - ${event.deaths_a + event.deaths_b + event.deaths_civilians + event.deaths_unknown} casualties`,
-          source: 'UCDP',
-          type: 'armed_conflict',
-          severity: event.deaths_total > 10 ? 'critical' : event.deaths_total > 0 ? 'high' : 'medium',
-          location: event.where_description,
-          country_code: countryCode,
-          coordinates: {
-            lat: event.latitude,
-            lng: event.longitude
-          },
-          occurred_at: event.date_start,
-          casualties: event.deaths_total,
-          conflict_type: event.type_of_violence
-        }));
-      }
-    } catch (error) {
-      console.error(`UCDP fetch failed for ${countryCode}:`, error.message);
-    }
-    return [];
-  }
-
   // Crime-specific RSS feeds
   async fetchCrimeFeeds(countryCode) {
     const events = [];
@@ -147,9 +133,9 @@ class IncidentIngestion {
     for (const feedUrl of this.sources.crimeFeeds) {
       try {
         console.log(`Crime feed: ${feedUrl}`);
-        const feed = await parse(feedUrl);
+        const items = await parseRSS(feedUrl);
         
-        const filtered = feed.items
+        const filtered = items
           .filter(item => this.isRelevantToCountry(item, countryCode))
           .filter(item => this.isCrimeRelated(item))
           .slice(0, 10)
@@ -182,9 +168,9 @@ class IncidentIngestion {
     for (const feedUrl of feeds) {
       try {
         console.log(`Embassy feed: ${feedUrl}`);
-        const feed = await parse(feedUrl);
+        const items = await parseRSS(feedUrl);
         
-        const alerts = feed.items
+        const alerts = items
           .filter(item => this.isSecurityAlert(item))
           .slice(0, 5)
           .map(item => ({
@@ -216,9 +202,9 @@ class IncidentIngestion {
     for (const feedUrl of this.sources.weatherFeeds) {
       try {
         console.log(`Weather feed: ${feedUrl}`);
-        const feed = await parse(feedUrl);
+        const items = await parseRSS(feedUrl);
         
-        const filtered = feed.items
+        const filtered = items
           .filter(item => this.isRelevantToCountry(item, countryCode))
           .filter(item => this.isWeatherAlert(item))
           .slice(0, 5)
@@ -246,9 +232,8 @@ class IncidentIngestion {
   async fetchAllIncidents(countryCode) {
     console.log(`Fetching all incident types for ${countryCode}`);
     
-    const [gdeltEvents, ucdpEvents, crimeEvents, embassyEvents, weatherEvents] = await Promise.all([
+    const [gdeltEvents, crimeEvents, embassyEvents, weatherEvents] = await Promise.all([
       this.fetchGDELTEvents(countryCode),
-      this.fetchUCDPEvents(countryCode), 
       this.fetchCrimeFeeds(countryCode),
       this.fetchEmbassyAlerts(countryCode),
       this.fetchWeatherAlerts(countryCode)
@@ -256,7 +241,6 @@ class IncidentIngestion {
 
     const allEvents = [
       ...gdeltEvents,
-      ...ucdpEvents,
       ...crimeEvents,
       ...embassyEvents,
       ...weatherEvents
@@ -316,7 +300,7 @@ class IncidentIngestion {
     return stats;
   }
 
-  // Helper functions for categorization and filtering
+  // Helper functions
   categorizeIncident(text, keywords) {
     const lower = text.toLowerCase();
     if (keywords.includes('attack') && (lower.includes('bomb') || lower.includes('explosion'))) return 'explosion';
@@ -357,6 +341,37 @@ class IncidentIngestion {
     return weatherKeywords.some(keyword => text.includes(keyword));
   }
 
+  categorizeAlert(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('shelter') || lower.includes('missile')) return 'air_threat';
+    if (lower.includes('protest') || lower.includes('demonstration')) return 'civil_unrest';
+    if (lower.includes('crime') || lower.includes('security')) return 'security_incident';
+    return 'general_alert';
+  }
+
+  assessAlertSeverity(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('immediate') || lower.includes('urgent') || lower.includes('shelter')) return 'critical';
+    if (lower.includes('warning') || lower.includes('avoid')) return 'high';
+    return 'medium';
+  }
+
+  assessWeatherSeverity(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('major') || lower.includes('severe') || lower.includes('emergency')) return 'critical';
+    if (lower.includes('warning')) return 'high';
+    return 'medium';
+  }
+
+  categorizeCrime(text) {
+    const lower = text.toLowerCase();
+    if (lower.includes('drug') || lower.includes('cartel') || lower.includes('trafficking')) return 'drug_crime';
+    if (lower.includes('murder') || lower.includes('killed')) return 'violent_crime';
+    if (lower.includes('kidnap') || lower.includes('abduct')) return 'kidnapping';
+    if (lower.includes('rob') || lower.includes('theft')) return 'theft';
+    return 'crime';
+  }
+
   getCountryName(countryCode) {
     const names = {
       'JO': 'Jordan', 'US': 'United States', 'GB': 'United Kingdom', 'FR': 'France',
@@ -388,24 +403,15 @@ class IncidentIngestion {
   getSourceName(url) {
     if (url.includes('insightcrime')) return 'InSight Crime';
     if (url.includes('unodc')) return 'UNODC';
-    if (url.includes('osac')) return 'OSAC';
     if (url.includes('reliefweb')) return 'ReliefWeb';
-    if (url.includes('crisisgroup')) return 'Crisis Group';
+    if (url.includes('usgs')) return 'USGS';
     return 'Security Feed';
   }
 
   extractLocationFromText(text) {
-    // Simple location extraction - could be enhanced with NLP
+    // Simple location extraction
     const locations = text.match(/in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g);
     return locations ? locations[0].replace('in ', '') : null;
-  }
-
-  extractCoordinates(article) {
-    // GDELT sometimes provides coordinates
-    if (article.lat && article.lon) {
-      return { lat: parseFloat(article.lat), lng: parseFloat(article.lon) };
-    }
-    return null;
   }
 }
 
