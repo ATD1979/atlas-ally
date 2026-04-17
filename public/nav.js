@@ -686,41 +686,131 @@
   function loadCrime(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Loading crime data...</div>';
     
     var countryCode = country;
+    var countryName = COUNTRY_NAMES[countryCode] || countryCode;
+    
+    // Try to fetch live crime data from API first
+    var apiUrl = '/api/crime/' + countryCode + '/detailed';
+    console.log('Loading crime data from:', apiUrl);
+    
+    fetch(apiUrl)
+      .then(function(r) {
+        console.log('Crime API response status:', r.status);
+        if (!r.ok) throw new Error('API not available - using UNODC baseline');
+        return r.json();
+      })
+      .then(function(data) {
+        console.log('Crime data received:', data);
+        renderCrimeData(data, countryCode, countryName);
+      })
+      .catch(function(err) {
+        console.log('Crime API failed, using UNODC baseline:', err.message);
+        renderUNODCData(countryCode, countryName);
+      });
+  }
+
+  function renderCrimeData(data, countryCode, countryName) {
+    var body = document.getElementById('aa-feed-body');
+    if (!body) return;
+
+    var html = '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">LIVE CRIME DATA</div>';
+
+    // 1. Safety Index by City (if available)
+    if (data.cities && data.cities.length) {
+      html += '<div style="padding:16px;"><div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">🏙️ Safety Index by City</div>';
+      data.cities.slice(0, 10).forEach(function(city) {
+        var score = city.safety_index || city.overall_index || 50;
+        var color = score < 30 ? T.red : score < 60 ? T.amber : T.green;
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
+          '<span style="font-size:12px;color:'+T.text+';">'+city.name+'</span>'+
+          '<div style="display:flex;align-items:center;gap:8px;">'+
+            '<div style="width:60px;height:4px;background:'+T.border+';border-radius:2px;">'+
+              '<div style="width:'+score+'%;height:100%;background:'+color+';border-radius:2px;"></div>'+
+            '</div>'+
+            '<span style="font-size:12px;font-weight:600;color:'+color+';">'+score+'</span>'+
+          '</div>'+
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    // 2. Recent Crime Reports (if available)
+    if (data.community && data.community.length) {
+      html += '<div style="padding:16px;"><div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">🚨 Recent Reports</div>';
+      data.community.slice(0, 15).forEach(function(report) {
+        var icons = { theft:'🧳', assault:'⚠️', vandalism:'🪟', scam:'💳', drug:'💊', robbery:'🔫', other:'🔴' };
+        var icon = icons[report.type] || '🔴';
+        var sev = report.severity || 'medium';
+        var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid '+T.border+';">'+
+          '<div style="font-size:20px;">'+icon+'</div>'+
+          '<div style="flex:1;">'+
+            '<div style="font-size:12px;color:'+color+';text-transform:uppercase;font-weight:700;">'+report.type+'</div>'+
+            '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+(report.location || 'Location not specified')+'</div>'+
+          '</div>'+
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    // 3. Fallback to UNODC baseline if no live data
+    if ((!data.cities || !data.cities.length) && (!data.community || !data.community.length)) {
+      html += renderUNODCBaseline(countryCode);
+    }
+
+    body.innerHTML = html;
+  }
+
+  function renderUNODCData(countryCode, countryName) {
+    var body = document.getElementById('aa-feed-body');
+    if (!body) return;
+
     var stats = UNODC[countryCode];
     
     if (!stats) {
-      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">Crime data not available for this country</div>';
+      body.innerHTML = '<div style="padding:20px;text-align:center;">'+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:12px;">No crime data available for '+countryName+'</div>'+
+        '<div style="font-size:11px;color:'+T.muted+';">API: /api/crime/'+countryCode+'/detailed</div>'+
+      '</div>';
       return;
     }
-    
-    body.innerHTML = '<div style="padding:16px;">'+
-      '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;">'+
-        '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">Crime Statistics (per 100k population)</div>'+
-        '<div style="display:grid;gap:12px;">'+
-          '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-            '<span style="font-size:12px;color:'+T.text+';">Homicide</span>'+
-            '<span style="font-size:12px;font-weight:600;color:'+T.red+';">'+stats.homicide+'</span>'+
+
+    body.innerHTML = renderUNODCBaseline(countryCode);
+  }
+
+  function renderUNODCBaseline(countryCode) {
+    var stats = UNODC[countryCode];
+    if (!stats) return '<div style="padding:20px;text-align:center;color:'+T.muted+';">No baseline crime data available</div>';
+
+    return '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">UNODC BASELINE DATA</div>'+
+      '<div style="padding:16px;">'+
+        '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;">'+
+          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">📊 Crime Statistics (per 100k population)</div>'+
+          '<div style="display:grid;gap:12px;">'+
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
+              '<span style="font-size:12px;color:'+T.text+';">Homicide</span>'+
+              '<span style="font-size:12px;font-weight:600;color:'+T.red+';">'+stats.homicide+'</span>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
+              '<span style="font-size:12px;color:'+T.text+';">Assault</span>'+
+              '<span style="font-size:12px;font-weight:600;color:'+T.amber+';">'+stats.assault+'</span>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
+              '<span style="font-size:12px;color:'+T.text+';">Theft</span>'+
+              '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.theft+'</span>'+
+            '</div>'+
+            '<div style="display:flex;justify-content:space-between;padding:8px 0;">'+
+              '<span style="font-size:12px;color:'+T.text+';">Robbery</span>'+
+              '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.robbery+'</span>'+
+            '</div>'+
           '</div>'+
-          '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-            '<span style="font-size:12px;color:'+T.text+';">Assault</span>'+
-            '<span style="font-size:12px;font-weight:600;color:'+T.amber+';">'+stats.assault+'</span>'+
-          '</div>'+
-          '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-            '<span style="font-size:12px;color:'+T.text+';">Theft</span>'+
-            '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.theft+'</span>'+
-          '</div>'+
-          '<div style="display:flex;justify-content:space-between;padding:8px 0;">'+
-            '<span style="font-size:12px;color:'+T.text+';">Robbery</span>'+
-            '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.robbery+'</span>'+
+          '<div style="margin-top:12px;font-size:10px;color:'+T.muted+';text-align:center;">'+
+            'Source: UNODC '+stats.year+' baseline data'+
           '</div>'+
         '</div>'+
-        '<div style="margin-top:12px;font-size:10px;color:'+T.muted+';text-align:center;">'+
-          'Source: UNODC '+stats.year+' data'+
-        '</div>'+
-      '</div>'+
-    '</div>';
+      '</div>';
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
