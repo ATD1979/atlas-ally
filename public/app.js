@@ -208,13 +208,25 @@
       try {
         var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
         var data = await res.json();
+        var events = Array.isArray(data) ? data : (data && data.events) || [];
+        var stats  = (data && data.stats7d) || null;
         var container = document.querySelector('#incidents-list, .incidents-list, [data-tab="incidents"] .feed-list, #feed-panel .tab-content');
         if (!container) return;
-        if (!data.length) {
+        if (!events.length) {
           container.innerHTML = '<p style="text-align:center;color:#888;padding:24px">No incidents reported</p>';
           return;
         }
-        container.innerHTML = data.map(function(ev) {
+        var statsBar = '';
+        if (stats) {
+          statsBar =
+            '<div style="display:flex;gap:8px;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px;">' +
+              '<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:700;color:#fff">' + stats.total + '</div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">7-day total</div></div>' +
+              '<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:700;color:#fff">' + stats.per_day + '</div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">per day</div></div>' +
+              '<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:700;color:#ff3b30">' + stats.critical + '</div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">critical</div></div>' +
+              '<div style="flex:1;text-align:center;"><div style="font-size:20px;font-weight:700;color:#ff9500">' + stats.high + '</div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">high</div></div>' +
+            '</div>';
+        }
+        container.innerHTML = statsBar + events.map(function(ev) {
           var severityColor = ev.severity === 'critical' ? '#ff3b30' : ev.severity === 'high' ? '#ff9500' : '#ffcc00';
           var distBadge = (lat && lng && typeof ev.distance_km === 'number')
             ? '<span style="display:inline-block;margin-left:8px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;background:' + distColor(ev.distance_km) + '">' + formatDist(ev.distance_km) + '</span>'

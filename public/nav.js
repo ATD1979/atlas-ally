@@ -651,12 +651,38 @@
         // Handle different response formats
         var events = data.events || data.data || data || [];
         if (!Array.isArray(events)) events = [events];
+        var stats = data.stats7d || null;
         
         if (!events.length) {
           body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noIncidents')+'</div>';
           return;
         }
-        body.innerHTML = '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
+        var pillsHtml = '';
+        if (stats && stats.by_category) {
+          var catMeta = {
+            armed:     { icon: '\uD83D\uDCA5', label: 'Armed' },
+            explosion: { icon: '\uD83D\uDCA3', label: 'Explosion' },
+            weather:   { icon: '\uD83C\uDF0A', label: 'Weather' },
+            unrest:    { icon: '\u270A',       label: 'Unrest' },
+            crime:     { icon: '\uD83D\uDD2B', label: 'Crime' },
+            drug:      { icon: '\uD83D\uDC8A', label: 'Drug' },
+            other:     { icon: '\uD83D\uDCCB', label: 'Other' }
+          };
+          var catEntries = Object.keys(stats.by_category)
+            .map(function(k){ return { key: k, count: stats.by_category[k] }; })
+            .filter(function(e){ return e.count > 0; })
+            .sort(function(a, b){ return b.count - a.count; });
+          if (catEntries.length) {
+            pillsHtml = '<div style="padding:10px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
+              catEntries.map(function(e){
+                var meta = catMeta[e.key] || { icon: '•', label: e.key };
+                return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#fff;border:1px solid '+T.border+';border-radius:999px;font-size:11px;color:'+T.text+';"><span>'+meta.icon+'</span><span>'+meta.label+'</span><span style="font-weight:700;color:'+T.text+';">'+e.count+'</span></span>';
+              }).join('') +
+              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS · '+stats.total+' TOTAL</span>' +
+            '</div>';
+          }
+        }
+        body.innerHTML = pillsHtml + '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
           events.map(function(event) {
             var sev = event.severity || event.level || 'info';
             var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
