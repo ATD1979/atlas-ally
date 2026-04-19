@@ -675,10 +675,10 @@
           if (catEntries.length) {
             pillsHtml = '<div style="padding:10px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
               catEntries.map(function(e){
-                var meta = catMeta[e.key] || { icon: '�', label: e.key };
+                var meta = catMeta[e.key] || { icon: '\u2753', label: e.key };
                 return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#fff;border:1px solid '+T.border+';border-radius:999px;font-size:11px;color:'+T.text+';"><span>'+meta.icon+'</span><span>'+meta.label+'</span><span style="font-weight:700;color:'+T.text+';">'+e.count+'</span></span>';
               }).join('') +
-              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS � '+stats.total+' TOTAL</span>' +
+              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS · '+stats.total+' TOTAL</span>' +
             '</div>';
           }
         }
@@ -793,9 +793,9 @@
       html += '<div style="padding:20px;text-align:center;font-size:12px;color:'+T.muted+';margin-bottom:16px;">No category data for this period.</div>';
     }
 
-    // ── Active conflict panel (UCDP — field is data.acled, legacy name kept for frontend-compat) ──
-    if (data.acled) {
-      var a = data.acled;
+    // ── Active conflict panel (UCDP data) ──
+    if (data.ucdp) {
+      var a = data.ucdp;
       var typesHtml = '';
       var topTypes = (a.event_types || []).slice(0, 3);
       for (var k = 0; k < topTypes.length; k++) {

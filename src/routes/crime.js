@@ -281,7 +281,7 @@ router.get('/crime/trend', async (req, res) => {
     trend,
     unodc_baseline: unodc,
     world_bank:     worldBank,
-    acled:          ucdp, // kept as `acled` for frontend-compat — UCDP replaced ACLED but key is reused
+    ucdp,
     sources,
     generated_at:   new Date().toISOString(),
   });
