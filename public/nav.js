@@ -793,9 +793,9 @@
       html += '<div style="padding:20px;text-align:center;font-size:12px;color:'+T.muted+';margin-bottom:16px;">No category data for this period.</div>';
     }
 
-    // ── Active conflict panel (UCDP — field is data.acled, legacy name kept for frontend-compat) ──
-    if (data.acled) {
-      var a = data.acled;
+    // ── Active conflict panel (UCDP data) ──
+    if (data.ucdp) {
+      var a = data.ucdp;
       var typesHtml = '';
       var topTypes = (a.event_types || []).slice(0, 3);
       for (var k = 0; k < topTypes.length; k++) {
