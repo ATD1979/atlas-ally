@@ -31,21 +31,32 @@ jobs:
         run: npm ci
 
       - name: Syntax check all .js files
-        # Catches the exact category of bug that bit us on the PowerShell-
-        # encoding incident: a .js file that no longer parses cleanly.
-        # `find ... -exec node -c {} \;` exits non-zero if any file fails.
+        # Catches the category of bug that bit us on the PowerShell-encoding
+        # incident: a .js file that no longer parses cleanly.
+        #
+        # Earlier version used `find -exec node -c {} \;` — that printed errors
+        # but exited 0 (find swallows per-command exits). Smoke test v1 caught
+        # this. Now we loop explicitly and track failure.
         run: |
+          set -e
           echo "Syntax-checking all .js files..."
-          count=$(find . -name "*.js" \
+          files=$(find . -name "*.js" \
             -not -path "*/node_modules/*" \
             -not -path "*/.git/*" \
-            -not -name "*.bak*" | wc -l)
+            -not -name "*.bak*")
+          count=$(echo "$files" | wc -l)
           echo "Found $count files to check"
-          find . -name "*.js" \
-            -not -path "*/node_modules/*" \
-            -not -path "*/.git/*" \
-            -not -name "*.bak*" \
-            -exec node -c {} \;
+          failed=0
+          while IFS= read -r file; do
+            if ! node -c "$file"; then
+              echo "::error file=$file::Syntax error in $file"
+              failed=1
+            fi
+          done <<< "$files"
+          if [ "$failed" -ne 0 ]; then
+            echo "Syntax check FAILED."
+            exit 1
+          fi
           echo "All $count files parsed successfully."
 
       - name: Security audit (production deps, high severity+)
