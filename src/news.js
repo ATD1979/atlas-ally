@@ -1,184 +1,128 @@
-// Atlas Ally — Enhanced News Service & API Handler
-// v2026.04.16 — Compatible with both direct require and route usage
+// Atlas Ally — News service
+// Background job: refresh news_cache for all subscribed countries.
+// On-demand: refresh a single country (called when /api/news sees a thin cache).
+//
+// Uses the shared RSS fetcher and country-meta table. The HTTP handler for
+// /api/news lives in routes/news.js — this file is the service layer only.
 
-const fetch = require('node-fetch');
-const xml2js = require('xml2js');
+const db = require('./db');
+const { fetchRSS } = require('./lib/rss');
+const { getCountryName, isRelevantToCountry, META } = require('./lib/countries-meta');
 
-// Country name variations to improve filtering
-const COUNTRY_VARIATIONS = {
-  'JO': ['Jordan', 'Jordanian', 'Kingdom of Jordan', 'Amman'],
-  'US': ['United States', 'America', 'American', 'USA', 'US'],
-  'GB': ['United Kingdom', 'Britain', 'British', 'UK', 'England'],
-  'FR': ['France', 'French', 'Paris'],
-  'DE': ['Germany', 'German', 'Berlin'],
-  'JP': ['Japan', 'Japanese', 'Tokyo'],
-  'CN': ['China', 'Chinese', 'Beijing'],
-  'BR': ['Brazil', 'Brazilian', 'Brasilia'],
-  'IN': ['India', 'Indian', 'Delhi', 'Mumbai'],
-  'MX': ['Mexico', 'Mexican', 'Mexico City'],
-  'ZA': ['South Africa', 'South African', 'Johannesburg', 'Cape Town'],
-  'AU': ['Australia', 'Australian', 'Sydney', 'Melbourne'],
-  'CA': ['Canada', 'Canadian', 'Ottawa', 'Toronto'],
-  'RU': ['Russia', 'Russian', 'Moscow'],
-  'UA': ['Ukraine', 'Ukrainian', 'Kiev', 'Kyiv'],
-  'TR': ['Turkey', 'Turkish', 'Ankara', 'Istanbul'],
-  'EG': ['Egypt', 'Egyptian', 'Cairo'],
-  'SA': ['Saudi Arabia', 'Saudi', 'Riyadh'],
-  'AE': ['UAE', 'Emirates', 'Dubai', 'Abu Dhabi'],
-  'IL': ['Israel', 'Israeli', 'Jerusalem', 'Tel Aviv']
-};
-
-// RSS parser using xml2js
-async function parseRSS(url) {
-  try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Atlas Ally News Bot 1.0' },
-      timeout: 10000
-    });
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
-    const xml = await response.text();
-    const parser = new xml2js.Parser({ explicitArray: false });
-    const result = await parser.parseStringPromise(xml);
-    
-    let items = [];
-    if (result.rss && result.rss.channel && result.rss.channel.item) {
-      items = Array.isArray(result.rss.channel.item) ? result.rss.channel.item : [result.rss.channel.item];
-    } else if (result.feed && result.feed.entry) {
-      items = Array.isArray(result.feed.entry) ? result.feed.entry : [result.feed.entry];
-    }
-    
-    return items.map(item => ({
-      title: item.title || item.title && item.title._ || '',
-      description: item.description || item.summary || '',
-      link: item.link || (item.link && item.link.href) || '',
-      published: item.pubDate || item.published || item.updated || new Date().toISOString()
-    }));
-    
-  } catch (error) {
-    console.error(`RSS parse error for ${url}:`, error.message);
-    return [];
-  }
+// Strip the trailing " - Source Name" that Google News appends to every title.
+function cleanTitle(raw) {
+  const dash = raw.lastIndexOf(' - ');
+  return (dash > 10 ? raw.slice(0, dash) : raw).replace(/<[^>]*>/g, '').trim();
 }
 
-// Enhanced content filtering for Jordan
-function isRelevantToCountry(article, countryCode) {
-  const variations = COUNTRY_VARIATIONS[countryCode] || [countryCode];
-  const content = (article.title + ' ' + (article.description || '')).toLowerCase();
-  
-  const hasCountryRef = variations.some(name => 
-    content.includes(name.toLowerCase())
-  );
-  
-  if (!hasCountryRef) return false;
-
-  // Special filtering for "Jordan" to avoid person names
-  if (countryCode === 'JO') {
-    if (/basketball|nba|river|michael|peterson|brand|shoe|athlete|sports|player|team|game|court/.test(content)) {
-      return false;
-    }
-    if (/jordan.*(king|kingdom|amman|government|minister|embassy|border|security|military|country|nation)/.test(content)) {
-      return true;
-    }
-  }
-
-  // Include articles with relevant keywords
-  const relevantKeywords = [
-    'security', 'safety', 'travel', 'tourism', 'embassy', 'alert',
-    'incident', 'attack', 'crime', 'police', 'government', 'minister',
-    'crisis', 'conflict', 'protest', 'strike', 'emergency', 'warning'
-  ];
-  
-  return relevantKeywords.some(keyword => content.includes(keyword));
+function extractSource(raw, fallback = 'Google News') {
+  const dash = raw.lastIndexOf(' - ');
+  return dash > 10 ? raw.slice(dash + 3).trim() : fallback;
 }
 
-// Fetch news from multiple sources
-async function fetchFromMultipleSources(countryCode) {
-  const results = [];
-  const countryNames = COUNTRY_VARIATIONS[countryCode] || [countryCode];
-  
-  // Google News queries
+// Jordan-specific noise filter. "Jordan" the country collides with Jordan the basketball
+// player, Jordan the sneaker brand, Jordan Peterson, etc. Only apply when code is JO.
+function passesJordanNoiseFilter(title) {
+  const t = title.toLowerCase();
+  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court)\b/.test(t)) {
+    return false;
+  }
+  return true;
+}
+
+// Fetch Google News RSS for a country and return DB-shaped news rows.
+async function fetchCountryNews(code, lang = 'en') {
+  const name = getCountryName(code);
+  const gl = code.toUpperCase();
+
+  // A few angled queries for breadth — security, government, general news.
   const queries = [
-    `${countryNames[0]} security safety travel news`,
-    `${countryNames[0]} government politics news`,
-    `${countryNames[0]} emergency alert news`
+    `"${name}" (security OR safety OR travel OR tourism OR embassy OR alert)`,
+    `"${name}" (government OR minister OR protest OR crisis OR emergency)`,
+    `"${name}" (border OR military OR attack OR warning OR incident)`,
   ];
 
-  for (const query of queries) {
-    try {
-      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en&gl=US&ceid=US:en`;
-      console.log(`Fetching Google News: ${query}`);
-      
-      const items = await parseRSS(url);
-      const filtered = items
-        .filter(item => isRelevantToCountry(item, countryCode))
-        .slice(0, 8)
-        .map(item => ({
-          title: item.title,
-          description: item.description || '',
-          url: item.link,
-          source_name: 'Google News',
-          published_at: item.published,
-          country_code: countryCode
-        }));
-      
-      results.push(...filtered);
-    } catch (error) {
-      console.error(`Google News query failed: ${query}`, error.message);
-    }
-  }
-
-  // Remove duplicates and sort
-  const unique = results.filter((item, index, self) => 
-    index === self.findIndex(t => t.title === item.title)
+  const urls = queries.map(q =>
+    `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${lang}&gl=${gl}&ceid=${gl}:${lang}`
   );
 
-  return unique
-    .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
-    .slice(0, 15);
+  const batches = await Promise.all(urls.map(u => fetchRSS(u)));
+  const seen = new Set();
+  const rows = [];
+
+  for (const item of batches.flat()) {
+    if (!item.title) continue;
+    const title = cleanTitle(item.title);
+    if (title.length < 10) continue;
+
+    const source = extractSource(item.title);
+    const url = item.link;
+    const key = title.toLowerCase().slice(0, 60);
+    if (seen.has(key) || (url && seen.has(url))) continue;
+    seen.add(key);
+    if (url) seen.add(url);
+
+    // Relevance filter — title must mention the country
+    if (!isRelevantToCountry(title + ' ' + item.description, code)) continue;
+    if (code === 'JO' && !passesJordanNoiseFilter(title)) continue;
+
+    let published = new Date().toISOString();
+    try {
+      const d = new Date(item.published);
+      if (!isNaN(d.getTime())) published = d.toISOString();
+    } catch {}
+
+    rows.push({
+      country_code: code,
+      lang,
+      source_name: source,
+      title: title.slice(0, 300),
+      description: (item.description || '').slice(0, 500),
+      url: url || null,
+      lat: null,
+      lng: null,
+      published_at: published,
+    });
+  }
+
+  return rows;
 }
 
-// Main API handler (for route usage)
-async function getNews(req, res) {
+// Fetch + cache for one country. Safe to call concurrently; DB uses INSERT OR IGNORE.
+async function refreshNewsForCountry(code, lang = 'en') {
   try {
-    const countryCode = req.query.country_code || req.query.country || 'US';
-    console.log(`NEWS API: Fetching news for ${countryCode}`);
-    
-    const articles = await fetchFromMultipleSources(countryCode);
-    
-    console.log(`NEWS API: Found ${articles.length} relevant articles for ${countryCode}`);
-    
-    res.json({
-      articles: articles,
-      country_code: countryCode,
-      total: articles.length,
-      sources_used: ['Google News'],
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('NEWS API ERROR:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch news',
-      details: error.message,
-      articles: [] 
-    });
+    const rows = await fetchCountryNews(code, lang);
+    for (const row of rows) {
+      try { db.cacheNews.run(row); } catch {}
+    }
+    return rows.length;
+  } catch (e) {
+    console.error(`News refresh failed for ${code}:`, e.message);
+    return 0;
   }
 }
 
-// Compatibility function for server.js
+// Background refresh for all countries we have metadata for.
+// Runs from server.js on startup and every 30 min.
 async function refreshAllNews() {
-  console.log('NEWS: Background refresh triggered - using on-demand fetching');
-  return { success: true, message: 'News system uses on-demand fetching' };
+  try { db.clearOldNews.run(); } catch {}
+
+  const codes = Object.keys(META);
+  let total = 0;
+
+  // Sequential with a small delay — we don't want to hammer Google News.
+  for (const code of codes) {
+    const n = await refreshNewsForCountry(code, 'en');
+    total += n;
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`📰 News refresh complete — ${total} articles across ${codes.length} countries`);
+  return total;
 }
 
 module.exports = {
-  getNews,
-  fetchFromMultipleSources,
+  refreshNewsForCountry,
   refreshAllNews,
-  // Export the handler directly for Express route mounting
-  router: function(app) {
-    app.get('/api/news', getNews);
-  }
+  fetchCountryNews,
 };

@@ -24,7 +24,10 @@ const { gateMiddleware, setupGateRoutes } = require('./gate');
 const authRoutes     = require('./routes/auth');
 const mapRoutes      = require('./routes/map');
 const userRoutes     = require('./routes/user');
-const dataRoutes     = require('./routes/data');
+const crimeRoutes        = require('./routes/crime');
+const newsRoutes         = require('./routes/news');
+const eventsRoutes       = require('./routes/events');
+const routePlanningRoutes = require('./routes/route-planning');
 const adminRoutes    = require('./routes/admin');
 const paymentRoutes  = require('./routes/payments');
 const packRoutes     = require('./routes/pack');
@@ -72,7 +75,10 @@ app.post('/api/checkin',    softAuth, require('./routes/user').handleCheckin);
 app.post('/api/zone-alert', softAuth, require('./routes/user').handleZoneAlert);
 
 // Crime stats, route planning, news
-app.use('/api', softAuth, dataRoutes);
+app.use('/api', softAuth, crimeRoutes);
+app.use('/api', softAuth, newsRoutes);
+app.use('/api', softAuth, eventsRoutes);
+app.use('/api', softAuth, routePlanningRoutes);
 
 // AI pack list
 app.use('/api', softAuth, packRoutes);
@@ -84,7 +90,6 @@ app.use('/api', softAuth, paymentRoutes);
 app.use('/api/admin',       adminRoutes);
 // Force news cache refresh
 app.get('/api/admin/refresh-news', async (req, res) => {
-  const { refreshAllNews } = require('./news');
   db.clearOldNews.run();
   refreshAllNews().catch(console.error);
   res.json({ ok: true, message: 'News cache cleared and refresh started' });
@@ -106,7 +111,7 @@ app.get('/api/offline/:code', softAuth, (req, res) => {
   res.json({
     ...c, code, advisoryConfig: cfg,
     events: db.getEventsByCountry.all(code),
-    news:   db.getNewsByCountry.all(code),
+    news:   db.getNewsByCountry(code, 'en'),
   });
 });
 
