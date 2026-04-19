@@ -6,7 +6,8 @@
   "scripts": {
     "prestart": "node prestart.js",
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "test": "echo No tests yet placeholder && exit 0"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
