@@ -675,10 +675,10 @@
           if (catEntries.length) {
             pillsHtml = '<div style="padding:10px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
               catEntries.map(function(e){
-                var meta = catMeta[e.key] || { icon: '�', label: e.key };
+                var meta = catMeta[e.key] || { icon: '�', label: e.key };
                 return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#fff;border:1px solid '+T.border+';border-radius:999px;font-size:11px;color:'+T.text+';"><span>'+meta.icon+'</span><span>'+meta.label+'</span><span style="font-weight:700;color:'+T.text+';">'+e.count+'</span></span>';
               }).join('') +
-              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS � '+stats.total+' TOTAL</span>' +
+              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS � '+stats.total+' TOTAL</span>' +
             '</div>';
           }
         }
@@ -709,50 +709,160 @@
       });
   }
 
-  function loadCrime(country) {
+  async function loadCrime(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
-    
+
     var countryCode = country;
     var countryName = COUNTRY_NAMES[countryCode] || countryCode;
-    var stats = UNODC[countryCode];
-    
-    // Always show UNODC baseline data for now (until crime API is working)
-    if (!stats) {
-      body.innerHTML = '<div style="padding:20px;text-align:center;">'+
-        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:12px;">No crime data available for '+countryName+'</div>'+
-      '</div>';
+
+    // Loading state — matches existing section-header strip pattern
+    body.innerHTML =
+      '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">LOADING CRIME DATA \u00B7 '+countryName.toUpperCase()+'</div>'+
+      '<div style="padding:20px;text-align:center;font-size:12px;color:'+T.muted+';">Loading\u2026</div>';
+
+    var data;
+    try {
+      var resp = await fetch('/api/crime/trend?country_code=' + encodeURIComponent(countryCode));
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      data = await resp.json();
+    } catch (err) {
+      body.innerHTML =
+        '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">CRIME DATA \u00B7 '+countryName.toUpperCase()+'</div>'+
+        '<div style="padding:20px;text-align:center;">'+
+          '<div style="font-size:13px;color:'+T.red+';margin-bottom:8px;font-weight:600;">Couldn\'t load crime data</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-bottom:12px;">'+err.message+'</div>'+
+          '<button onclick="loadCrime(\''+countryCode+'\')" style="padding:8px 16px;background:'+T.teal+';color:#fff;border:none;border-radius:6px;font-size:12px;font-family:'+T.font+';cursor:pointer;">Retry</button>'+
+        '</div>';
       return;
     }
-    
-    body.innerHTML = 
-      '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">UNODC BASELINE DATA</div>'+
-      '<div style="padding:16px;">'+
-        '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">📊 Crime Statistics (per 100k population)</div>'+
-          '<div style="display:grid;gap:12px;">'+
-            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-              '<span style="font-size:12px;color:'+T.text+';">Homicide</span>'+
-              '<span style="font-size:12px;font-weight:600;color:'+T.red+';">'+stats.homicide+'</span>'+
-            '</div>'+
-            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-              '<span style="font-size:12px;color:'+T.text+';">Assault</span>'+
-              '<span style="font-size:12px;font-weight:600;color:'+T.amber+';">'+stats.assault+'</span>'+
-            '</div>'+
-            '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid '+T.border+';">'+
-              '<span style="font-size:12px;color:'+T.text+';">Theft</span>'+
-              '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.theft+'</span>'+
-            '</div>'+
-            '<div style="display:flex;justify-content:space-between;padding:8px 0;">'+
-              '<span style="font-size:12px;color:'+T.text+';">Robbery</span>'+
-              '<span style="font-size:12px;font-weight:600;color:'+T.muted+';">'+stats.robbery+'</span>'+
-            '</div>'+
-          '</div>'+
-          '<div style="margin-top:12px;font-size:10px;color:'+T.muted+';text-align:center;">'+
-            'Source: UNODC '+stats.year+' baseline data'+
-          '</div>'+
-        '</div>'+
+
+    // Trend calculations
+    var trend      = (data.trend || 'stable').toLowerCase();
+    var arrow      = trend === 'rising' ? '\u2197' : trend === 'falling' ? '\u2198' : '\u2192';
+    var trendColor = trend === 'rising' ? T.red    : trend === 'falling' ? T.green  : T.muted;
+    var months     = data.months || [];
+    var grandTotal = data.grand_total != null ? data.grand_total : 0;
+
+    var html = '';
+
+    // ── Section header strip ───────────────────────────────────────────────
+    html +=
+      '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">'+
+        '<span>CRIME TREND \u00B7 '+countryName.toUpperCase()+'</span>'+
+        '<span style="color:'+trendColor+';font-weight:700;">'+arrow+' '+trend.toUpperCase()+'</span>'+
+        '<span>'+months.join(' \u00B7 ').toUpperCase()+' \u00B7 '+grandTotal+' TOTAL</span>'+
       '</div>';
+
+    html += '<div style="padding:16px;">';
+
+    // ── Category cards grid — "running 1 month of every type of crime" ────
+    if (data.categories && data.categories.length) {
+      html += '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px;">';
+      for (var i = 0; i < data.categories.length; i++) {
+        var cat = data.categories[i];
+        var catMonths = cat.months || [];
+        // cat.months is an array of {label, count} objects — extract counts for math
+        var catValues = catMonths.map(function (m) { return (m && typeof m === 'object') ? (m.count || 0) : (m || 0); });
+        var cur  = catValues.length ? catValues[catValues.length - 1] : 0;
+        var prev = catValues.length > 1 ? catValues[catValues.length - 2] : 0;
+        var delta = cur - prev;
+        var deltaLabel = (delta > 0 ? '+' : '') + delta;
+        var deltaColor = delta > 0 ? T.red : delta < 0 ? T.green : T.muted;
+        var maxM = Math.max(1, Math.max.apply(null, catValues.length ? catValues : [1]));
+        var bars = '';
+        for (var j = 0; j < catValues.length; j++) {
+          var h = Math.max(2, Math.round((catValues[j] / maxM) * 24));
+          bars += '<span style="display:inline-block;width:6px;height:'+h+'px;background:'+T.teal+';border-radius:1px 1px 0 0;" title="'+catValues[j]+'"></span>';
+        }
+        html +=
+          '<div style="background:'+T.card+';border:1px solid '+T.border+';border-radius:12px;padding:12px;">'+
+            '<div style="font-size:10px;color:'+T.muted+';font-family:'+T.mono+';text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">'+
+              (cat.icon || '')+' '+(cat.label || cat.key || '')+
+            '</div>'+
+            '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;flex-wrap:wrap;">'+
+              '<span style="font-size:22px;font-weight:700;color:'+T.text+';line-height:1;">'+cur+'</span>'+
+              '<span style="font-size:11px;color:'+deltaColor+';font-weight:600;">'+deltaLabel+' vs prior</span>'+
+            '</div>'+
+            '<div style="display:flex;gap:2px;align-items:flex-end;height:24px;margin-bottom:6px;">'+bars+'</div>'+
+            '<div style="font-size:10px;color:'+T.muted+';">'+(cat.total != null ? cat.total : cur)+' total ('+catMonths.length+'mo)</div>'+
+          '</div>';
+      }
+      html += '</div>';
+    } else {
+      html += '<div style="padding:20px;text-align:center;font-size:12px;color:'+T.muted+';margin-bottom:16px;">No category data for this period.</div>';
+    }
+
+    // ── Active conflict panel (UCDP — field is data.acled, legacy name kept for frontend-compat) ──
+    if (data.acled) {
+      var a = data.acled;
+      var typesHtml = '';
+      var topTypes = (a.event_types || []).slice(0, 3);
+      for (var k = 0; k < topTypes.length; k++) {
+        typesHtml += '<li style="font-size:11px;color:'+T.text+';margin:2px 0;">'+topTypes[k].type+': <strong>'+topTypes[k].count+'</strong></li>';
+      }
+      var recentsHtml = '';
+      var recents = (a.recent_events || []).slice(0, 3);
+      for (var m2 = 0; m2 < recents.length; m2++) {
+        var e = recents[m2];
+        recentsHtml +=
+          '<li style="font-size:11px;color:'+T.text+';margin:4px 0;">'+
+            '<strong>'+e.date+'</strong> \u2014 '+e.event_type+' at '+e.location+
+            (e.fatalities ? ' \u00B7 '+e.fatalities+' fatalities' : '')+
+            (e.notes ? '<div style="color:'+T.muted+';font-size:10px;margin-top:2px;">'+e.notes+'</div>' : '')+
+          '</li>';
+      }
+      html +=
+        '<div style="background:'+T.redLight+';border-left:3px solid '+T.red+';border-radius:8px;padding:12px;margin-bottom:12px;">'+
+          '<div style="font-size:10px;font-family:'+T.mono+';color:'+T.red+';font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">ACTIVE CONFLICT (' + (a.source || 'UCDP') + ')</div>'+
+          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:6px;">'+(a.total_events || 0)+' events \u00B7 '+(a.total_fatalities || 0)+' fatalities</div>'+
+          (typesHtml ? '<div style="font-size:10px;color:'+T.muted+';margin-top:8px;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.03em;font-family:'+T.mono+';">Top event types</div><ul style="margin:0;padding-left:18px;">'+typesHtml+'</ul>' : '')+
+          (recentsHtml ? '<div style="font-size:10px;color:'+T.muted+';margin-top:8px;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.03em;font-family:'+T.mono+';">Recent events</div><ul style="margin:0;padding-left:18px;">'+recentsHtml+'</ul>' : '')+
+        '</div>';
+    }
+
+    // ── UNODC baseline (collapsed, historical context) ────────────────────
+    if (data.unodc_baseline) {
+      var u = data.unodc_baseline;
+      html +=
+        '<details style="background:'+T.card+';border:1px solid '+T.border+';border-radius:8px;padding:8px 12px;margin-bottom:8px;">'+
+          '<summary style="font-size:10px;color:'+T.muted+';font-family:'+T.mono+';cursor:pointer;text-transform:uppercase;letter-spacing:0.03em;">UNODC baseline ('+(u.year || '?')+')</summary>'+
+          '<div style="font-size:11px;color:'+T.text+';margin-top:8px;">'+
+            'Homicide '+(u.homicide != null ? u.homicide : '\u2013')+
+            ' \u00B7 Assault '+(u.assault  != null ? u.assault  : '\u2013')+
+            ' \u00B7 Theft '  +(u.theft    != null ? u.theft    : '\u2013')+
+            ' \u00B7 Robbery '+(u.robbery  != null ? u.robbery  : '\u2013')+
+          '</div>'+
+        '</details>';
+    }
+
+    // ── World Bank indicators (collapsed) ─────────────────────────────────
+    // Assumed entry shape: {indicator|label, value, year}. Verify against crime.js.
+    if (data.world_bank && data.world_bank.length) {
+      var wbHtml = '';
+      for (var n = 0; n < data.world_bank.length; n++) {
+        var w = data.world_bank[n];
+        wbHtml += '<li style="font-size:11px;color:'+T.text+';margin:2px 0;">'+(w.indicator || w.label || 'indicator')+': <strong>'+w.value+'</strong>'+(w.year ? ' ('+w.year+')' : '')+'</li>';
+      }
+      html +=
+        '<details style="background:'+T.card+';border:1px solid '+T.border+';border-radius:8px;padding:8px 12px;margin-bottom:8px;">'+
+          '<summary style="font-size:10px;color:'+T.muted+';font-family:'+T.mono+';cursor:pointer;text-transform:uppercase;letter-spacing:0.03em;">World Bank indicators</summary>'+
+          '<ul style="margin:8px 0 0;padding-left:18px;">'+wbHtml+'</ul>'+
+        '</details>';
+    }
+
+    // ── Sources footer ────────────────────────────────────────────────────
+    if (data.sources && data.sources.length) {
+      var when = data.generated_at ? ' \u00B7 ' + new Date(data.generated_at).toLocaleString() : '';
+      html +=
+        '<div style="font-size:10px;color:'+T.muted+';font-family:'+T.mono+';text-align:center;margin-top:12px;padding-top:8px;border-top:1px solid '+T.border+';letter-spacing:0.03em;">'+
+          'SOURCES: '+data.sources.join(' \u00B7 ').toUpperCase()+when+
+        '</div>';
+    }
+
+    html += '</div>';
+
+    body.innerHTML = html;
   }
 
   /* ══════════════════════════════════════════════════════════════════════════════
