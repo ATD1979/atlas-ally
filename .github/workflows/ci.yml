@@ -1,0 +1,61 @@
+name: CI
+
+# Run on every push to main, and every pull request targeting main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    # This job name becomes the required status check in branch protection.
+    # If you rename it here, you'll need to update the branch-protection rule too.
+    name: Syntax, Audit & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Cache npm's global install folder. Speeds up subsequent runs.
+          cache: 'npm'
+
+      - name: Install dependencies (clean, lockfile-strict)
+        # `npm ci` errors if package.json and package-lock.json disagree.
+        # Slower but safer than `npm install` for CI.
+        run: npm ci
+
+      - name: Syntax check all .js files
+        # Catches the exact category of bug that bit us on the PowerShell-
+        # encoding incident: a .js file that no longer parses cleanly.
+        # `find ... -exec node -c {} \;` exits non-zero if any file fails.
+        run: |
+          echo "Syntax-checking all .js files..."
+          count=$(find . -name "*.js" \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.git/*" \
+            -not -name "*.bak*" | wc -l)
+          echo "Found $count files to check"
+          find . -name "*.js" \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.git/*" \
+            -not -name "*.bak*" \
+            -exec node -c {} \;
+          echo "All $count files parsed successfully."
+
+      - name: Security audit (production deps, high severity+)
+        # Only checks `dependencies`, not `devDependencies`.
+        # Only fails the build on `high` or `critical` vulnerabilities.
+        # Moderate/low are informational.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Run tests
+        # Placeholder that always passes until we have real tests.
+        # The slot exists so future test work has a home without
+        # touching the workflow file.
+        run: npm test
