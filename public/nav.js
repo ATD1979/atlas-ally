@@ -869,169 +869,394 @@
      ENHANCED PACK PANEL - UPGRADE ORIGINAL TO USE AI BACKEND
   ══════════════════════════════════════════════════════════════════════════════ */
 
-  function buildPack() {
-    var country = window.activeCountry;
-    var countryName = country ? (COUNTRY_NAMES[country] || country) : '';
-    
-    var defaultItems = [
-      ['🛂','Passport & Visas','All travel documents and entry requirements'],
-      ['🔌','Power Adapter','Check destination voltage and plug type'],
-      ['📱','Local SIM / Data','International plan or local SIM card'],
-      ['💊','Medications','Prescriptions + first aid kit'],
-      ['💵','Emergency Cash','Local currency for power outages / no signal'],
-      ['📋','Document Copies','Photos of passport, insurance, contacts'],
-      ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
-      ['🌊','Water Purification','Tablets or filter for high-risk areas'],
-      ['🔦','Torch / Headlamp','For power cuts and night navigation'],
-      ['🗺️','Offline Maps','Download before you go — no data needed']
-    ];
+  /* ══════════════════════════════════════════════════════════════════════════════
+     PACK ASSISTANT v1 — Guided questionnaire
+     Step 3b: questionnaire scaffolding (entry + 7 questions + nav).
+     Loading state (3c), results renderer (3d), persistence (3e) come next.
+  ══════════════════════════════════════════════════════════════════════════════ */
 
-    return panelHdr('🎒 '+t('packTitle'))+
-      '<div style="padding:16px;background:'+T.bg+';">'+
-        // AI Pack Generator Section
-        '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;margin-bottom:16px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">🤖 AI Pack Assistant</div>'+
-          '<div style="margin-bottom:12px;">'+
-            '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Destination</div>'+
-            '<input id="aa-pack-dest" type="text" placeholder="Enter destination..." value="'+countryName+'" '+
-              'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-              'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-              'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
-          '</div>'+
-          '<div style="display:flex;gap:8px;margin-bottom:12px;">'+
-            '<div style="flex:1;">'+
-              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Days</div>'+
-              '<input id="aa-pack-days" type="number" value="7" min="1" max="30" '+
-                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-                'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
-            '</div>'+
-            '<div style="flex:1;">'+
-              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Trip Type</div>'+
-              '<select id="aa-pack-type" '+
-                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-                'box-sizing:border-box;font-family:-apple-system,sans-serif;appearance:none;">'+
-                '<option value="leisure">Leisure</option>'+
-                '<option value="business">Business</option>'+
-                '<option value="adventure">Adventure</option>'+
-                '<option value="family">Family</option>'+
-                '<option value="solo">Solo</option>'+
-              '</select>'+
-            '</div>'+
-          '</div>'+
-          '<button id="aa-generate-pack" style="width:100%;padding:10px;background:'+T.teal+';color:#fff;'+
-            'border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">'+
-            '🤖 Generate AI Pack List</button>'+
-        '</div>'+
-        
-        // AI Results container (hidden by default)
-        '<div id="aa-pack-ai-results" style="display:none;margin-bottom:16px;">'+
-        '</div>'+
-        
-        // Default checklist
-        '<div id="aa-pack-default">'+
-          '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
-            '<div style="font-size:13px;font-weight:700;color:'+T.teal+';margin-bottom:4px;">Essential Travel Checklist</div>'+
-            '<div style="font-size:12px;color:'+T.teal+';opacity:0.8;">Tap "Generate AI Pack List" for personalized recommendations</div>'+
-          '</div>'+
-          defaultItems.map(function(item) {
-            return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;'+
-              'background:#fff;border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
-              '<div style="font-size:24px;width:40px;text-align:center;flex-shrink:0;">'+item[0]+'</div>'+
-              '<div style="flex:1;">'+
-                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item[1]+'</div>'+
-                '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+item[2]+'</div>'+
-              '</div>'+
-              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+T.border+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background?\'\':\'' + T.teal + '\';this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
-            '</div>';
-          }).join('')+
-        '</div>'+
-      '</div>';
+  // Question set. Answer `value` strings MUST match backend ANSWER_LABELS enum.
+  // Q5 (health) has 6 options — food allergies is split into mild + severe.
+  var PACK_QUESTIONS = [
+    {
+      key: 'travelers',
+      type: 'single',
+      title: "Who's going?",
+      options: [
+        { value: 'just_me',              label: 'Just me' },
+        { value: 'me_plus_partner',      label: 'Me + partner' },
+        { value: 'me_plus_family_kids',  label: 'Me + family (with kids)' },
+        { value: 'small_group',          label: 'Small group (3–5 adults)' },
+        { value: 'large_group',          label: 'Large group (6+)' },
+      ],
+    },
+    {
+      key: 'duration',
+      type: 'single',
+      title: 'How long is the trip?',
+      options: [
+        { value: 'weekend',             label: 'Weekend (1–3 days)' },
+        { value: 'short_trip',          label: 'Short trip (4–10 days)' },
+        { value: 'extended_2_4_weeks',  label: 'Extended (2–4 weeks)' },
+        { value: 'long_haul',           label: 'Long-haul (1+ months)' },
+      ],
+    },
+    {
+      key: 'style',
+      type: 'single',
+      title: 'How will you mostly be getting around and sleeping?',
+      options: [
+        { value: 'hotels_resorts',       label: 'Hotels / resorts' },
+        { value: 'airbnb_rental',        label: 'Airbnb / short-term rental' },
+        { value: 'hostels_guesthouses',  label: 'Hostels / guesthouses' },
+        { value: 'backpacking_overland', label: 'Backpacking / overland' },
+        { value: 'camping_rural',        label: 'Camping / rural / remote' },
+        { value: 'business',             label: 'Business travel' },
+      ],
+    },
+    {
+      key: 'purpose',
+      type: 'single',
+      title: "What's the main reason for this trip?",
+      options: [
+        { value: 'leisure',          label: 'Leisure / tourism' },
+        { value: 'business',         label: 'Business / work' },
+        { value: 'visiting_family',  label: 'Visiting family or friends' },
+        { value: 'volunteer',        label: 'Volunteer / humanitarian' },
+        { value: 'adventure',        label: 'Adventure / outdoors' },
+        { value: 'medical',          label: 'Medical / specialized' },
+        { value: 'other',            label: 'Other' },
+      ],
+    },
+    {
+      key: 'health',
+      type: 'multi',
+      title: 'Any of the following apply?',
+      subtitle: 'Select all that apply',
+      options: [
+        { value: 'prescription_meds',     label: 'Prescription medications I take regularly' },
+        { value: 'chronic_condition',     label: 'Chronic condition (diabetes, asthma, etc.)' },
+        { value: 'food_allergies_mild',   label: 'Food allergies or dietary restrictions (mild)' },
+        { value: 'food_allergies_severe', label: 'Food allergies (severe / anaphylactic)' },
+        { value: 'mobility_needs',        label: 'Mobility or accessibility needs' },
+        { value: 'none',                  label: 'None of the above', exclusive: true },
+      ],
+    },
+    {
+      key: 'tech',
+      type: 'multi',
+      title: 'What do you need to do while traveling?',
+      subtitle: 'Select all that apply',
+      options: [
+        { value: 'stay_reachable', label: 'Stay reachable for work or family' },
+        { value: 'take_photos',    label: 'Take photos / document the trip' },
+        { value: 'navigate',       label: 'Navigate unfamiliar areas' },
+        { value: 'work_remote',    label: 'Work remotely (laptop-grade)' },
+        { value: 'stream',         label: 'Stream / entertain during downtime' },
+        { value: 'minimal',        label: 'Minimal tech — offline as much as possible', exclusive: true },
+      ],
+    },
+    {
+      key: 'experience',
+      type: 'single',
+      title: 'Have you traveled to places like this before?',
+      options: [
+        { value: 'first_time_region', label: 'First time in this region' },
+        { value: 'been_here_before',  label: "Been here before / know the drill" },
+        { value: 'frequent_traveler', label: 'Frequent traveler, but not here specifically' },
+        { value: 'digital_nomad',     label: 'Live internationally / digital nomad' },
+      ],
+    },
+  ];
+
+  // Module-local state. Survives tab-switches within a session; resets on reload.
+  // Persistence to localStorage is added in step 3e.
+  var packState = {
+    phase: 'entry',        // 'entry' | 'question' | 'loading' | 'results'
+    qIndex: 0,             // 0..6 when phase === 'question'
+    answers: {
+      travelers: null, duration: null, style: null,
+      purpose: null, purpose_note: '',
+      health: [], tech: [], experience: null,
+    },
+    generatedList: null,   // populated in 3c from /api/pack/generate
+    checked: {},           // populated in 3d/3e (item name -> bool)
+  };
+
+  function packResetAnswers() {
+    packState.answers = {
+      travelers: null, duration: null, style: null,
+      purpose: null, purpose_note: '',
+      health: [], tech: [], experience: null,
+    };
   }
 
-  function wirePackGenerator() {
-    var generateBtn = document.getElementById('aa-generate-pack');
-    if (!generateBtn) return;
-    
-    generateBtn.addEventListener('click', function() {
-      var destInput = document.getElementById('aa-pack-dest');
-      var daysInput = document.getElementById('aa-pack-days');
-      var typeSelect = document.getElementById('aa-pack-type');
-      
-      var destination = destInput ? destInput.value.trim() : '';
-      var days = daysInput ? parseInt(daysInput.value) || 7 : 7;
-      var tripType = typeSelect ? typeSelect.value : 'leisure';
-      
-      if (!destination) {
-        showToast('❌ Please enter a destination', 'error');
-        return;
-      }
-      
-      generateBtn.textContent = '🤖 Generating...';
-      generateBtn.disabled = true;
-      
-      fetch('/api/pack/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination: destination,
-          duration: days,
-          trip_type: tripType,
-          country_code: window.activeCountry
-        })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) {
-          showToast('❌ '+data.error, 'error');
-          return;
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  function buildPack() {
+    return panelHdr('🎒 ' + t('packTitle')) + packRenderPhase();
+  }
+
+  function packRenderPhase() {
+    if (packState.phase === 'question') return packRenderQuestion();
+    if (packState.phase === 'loading')  return packRenderLoading();
+    if (packState.phase === 'results')  return packRenderResults();
+    return packRenderEntry();
+  }
+
+  function packRenderEntry() {
+    var country = window.activeCountry;
+    var countryName = country ? (COUNTRY_NAMES[country] || country) : 'your destination';
+    return '<div style="padding:24px 20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      '<div style="background:#fff;border:1px solid '+T.border+';border-radius:14px;padding:28px 20px;text-align:center;">'+
+        '<div style="font-size:48px;margin-bottom:12px;">🎒</div>'+
+        '<div style="font-size:18px;font-weight:700;color:'+T.text+';margin-bottom:8px;">'+
+          'Build your personalized pack list</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';line-height:1.5;margin-bottom:20px;">'+
+          '7 quick questions. We\'ll put together a list tailored to you and '+countryName+', '+
+          'including current risk context.</div>'+
+        '<button id="aa-pack-start" style="width:100%;padding:14px;background:'+T.teal+';color:#fff;'+
+          'border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;'+
+          'font-family:'+T.font+';">'+
+          'Build my personalized list →</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderQuestion() {
+    var q = PACK_QUESTIONS[packState.qIndex];
+    var total = PACK_QUESTIONS.length;
+    var currentNum = packState.qIndex + 1;
+    var isMulti = q.type === 'multi';
+    var selected = packState.answers[q.key];
+
+    // Progress dots
+    var dots = '';
+    for (var i = 0; i < total; i++) {
+      var on = i <= packState.qIndex;
+      dots += '<div style="width:8px;height:8px;border-radius:50%;background:'+
+        (on ? T.teal : T.border)+';"></div>';
+    }
+
+    // Option tiles
+    var optionsHtml = q.options.map(function(opt) {
+      var isSel = isMulti
+        ? (selected || []).indexOf(opt.value) !== -1
+        : selected === opt.value;
+      var bg = isSel ? T.tealLight : '#fff';
+      var bColor = isSel ? T.teal : T.border;
+      var tColor = isSel ? T.teal : T.text;
+      var shape = isMulti ? '4px' : '50%';
+      return '<button class="aa-pack-opt" data-value="'+opt.value+'" '+
+        'style="width:100%;text-align:left;padding:14px 16px;background:'+bg+';'+
+        'border:2px solid '+bColor+';border-radius:10px;margin-bottom:10px;'+
+        'font-size:14px;font-weight:'+(isSel?'700':'600')+';color:'+tColor+';'+
+        'cursor:pointer;font-family:'+T.font+';display:flex;align-items:center;gap:12px;">'+
+        '<div style="width:20px;height:20px;border-radius:'+shape+';'+
+          'border:2px solid '+bColor+';background:'+(isSel?T.teal:'transparent')+';'+
+          'flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">'+
+          (isSel ? '✓' : '')+
+        '</div>'+
+        '<span style="flex:1;">'+opt.label+'</span>'+
+      '</button>';
+    }).join('');
+
+    // Free-text reveal for Q4 "other". Stored locally; not sent to API in v1.
+    var noteFieldHtml = '';
+    if (q.key === 'purpose' && selected === 'other') {
+      var noteVal = (packState.answers.purpose_note || '').replace(/"/g, '&quot;');
+      noteFieldHtml = '<div style="margin-top:-4px;margin-bottom:12px;">'+
+        '<input id="aa-pack-note" type="text" placeholder="Tell us more (optional)" '+
+          'value="'+noteVal+'" maxlength="200" '+
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+          'padding:10px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
+          'box-sizing:border-box;font-family:'+T.font+';">'+
+      '</div>';
+    }
+
+    // Next button state
+    var hasAnswer = isMulti ? (selected && selected.length > 0) : !!selected;
+    var nextDisabled = !hasAnswer;
+    var nextLabel = (packState.qIndex === total - 1) ? 'Build my list →' : 'Next →';
+    var nextStyles = 'flex:2;padding:14px;background:'+(nextDisabled ? T.subtle : T.teal)+';'+
+      'color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;'+
+      'font-family:'+T.font+';cursor:'+(nextDisabled ? 'not-allowed' : 'pointer')+';'+
+      'opacity:'+(nextDisabled ? '0.5' : '1')+';';
+
+    var backDisabled = packState.qIndex === 0;
+    var backStyles = 'flex:1;padding:14px;background:none;color:'+T.muted+';'+
+      'border:1px solid '+T.border+';border-radius:10px;font-size:14px;font-weight:600;'+
+      'font-family:'+T.font+';cursor:'+(backDisabled ? 'not-allowed' : 'pointer')+';'+
+      'opacity:'+(backDisabled ? '0.4' : '1')+';';
+
+    return '<div style="padding:16px 20px 24px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      // Progress
+      '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">'+dots+'</div>'+
+      '<div style="font-size:11px;color:'+T.muted+';text-align:center;font-family:'+T.mono+';'+
+        'text-transform:uppercase;letter-spacing:1px;margin-bottom:18px;">'+
+        'Question '+currentNum+' of '+total+'</div>'+
+      // Title
+      '<div style="font-size:18px;font-weight:700;color:'+T.text+';line-height:1.35;margin-bottom:'+
+        (q.subtitle ? '4px' : '16px')+';">'+q.title+'</div>'+
+      (q.subtitle
+        ? '<div style="font-size:12px;color:'+T.muted+';margin-bottom:16px;">'+q.subtitle+'</div>'
+        : '')+
+      // Option tiles
+      optionsHtml +
+      // Free-text reveal (only when purpose === 'other')
+      noteFieldHtml +
+      // Nav buttons
+      '<div style="display:flex;gap:10px;margin-top:20px;">'+
+        '<button id="aa-pack-back" style="'+backStyles+'"'+(backDisabled ? ' disabled' : '')+'>← Back</button>'+
+        '<button id="aa-pack-next" style="'+nextStyles+'"'+(nextDisabled ? ' disabled' : '')+'>'+nextLabel+'</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderLoading() {
+    // Stub for 3b — real loading UI with rotating messages ships in 3c
+    return '<div style="padding:40px 20px;background:'+T.bg+';text-align:center;'+
+      'min-height:calc(100vh - 110px);">'+
+      '<div style="font-size:32px;margin-bottom:16px;">⏳</div>'+
+      '<div style="font-size:14px;color:'+T.muted+';">Building your list…</div>'+
+      '<div style="font-size:11px;color:'+T.subtle+';margin-top:8px;font-family:'+T.mono+';">'+
+        '(Loading UI ships in step 3c)</div>'+
+    '</div>';
+  }
+
+  function packRenderResults() {
+    // Stub for 3b — real renderer ships in 3d. For now, dump captured answers
+    // so we can visually confirm the questionnaire collected what we expected.
+    var dump = JSON.stringify(packState.answers, null, 2)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<div style="padding:20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">'+
+        '✅ Answers captured (3b stub — real list comes in 3c/3d)</div>'+
+      '<pre style="background:#fff;border:1px solid '+T.border+';border-radius:10px;padding:14px;'+
+        'font-size:11px;color:'+T.text+';overflow-x:auto;font-family:'+T.mono+';'+
+        'white-space:pre-wrap;word-wrap:break-word;">'+dump+'</pre>'+
+      '<button id="aa-pack-restart" style="width:100%;padding:12px;margin-top:14px;background:'+T.teal+';'+
+        'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;'+
+        'font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+    '</div>';
+  }
+
+  // ─── State transitions ────────────────────────────────────────────────────
+
+  function packRerender() {
+    showOverlay(buildPack());
+    setTimeout(function() {
+      var cb = document.getElementById('aa-close-btn');
+      if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+      wirePack();
+    }, 0);
+  }
+
+  function packGoToEntry()      { packState.phase = 'entry';    packState.qIndex = 0;   packRerender(); }
+  function packGoToQuestion(i)  { packState.phase = 'question'; packState.qIndex = i;   packRerender(); }
+  function packGoToResults()    {
+    packState.phase = 'results';
+    // 3c will replace this with a real API call. For now, just log.
+    console.log('[pack] answers submitted:', JSON.parse(JSON.stringify(packState.answers)));
+    packRerender();
+  }
+
+  function packSelectOption(q, value) {
+    if (q.type === 'single') {
+      packState.answers[q.key] = value;
+      // If leaving "other" on purpose question, clear the note
+      if (q.key === 'purpose' && value !== 'other') packState.answers.purpose_note = '';
+      return;
+    }
+    // Multi-select with exclusive-option handling
+    var arr = (packState.answers[q.key] || []).slice();
+    var option = null;
+    for (var i = 0; i < q.options.length; i++) {
+      if (q.options[i].value === value) { option = q.options[i]; break; }
+    }
+    var idx = arr.indexOf(value);
+    if (idx !== -1) {
+      arr.splice(idx, 1);                  // toggle off
+    } else if (option && option.exclusive) {
+      arr = [value];                        // exclusive: clear everything else
+    } else {
+      // Selecting a non-exclusive: strip any exclusive values first
+      arr = arr.filter(function(v) {
+        for (var j = 0; j < q.options.length; j++) {
+          if (q.options[j].value === v && q.options[j].exclusive) return false;
         }
-        displayPackResults(data);
-      })
-      .catch(function() {
-        showToast('❌ Failed to generate pack list', 'error');
-      })
-      .finally(function() {
-        generateBtn.textContent = '🤖 Generate AI Pack List';
-        generateBtn.disabled = false;
+        return true;
       });
+      arr.push(value);
+    }
+    packState.answers[q.key] = arr;
+  }
+
+  // ─── Wiring ───────────────────────────────────────────────────────────────
+
+  function wirePack() {
+    if (packState.phase === 'entry')    return wirePackEntry();
+    if (packState.phase === 'question') return wirePackQuestion();
+    if (packState.phase === 'results')  return wirePackResults();
+    // 'loading' phase has nothing to wire
+  }
+
+  function wirePackEntry() {
+    var btn = document.getElementById('aa-pack-start');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      packResetAnswers();
+      packGoToQuestion(0);
     });
   }
 
-  function displayPackResults(packData) {
-    var resultsDiv = document.getElementById('aa-pack-ai-results');
-    var defaultDiv = document.getElementById('aa-pack-default');
-    
-    if (!resultsDiv || !packData.categories) return;
-    
-    resultsDiv.innerHTML = 
-      '<div style="background:'+T.greenLight+';border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
-        '<div style="font-size:13px;font-weight:700;color:'+T.green+';margin-bottom:4px;">✅ AI Pack List Generated</div>'+
-        '<div style="font-size:12px;color:'+T.green+';opacity:0.8;">'+(packData.summary || 'Customized for your trip')+'</div>'+
-      '</div>'+
-      packData.categories.map(function(category) {
-        return '<div style="margin-bottom:20px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;display:flex;align-items:center;gap:8px;">'+
-            '<span style="font-size:18px;">'+category.icon+'</span>'+category.name+
-          '</div>'+
-          category.items.map(function(item) {
-            var essential = item.essential ? 'border:2px solid '+T.teal+';background:'+T.tealLight : 'border:2px solid '+T.border+';background:#fff';
-            return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;'+
-              essential+';border-radius:10px;margin-bottom:8px;">'+
-              '<div style="flex:1;">'+
-                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item.text+'</div>'+
-                (item.essential ? '<div style="font-size:10px;color:'+T.teal+';font-weight:700;text-transform:uppercase;margin-top:2px;">Essential</div>' : '')+
-              '</div>'+
-              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+(item.essential?T.teal:T.border)+';background:'+(item.essential?T.teal:'transparent')+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background===\'transparent\'?\'' + T.teal + '\':(this.style.background?\'\':\'transparent\');this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
-            '</div>';
-          }).join('')+
-        '</div>';
-      }).join('');
-    
-    resultsDiv.style.display = 'block';
-    if (defaultDiv) defaultDiv.style.display = 'none';
+  function wirePackQuestion() {
+    var q = PACK_QUESTIONS[packState.qIndex];
+    var total = PACK_QUESTIONS.length;
+
+    // Option tiles
+    var opts = document.querySelectorAll('.aa-pack-opt');
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].onclick = function() {
+      var value = this.getAttribute('data-value');
+      packSelectOption(q, value);
+      packRerender();
+    };
+    }
+
+    // Optional "other" note input (no rerender on input — value persists on change)
+    var noteInput = document.getElementById('aa-pack-note');
+    if (noteInput) {
+      noteInput.addEventListener('input', function() {
+        packState.answers.purpose_note = this.value;
+      });
+    }
+
+    // Back
+    var backBtn = document.getElementById('aa-pack-back');
+    if (backBtn && packState.qIndex > 0) {
+      backBtn.addEventListener('click', function() {
+        packGoToQuestion(packState.qIndex - 1);
+      });
+    }
+
+    // Next / Submit
+    var nextBtn = document.getElementById('aa-pack-next');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        if (nextBtn.disabled) return;
+        var isLast = packState.qIndex === total - 1;
+        if (isLast) packGoToResults();
+        else        packGoToQuestion(packState.qIndex + 1);
+      });
+    }
   }
+
+  function wirePackResults() {
+    var btn = document.getElementById('aa-pack-restart');
+    if (btn) btn.addEventListener('click', function() { packGoToEntry(); });
+  }
+
 
   /* ══════════════════════════════════════════════════════════════════════════════
      WORLD/COUNTRIES PANEL - KEEP ORIGINAL EXACTLY AS-IS  
@@ -1376,7 +1601,7 @@
       var cb=document.getElementById('aa-close-btn');
       if(cb) cb.addEventListener('click',function(){switchTab('map');});
       if(name==='feed'){_feedTab='news';wireFeedTabs();loadNews(window.activeCountry);}
-      if(name==='pack') wirePackGenerator(); // WIRE THE NEW AI PACK GENERATOR
+      if(name==='pack') wirePack(); // WIRE THE NEW AI PACK GENERATOR
       if(name==='countries') loadWorldCountries();
       if(name==='account')   wireAccount();
     },0);
@@ -1453,11 +1678,6 @@
         if(_feedTab==='news')   loadNews(code);
         if(_feedTab==='alerts') loadAlerts(code);
         if(_feedTab==='crime')  loadCrime(code);
-      }
-      // Update pack destination when country changes
-      var packDest = document.getElementById('aa-pack-dest');
-      if (packDest && code) {
-        packDest.value = COUNTRY_NAMES[code] || code;
       }
       return r;
     };
