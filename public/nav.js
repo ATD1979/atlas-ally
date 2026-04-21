@@ -2041,6 +2041,9 @@
     window.closeSheet        = function(id){var s=document.getElementById(id);if(s)s.classList.remove('open');};
     window.openNavSection    = function(pid){switchTab(pid.replace('-panel',''));if(navPanel)navPanel.classList.remove('open');};
     window.toast             = window.toast||showToast;
+    window.loadNews          = loadNews;
+    window.loadAlerts        = loadAlerts;
+    window.loadCrime         = loadCrime;
 
     var _origSet=window.setActiveCountry;
     window.setActiveCountry=function(code,pos){
