@@ -34,11 +34,16 @@ const SECURITY_QUERIES = {
 };
 
 // Jordan-specific noise filter — ported from news.js to catch sports/sneaker
-// content that slips through keyword-based country matching (Michael Jordan,
-// Jordan brand, Jordan Peterson, etc.). Only applied when countryCode is JO.
+// content that slips through keyword-based country matching. Expanded to cover
+// named-person collisions (Simon Jordan pundit, Jordan Henderson footballer,
+// Eddie Jordan F1, Jordan Spieth golf, etc.) and football league references.
+// Only applied when countryCode is JO.
 function passesJordanNoiseFilter(title) {
   const t = title.toLowerCase();
-  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court)\b/.test(t)) {
+  if (/\b(basketball|nba|wnba|sneaker|sports|athlete|game|court|premier league|champions league)\b/.test(t)) {
+    return false;
+  }
+  if (/\b(michael jordan|air jordan|jordan brand|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan)\b/.test(t)) {
     return false;
   }
   return true;
@@ -70,13 +75,12 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
 
     if (title.length < 10 || (url && seen.has(url)) || seen.has(key)) continue;
 
-    // Country-relevance gate — Google News search is loose. A query for
-    // "Jordan attack OR explosion..." returns any article mentioning any of
-    // those keywords, even if the article isn't about Jordan the country
-    // (e.g. a US sheriff announcement mentioning a deputy named Jordan).
-    // Require the country name or an alias to actually appear in title/desc.
+    // Country-relevance gate — stricter than news.js's title+description check
+    // because Google News search is extremely loose. Require the country name
+    // or an alias to appear in the TITLE specifically (a "Jordan" mention
+    // buried in the description of a US local news story isn't enough).
     const description = String(item.description || '').replace(/<[^>]*>/g, '').trim();
-    if (!isRelevantToCountry(title + ' ' + description, countryCode)) continue;
+    if (!isRelevantToCountry(title, countryCode)) continue;
     if (countryCode === 'JO' && !passesJordanNoiseFilter(title)) continue;
 
     if (url) seen.add(url);
