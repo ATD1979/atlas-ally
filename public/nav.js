@@ -666,6 +666,7 @@
             unrest:    { icon: '\u270A',       label: 'Unrest' },
             crime:     { icon: '\uD83D\uDD2B', label: 'Crime' },
             drug:      { icon: '\uD83D\uDC8A', label: 'Drug' },
+            air:       { icon: '\u2708\uFE0F',  label: 'Air' },
             other:     { icon: '\uD83D\uDCCB', label: 'Other' }
           };
           var catEntries = Object.keys(stats.by_category)
@@ -981,6 +982,7 @@
     },
     generatedList: null,   // populated in 3c from /api/pack/generate
     error: null,           // 3c — { type: 'retry'|'fallback', message } or null
+    expandedNiceHaves: {}, // 3d — category name -> bool (all collapsed by default)
     checked: {},           // populated in 3d/3e (item name -> bool)
   };
 
@@ -991,7 +993,8 @@
       health: [], tech: [], experience: null,
     };
   }
-// ─── Loading-state message cycling (3c) ──────────────────────────────────
+
+  // ─── Loading-state message cycling (3c) ──────────────────────────────────
   // Updates innerText of #aa-pack-loading-msg without rerendering the whole
   // panel — otherwise the spinner would flicker on every message swap.
   var packLoadingTimer = null;
@@ -1015,6 +1018,150 @@
   function packStopLoadingMessages() {
     if (packLoadingTimer) { clearInterval(packLoadingTimer); packLoadingTimer = null; }
   }
+
+  // ─── Results renderer data + helpers (3d) ────────────────────────────────
+
+  // Canonical category order — matches spec. Items whose category isn't in
+  // this list fall through to an "Other" bucket rendered last.
+  var PACK_CATEGORIES = [
+    { key: 'Documents',          icon: '🛂' },
+    { key: 'Health',             icon: '💊' },
+    { key: 'Safety / Emergency', icon: '🚨' },
+    { key: 'Tech / Power',       icon: '🔌' },
+    { key: 'Clothing',           icon: '👕' },
+    { key: 'Comfort',            icon: '🛏️' },
+    { key: 'Region-specific',    icon: '📍' },
+  ];
+
+  // Priority pill styling. Essential = soft red (urgency without alarm),
+  // recommended = brand teal, nice-to-have = muted gray.
+  var PACK_PRIORITY_META = {
+    'essential':    { label: 'Essential',    bg: T.redLight,  color: T.red,   border: T.red,    order: 0 },
+    'recommended':  { label: 'Recommended',  bg: T.tealLight, color: T.teal,  border: T.teal,   order: 1 },
+    'nice-to-have': { label: 'Nice to have', bg: T.bg,        color: T.muted, border: T.border, order: 2 },
+  };
+
+  function packEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function packRenderItem(item, idx) {
+    var pri = PACK_PRIORITY_META[item.priority] || PACK_PRIORITY_META['nice-to-have'];
+    var isChecked = !!packState.checked[idx];
+    var nameStyle = isChecked
+      ? 'text-decoration:line-through;color:'+T.subtle+';'
+      : 'color:'+T.text+';';
+    var rowOpacity = isChecked ? 'opacity:0.55;' : '';
+    return '<div class="aa-pack-item" data-idx="'+idx+'" '+
+      'style="display:flex;gap:12px;padding:12px 14px;background:'+T.card+';'+
+      'border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;'+
+      'transition:opacity 0.15s ease;'+rowOpacity+'">'+
+      // Checkbox
+      '<div class="aa-pack-check" data-idx="'+idx+'" '+
+        'style="width:22px;height:22px;flex-shrink:0;border:2px solid '+
+        (isChecked ? T.teal : T.border)+';border-radius:6px;cursor:pointer;'+
+        'display:flex;align-items:center;justify-content:center;background:'+
+        (isChecked ? T.teal : 'transparent')+';color:#fff;font-size:13px;'+
+        'font-weight:700;margin-top:2px;user-select:none;">'+
+        (isChecked ? '✓' : '')+
+      '</div>'+
+      // Content
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">'+
+          '<span style="font-size:18px;line-height:1;">'+packEsc(item.icon || '•')+'</span>'+
+          '<span class="aa-pack-name" style="font-size:13px;font-weight:700;'+nameStyle+'">'+
+            packEsc(item.name)+'</span>'+
+          '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;'+
+            'background:'+pri.bg+';color:'+pri.color+';border:1px solid '+pri.border+';'+
+            'text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">'+
+            pri.label+'</span>'+
+        '</div>'+
+        '<div style="font-size:11.5px;color:'+T.muted+';line-height:1.45;">'+
+          packEsc(item.rationale || '')+'</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderCategorySection(catDef, entries) {
+    // Sort by priority: essential → recommended → nice-to-have
+    entries.sort(function(a, b) {
+      var ap = PACK_PRIORITY_META[a.item.priority];
+      var bp = PACK_PRIORITY_META[b.item.priority];
+      return (ap ? ap.order : 99) - (bp ? bp.order : 99);
+    });
+
+    var important = entries.filter(function(e) { return e.item.priority !== 'nice-to-have'; });
+    var niceHaves = entries.filter(function(e) { return e.item.priority === 'nice-to-have'; });
+    var expanded = !!packState.expandedNiceHaves[catDef.key];
+
+    var importantRows = important.map(function(e) {
+      return packRenderItem(e.item, e.idx);
+    }).join('');
+    var niceRows = niceHaves.map(function(e) {
+      return packRenderItem(e.item, e.idx);
+    }).join('');
+
+    var niceBlock = '';
+    if (niceHaves.length) {
+      var toggleLabel = (expanded ? '▲ Hide ' : '▼ Show ') + niceHaves.length +
+        ' nice-to-have' + (niceHaves.length !== 1 ? 's' : '');
+      var safeCat = packEsc(catDef.key);
+      niceBlock =
+        '<button class="aa-pack-nice-toggle" data-cat="'+safeCat+'" '+
+          'data-count="'+niceHaves.length+'" '+
+          'style="width:100%;padding:10px 14px;background:transparent;'+
+          'border:1px dashed '+T.border+';border-radius:10px;color:'+T.muted+';'+
+          'font-size:11px;font-weight:600;cursor:pointer;margin-top:4px;'+
+          'font-family:'+T.font+';letter-spacing:0.02em;">'+toggleLabel+'</button>'+
+        '<div class="aa-pack-nice-items" data-cat="'+safeCat+'" '+
+          'style="display:'+(expanded ? 'block' : 'none')+';margin-top:8px;">'+
+          niceRows+
+        '</div>';
+    }
+
+    return '<div style="margin-bottom:20px;">'+
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 2px 10px;'+
+        'font-size:11px;font-weight:700;color:'+T.muted+';letter-spacing:0.08em;'+
+        'text-transform:uppercase;">'+
+        '<span style="font-size:14px;">'+catDef.icon+'</span>'+
+        '<span>'+packEsc(catDef.key)+'</span>'+
+        '<span style="color:'+T.subtle+';font-weight:500;letter-spacing:0;text-transform:none;">'+
+          '('+entries.length+')</span>'+
+      '</div>'+
+      importantRows+
+      niceBlock+
+    '</div>';
+  }
+
+  // In-place DOM updates — avoid full rerender so scroll position is preserved
+  // and the checkbox toggle feels instant.
+  function packUpdateItemDom(idx) {
+    var row = document.querySelector('.aa-pack-item[data-idx="'+idx+'"]');
+    if (!row) return;
+    var check = row.querySelector('.aa-pack-check');
+    var name  = row.querySelector('.aa-pack-name');
+    var isChecked = !!packState.checked[idx];
+    row.style.opacity = isChecked ? '0.55' : '1';
+    if (check) {
+      check.style.background   = isChecked ? T.teal : 'transparent';
+      check.style.borderColor  = isChecked ? T.teal : T.border;
+      check.innerText          = isChecked ? '✓' : '';
+    }
+    if (name) {
+      name.style.textDecoration = isChecked ? 'line-through' : 'none';
+      name.style.color          = isChecked ? T.subtle : T.text;
+    }
+  }
+
+  function packUpdateProgressCount() {
+    var el = document.getElementById('aa-pack-progress-count');
+    if (!el) return;
+    var n = 0;
+    for (var k in packState.checked) { if (packState.checked[k]) n++; }
+    el.innerText = n;
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   function buildPack() {
@@ -1204,24 +1351,64 @@
       '</div>';
     }
 
-    // Success — real renderer ships in 3d. Placeholder confirms the API worked
-    // and dumps the response so we can eyeball the payload during 3d dev.
+    // Success — category-grouped, priority-sorted, rationale-visible list
     var g = packState.generatedList || {};
-    var count = (g.items && g.items.length) || 0;
+    var items = g.items || [];
     var cName = g.country_name || 'your destination';
-    var dump = JSON.stringify(g, null, 2)
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return '<div style="padding:20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
-      '<div style="padding:12px 14px;background:'+T.greenLight+';border:1px solid '+T.green+';'+
-        'border-radius:10px;margin-bottom:14px;font-size:12px;color:'+T.text+';line-height:1.5;">'+
-        '<strong>✅ Got '+count+' items for '+cName+'</strong><br>'+
-        '<span style="color:'+T.muted+';">Full list renderer ships in step 3d.</span></div>'+
-      '<pre style="background:'+T.card+';border:1px solid '+T.border+';border-radius:10px;'+
-        'padding:14px;font-size:11px;color:'+T.text+';overflow-x:auto;font-family:'+T.mono+';'+
-        'white-space:pre-wrap;word-wrap:break-word;max-height:50vh;">'+dump+'</pre>'+
-      '<button id="aa-pack-restart" style="width:100%;padding:12px;margin-top:14px;background:'+T.teal+';'+
-        'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;'+
-        'font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+    var total = items.length;
+
+    // Group items by category, preserving original index for checked-state lookups
+    var byCat = {};
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var cat = it.category || 'Region-specific';
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push({ item: it, idx: i });
+    }
+
+    // Progress count
+    var packed = 0;
+    for (var k in packState.checked) { if (packState.checked[k]) packed++; }
+
+    // Render canonical categories in order, then any unknown categories as "Other"
+    var sections = '';
+    var seen = {};
+    for (var c = 0; c < PACK_CATEGORIES.length; c++) {
+      var catDef = PACK_CATEGORIES[c];
+      seen[catDef.key] = true;
+      if (byCat[catDef.key] && byCat[catDef.key].length) {
+        sections += packRenderCategorySection(catDef, byCat[catDef.key]);
+      }
+    }
+    for (var extra in byCat) {
+      if (!seen[extra]) {
+        sections += packRenderCategorySection({ key: extra, icon: '📦' }, byCat[extra]);
+      }
+    }
+
+    // Empty response guard
+    if (!total) {
+      sections = '<div style="padding:24px;text-align:center;color:'+T.muted+';font-size:13px;">'+
+        'No items returned. Try rebuilding with different answers.</div>';
+    }
+
+    return '<div style="padding:16px 16px 40px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      // Progress / rebuild header
+      '<div style="background:'+T.card+';border:1px solid '+T.border+';border-radius:12px;'+
+        'padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;'+
+        'justify-content:space-between;gap:12px;">'+
+        '<div style="min-width:0;">'+
+          '<div style="font-size:14px;font-weight:700;color:'+T.text+';">'+
+            '<span id="aa-pack-progress-count">'+packed+'</span> of '+total+' packed</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;'+
+            'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+
+            'Personalized for '+packEsc(cName)+'</div>'+
+        '</div>'+
+        '<button id="aa-pack-restart" style="padding:8px 14px;background:'+T.bg+';color:'+T.muted+';'+
+          'border:1px solid '+T.border+';border-radius:8px;font-size:11px;font-weight:600;'+
+          'font-family:'+T.font+';cursor:pointer;flex-shrink:0;">Rebuild</button>'+
+      '</div>'+
+      sections+
     '</div>';
   }
 
@@ -1247,6 +1434,8 @@
     packState.phase = 'loading';
     packState.error = null;
     packState.generatedList = null;
+    packState.checked = {};
+    packState.expandedNiceHaves = {};
     packRerender();
 
     var body = {
@@ -1412,6 +1601,33 @@
 
     var retry = document.getElementById('aa-pack-retry');
     if (retry) retry.onclick = function() { packGoToResults(); };
+
+    // Checkbox toggles — update state + DOM in place (no rerender, preserves scroll)
+    var checks = document.querySelectorAll('.aa-pack-check');
+    for (var i = 0; i < checks.length; i++) {
+      checks[i].onclick = function() {
+        var idx = this.getAttribute('data-idx');
+        packState.checked[idx] = !packState.checked[idx];
+        packUpdateItemDom(idx);
+        packUpdateProgressCount();
+      };
+    }
+
+    // Nice-to-have expand/collapse — toggle display + button label in place
+    var toggles = document.querySelectorAll('.aa-pack-nice-toggle');
+    for (var j = 0; j < toggles.length; j++) {
+      toggles[j].onclick = function() {
+        var cat = this.getAttribute('data-cat');
+        var willExpand = !packState.expandedNiceHaves[cat];
+        packState.expandedNiceHaves[cat] = willExpand;
+        var panel = document.querySelector('.aa-pack-nice-items[data-cat="'+
+          cat.replace(/"/g,'\\"')+'"]');
+        if (panel) panel.style.display = willExpand ? 'block' : 'none';
+        var n = parseInt(this.getAttribute('data-count'), 10) || 0;
+        this.innerText = (willExpand ? '▲ Hide ' : '▼ Show ') + n +
+          ' nice-to-have' + (n !== 1 ? 's' : '');
+      };
+    }
   }
 
 
