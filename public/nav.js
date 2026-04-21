@@ -590,9 +590,13 @@
   function loadNews(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    var apiUrl = '/api/news' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    var apiUrl = '/api/news?country_code=' + encodeURIComponent(country);
     console.log('Loading news from:', apiUrl);
     
     fetch(apiUrl)
@@ -635,9 +639,13 @@
   function loadAlerts(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    var apiUrl = '/api/events' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    var apiUrl = '/api/events?country_code=' + encodeURIComponent(country);
     console.log('Loading alerts from:', apiUrl);
     
     fetch(apiUrl)
@@ -713,6 +721,10 @@
   async function loadCrime(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
 
     var countryCode = country;
     var countryName = COUNTRY_NAMES[countryCode] || countryCode;
