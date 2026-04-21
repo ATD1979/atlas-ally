@@ -38,3 +38,6 @@ data/*.db-shm
 data/*.db-wal
 *.db-shm
 *.db-wal
+
+# local diagnostic scripts
+/db-*.js

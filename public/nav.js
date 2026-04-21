@@ -590,9 +590,13 @@
   function loadNews(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    var apiUrl = '/api/news' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    var apiUrl = '/api/news?country_code=' + encodeURIComponent(country);
     console.log('Loading news from:', apiUrl);
     
     fetch(apiUrl)
@@ -635,9 +639,13 @@
   function loadAlerts(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
     body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('loading')+'</div>';
     
-    var apiUrl = '/api/events' + (country ? '?country_code=' + encodeURIComponent(country) : '');
+    var apiUrl = '/api/events?country_code=' + encodeURIComponent(country);
     console.log('Loading alerts from:', apiUrl);
     
     fetch(apiUrl)
@@ -666,6 +674,7 @@
             unrest:    { icon: '\u270A',       label: 'Unrest' },
             crime:     { icon: '\uD83D\uDD2B', label: 'Crime' },
             drug:      { icon: '\uD83D\uDC8A', label: 'Drug' },
+            air:       { icon: '\u2708\uFE0F',  label: 'Air' },
             other:     { icon: '\uD83D\uDCCB', label: 'Other' }
           };
           var catEntries = Object.keys(stats.by_category)
@@ -712,6 +721,10 @@
   async function loadCrime(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
+    if (!country) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">Pick a country first</div>';
+      return;
+    }
 
     var countryCode = country;
     var countryName = COUNTRY_NAMES[countryCode] || countryCode;
@@ -869,169 +882,766 @@
      ENHANCED PACK PANEL - UPGRADE ORIGINAL TO USE AI BACKEND
   ══════════════════════════════════════════════════════════════════════════════ */
 
-  function buildPack() {
-    var country = window.activeCountry;
-    var countryName = country ? (COUNTRY_NAMES[country] || country) : '';
-    
-    var defaultItems = [
-      ['🛂','Passport & Visas','All travel documents and entry requirements'],
-      ['🔌','Power Adapter','Check destination voltage and plug type'],
-      ['📱','Local SIM / Data','International plan or local SIM card'],
-      ['💊','Medications','Prescriptions + first aid kit'],
-      ['💵','Emergency Cash','Local currency for power outages / no signal'],
-      ['📋','Document Copies','Photos of passport, insurance, contacts'],
-      ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
-      ['🌊','Water Purification','Tablets or filter for high-risk areas'],
-      ['🔦','Torch / Headlamp','For power cuts and night navigation'],
-      ['🗺️','Offline Maps','Download before you go — no data needed']
-    ];
+  /* ══════════════════════════════════════════════════════════════════════════════
+     PACK ASSISTANT v1 — Guided questionnaire
+     Step 3b: questionnaire scaffolding (entry + 7 questions + nav).
+     Loading state (3c), results renderer (3d), persistence (3e) come next.
+  ══════════════════════════════════════════════════════════════════════════════ */
 
-    return panelHdr('🎒 '+t('packTitle'))+
-      '<div style="padding:16px;background:'+T.bg+';">'+
-        // AI Pack Generator Section
-        '<div style="background:#fff;border:1px solid '+T.border+';border-radius:12px;padding:16px;margin-bottom:16px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">🤖 AI Pack Assistant</div>'+
-          '<div style="margin-bottom:12px;">'+
-            '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Destination</div>'+
-            '<input id="aa-pack-dest" type="text" placeholder="Enter destination..." value="'+countryName+'" '+
-              'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-              'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-              'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
-          '</div>'+
-          '<div style="display:flex;gap:8px;margin-bottom:12px;">'+
-            '<div style="flex:1;">'+
-              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Days</div>'+
-              '<input id="aa-pack-days" type="number" value="7" min="1" max="30" '+
-                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-                'box-sizing:border-box;font-family:-apple-system,sans-serif;">'+
-            '</div>'+
-            '<div style="flex:1;">'+
-              '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Trip Type</div>'+
-              '<select id="aa-pack-type" '+
-                'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
-                'padding:8px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
-                'box-sizing:border-box;font-family:-apple-system,sans-serif;appearance:none;">'+
-                '<option value="leisure">Leisure</option>'+
-                '<option value="business">Business</option>'+
-                '<option value="adventure">Adventure</option>'+
-                '<option value="family">Family</option>'+
-                '<option value="solo">Solo</option>'+
-              '</select>'+
-            '</div>'+
-          '</div>'+
-          '<button id="aa-generate-pack" style="width:100%;padding:10px;background:'+T.teal+';color:#fff;'+
-            'border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">'+
-            '🤖 Generate AI Pack List</button>'+
-        '</div>'+
-        
-        // AI Results container (hidden by default)
-        '<div id="aa-pack-ai-results" style="display:none;margin-bottom:16px;">'+
-        '</div>'+
-        
-        // Default checklist
-        '<div id="aa-pack-default">'+
-          '<div style="background:'+T.tealLight+';border:1px solid rgba(14,116,144,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
-            '<div style="font-size:13px;font-weight:700;color:'+T.teal+';margin-bottom:4px;">Essential Travel Checklist</div>'+
-            '<div style="font-size:12px;color:'+T.teal+';opacity:0.8;">Tap "Generate AI Pack List" for personalized recommendations</div>'+
-          '</div>'+
-          defaultItems.map(function(item) {
-            return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;'+
-              'background:#fff;border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
-              '<div style="font-size:24px;width:40px;text-align:center;flex-shrink:0;">'+item[0]+'</div>'+
-              '<div style="flex:1;">'+
-                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item[1]+'</div>'+
-                '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+item[2]+'</div>'+
-              '</div>'+
-              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+T.border+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background?\'\':\'' + T.teal + '\';this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
-            '</div>';
-          }).join('')+
-        '</div>'+
-      '</div>';
+  // Question set. Answer `value` strings MUST match backend ANSWER_LABELS enum.
+  // Q5 (health) has 6 options — food allergies is split into mild + severe.
+  var PACK_QUESTIONS = [
+    {
+      key: 'travelers',
+      type: 'single',
+      title: "Who's going?",
+      options: [
+        { value: 'just_me',              label: 'Just me' },
+        { value: 'me_plus_partner',      label: 'Me + partner' },
+        { value: 'me_plus_family_kids',  label: 'Me + family (with kids)' },
+        { value: 'small_group',          label: 'Small group (3–5 adults)' },
+        { value: 'large_group',          label: 'Large group (6+)' },
+      ],
+    },
+    {
+      key: 'duration',
+      type: 'single',
+      title: 'How long is the trip?',
+      options: [
+        { value: 'weekend',             label: 'Weekend (1–3 days)' },
+        { value: 'short_trip',          label: 'Short trip (4–10 days)' },
+        { value: 'extended_2_4_weeks',  label: 'Extended (2–4 weeks)' },
+        { value: 'long_haul',           label: 'Long-haul (1+ months)' },
+      ],
+    },
+    {
+      key: 'style',
+      type: 'single',
+      title: 'How will you mostly be getting around and sleeping?',
+      options: [
+        { value: 'hotels_resorts',       label: 'Hotels / resorts' },
+        { value: 'airbnb_rental',        label: 'Airbnb / short-term rental' },
+        { value: 'hostels_guesthouses',  label: 'Hostels / guesthouses' },
+        { value: 'backpacking_overland', label: 'Backpacking / overland' },
+        { value: 'camping_rural',        label: 'Camping / rural / remote' },
+        { value: 'business',             label: 'Business travel' },
+      ],
+    },
+    {
+      key: 'purpose',
+      type: 'single',
+      title: "What's the main reason for this trip?",
+      options: [
+        { value: 'leisure',          label: 'Leisure / tourism' },
+        { value: 'business',         label: 'Business / work' },
+        { value: 'visiting_family',  label: 'Visiting family or friends' },
+        { value: 'volunteer',        label: 'Volunteer / humanitarian' },
+        { value: 'adventure',        label: 'Adventure / outdoors' },
+        { value: 'medical',          label: 'Medical / specialized' },
+        { value: 'other',            label: 'Other' },
+      ],
+    },
+    {
+      key: 'health',
+      type: 'multi',
+      title: 'Any of the following apply?',
+      subtitle: 'Select all that apply',
+      options: [
+        { value: 'prescription_meds',     label: 'Prescription medications I take regularly' },
+        { value: 'chronic_condition',     label: 'Chronic condition (diabetes, asthma, etc.)' },
+        { value: 'food_allergies_mild',   label: 'Food allergies or dietary restrictions (mild)' },
+        { value: 'food_allergies_severe', label: 'Food allergies (severe / anaphylactic)' },
+        { value: 'mobility_needs',        label: 'Mobility or accessibility needs' },
+        { value: 'none',                  label: 'None of the above', exclusive: true },
+      ],
+    },
+    {
+      key: 'tech',
+      type: 'multi',
+      title: 'What do you need to do while traveling?',
+      subtitle: 'Select all that apply',
+      options: [
+        { value: 'stay_reachable', label: 'Stay reachable for work or family' },
+        { value: 'take_photos',    label: 'Take photos / document the trip' },
+        { value: 'navigate',       label: 'Navigate unfamiliar areas' },
+        { value: 'work_remote',    label: 'Work remotely (laptop-grade)' },
+        { value: 'stream',         label: 'Stream / entertain during downtime' },
+        { value: 'minimal',        label: 'Minimal tech — offline as much as possible', exclusive: true },
+      ],
+    },
+    {
+      key: 'experience',
+      type: 'single',
+      title: 'Have you traveled to places like this before?',
+      options: [
+        { value: 'first_time_region', label: 'First time in this region' },
+        { value: 'been_here_before',  label: "Been here before / know the drill" },
+        { value: 'frequent_traveler', label: 'Frequent traveler, but not here specifically' },
+        { value: 'digital_nomad',     label: 'Live internationally / digital nomad' },
+      ],
+    },
+  ];
+
+  // Module-local state. Survives tab-switches within a session; resets on reload.
+  // Persistence to localStorage is added in step 3e.
+  var packState = {
+    phase: 'entry',        // 'entry' | 'question' | 'loading' | 'results'
+    qIndex: 0,             // 0..6 when phase === 'question'
+    answers: {
+      travelers: null, duration: null, style: null,
+      purpose: null, purpose_note: '',
+      health: [], tech: [], experience: null,
+    },
+    generatedList: null,   // populated in 3c from /api/pack/generate
+    error: null,           // 3c — { type: 'retry'|'fallback', message } or null
+    expandedNiceHaves: {}, // 3d — category name -> bool (all collapsed by default)
+    checked: {},           // populated in 3d/3e (item name -> bool)
+  };
+
+  function packResetAnswers() {
+    packState.answers = {
+      travelers: null, duration: null, style: null,
+      purpose: null, purpose_note: '',
+      health: [], tech: [], experience: null,
+    };
   }
 
-  function wirePackGenerator() {
-    var generateBtn = document.getElementById('aa-generate-pack');
-    if (!generateBtn) return;
-    
-    generateBtn.addEventListener('click', function() {
-      var destInput = document.getElementById('aa-pack-dest');
-      var daysInput = document.getElementById('aa-pack-days');
-      var typeSelect = document.getElementById('aa-pack-type');
-      
-      var destination = destInput ? destInput.value.trim() : '';
-      var days = daysInput ? parseInt(daysInput.value) || 7 : 7;
-      var tripType = typeSelect ? typeSelect.value : 'leisure';
-      
-      if (!destination) {
-        showToast('❌ Please enter a destination', 'error');
+  // ─── Loading-state message cycling (3c) ──────────────────────────────────
+  // Updates innerText of #aa-pack-loading-msg without rerendering the whole
+  // panel — otherwise the spinner would flicker on every message swap.
+  var packLoadingTimer = null;
+
+  function packStartLoadingMessages() {
+    var messages = [
+      'Thinking about your destination…',
+      'Checking current risk feeds…',
+      'Personalizing recommendations…',
+    ];
+    var idx = 0;
+    packStopLoadingMessages(); // defensive: never stack
+    packLoadingTimer = setInterval(function() {
+      var el = document.getElementById('aa-pack-loading-msg');
+      if (!el) { packStopLoadingMessages(); return; } // self-cleanup if DOM gone
+      idx = (idx + 1) % messages.length;
+      el.innerText = messages[idx];
+    }, 1800);
+  }
+
+  function packStopLoadingMessages() {
+    if (packLoadingTimer) { clearInterval(packLoadingTimer); packLoadingTimer = null; }
+  }
+
+  // ─── Results renderer data + helpers (3d) ────────────────────────────────
+
+  // Canonical category order — matches spec. Items whose category isn't in
+  // this list fall through to an "Other" bucket rendered last.
+  var PACK_CATEGORIES = [
+    { key: 'Documents',          icon: '🛂' },
+    { key: 'Health',             icon: '💊' },
+    { key: 'Safety / Emergency', icon: '🚨' },
+    { key: 'Tech / Power',       icon: '🔌' },
+    { key: 'Clothing',           icon: '👕' },
+    { key: 'Comfort',            icon: '🛏️' },
+    { key: 'Region-specific',    icon: '📍' },
+  ];
+
+  // Priority pill styling. Essential = soft red (urgency without alarm),
+  // recommended = brand teal, nice-to-have = muted gray.
+  var PACK_PRIORITY_META = {
+    'essential':    { label: 'Essential',    bg: T.redLight,  color: T.red,   border: T.red,    order: 0 },
+    'recommended':  { label: 'Recommended',  bg: T.tealLight, color: T.teal,  border: T.teal,   order: 1 },
+    'nice-to-have': { label: 'Nice to have', bg: T.bg,        color: T.muted, border: T.border, order: 2 },
+  };
+
+  function packEsc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function packRenderItem(item, idx) {
+    var pri = PACK_PRIORITY_META[item.priority] || PACK_PRIORITY_META['nice-to-have'];
+    var isChecked = !!packState.checked[idx];
+    var nameStyle = isChecked
+      ? 'text-decoration:line-through;color:'+T.subtle+';'
+      : 'color:'+T.text+';';
+    var rowOpacity = isChecked ? 'opacity:0.55;' : '';
+    return '<div class="aa-pack-item" data-idx="'+idx+'" '+
+      'style="display:flex;gap:12px;padding:12px 14px;background:'+T.card+';'+
+      'border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;'+
+      'transition:opacity 0.15s ease;'+rowOpacity+'">'+
+      // Checkbox
+      '<div class="aa-pack-check" data-idx="'+idx+'" '+
+        'style="width:22px;height:22px;flex-shrink:0;border:2px solid '+
+        (isChecked ? T.teal : T.border)+';border-radius:6px;cursor:pointer;'+
+        'display:flex;align-items:center;justify-content:center;background:'+
+        (isChecked ? T.teal : 'transparent')+';color:#fff;font-size:13px;'+
+        'font-weight:700;margin-top:2px;user-select:none;">'+
+        (isChecked ? '✓' : '')+
+      '</div>'+
+      // Content
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;">'+
+          '<span style="font-size:18px;line-height:1;">'+packEsc(item.icon || '•')+'</span>'+
+          '<span class="aa-pack-name" style="font-size:13px;font-weight:700;'+nameStyle+'">'+
+            packEsc(item.name)+'</span>'+
+          '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;'+
+            'background:'+pri.bg+';color:'+pri.color+';border:1px solid '+pri.border+';'+
+            'text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">'+
+            pri.label+'</span>'+
+        '</div>'+
+        '<div style="font-size:11.5px;color:'+T.muted+';line-height:1.45;">'+
+          packEsc(item.rationale || '')+'</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderCategorySection(catDef, entries) {
+    // Sort by priority: essential → recommended → nice-to-have
+    entries.sort(function(a, b) {
+      var ap = PACK_PRIORITY_META[a.item.priority];
+      var bp = PACK_PRIORITY_META[b.item.priority];
+      return (ap ? ap.order : 99) - (bp ? bp.order : 99);
+    });
+
+    var important = entries.filter(function(e) { return e.item.priority !== 'nice-to-have'; });
+    var niceHaves = entries.filter(function(e) { return e.item.priority === 'nice-to-have'; });
+    var expanded = !!packState.expandedNiceHaves[catDef.key];
+
+    var importantRows = important.map(function(e) {
+      return packRenderItem(e.item, e.idx);
+    }).join('');
+    var niceRows = niceHaves.map(function(e) {
+      return packRenderItem(e.item, e.idx);
+    }).join('');
+
+    var niceBlock = '';
+    if (niceHaves.length) {
+      var toggleLabel = (expanded ? '▲ Hide ' : '▼ Show ') + niceHaves.length +
+        ' nice-to-have' + (niceHaves.length !== 1 ? 's' : '');
+      var safeCat = packEsc(catDef.key);
+      niceBlock =
+        '<button class="aa-pack-nice-toggle" data-cat="'+safeCat+'" '+
+          'data-count="'+niceHaves.length+'" '+
+          'style="width:100%;padding:10px 14px;background:transparent;'+
+          'border:1px dashed '+T.border+';border-radius:10px;color:'+T.muted+';'+
+          'font-size:11px;font-weight:600;cursor:pointer;margin-top:4px;'+
+          'font-family:'+T.font+';letter-spacing:0.02em;">'+toggleLabel+'</button>'+
+        '<div class="aa-pack-nice-items" data-cat="'+safeCat+'" '+
+          'style="display:'+(expanded ? 'block' : 'none')+';margin-top:8px;">'+
+          niceRows+
+        '</div>';
+    }
+
+    return '<div style="margin-bottom:20px;">'+
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 2px 10px;'+
+        'font-size:11px;font-weight:700;color:'+T.muted+';letter-spacing:0.08em;'+
+        'text-transform:uppercase;">'+
+        '<span style="font-size:14px;">'+catDef.icon+'</span>'+
+        '<span>'+packEsc(catDef.key)+'</span>'+
+        '<span style="color:'+T.subtle+';font-weight:500;letter-spacing:0;text-transform:none;">'+
+          '('+entries.length+')</span>'+
+      '</div>'+
+      importantRows+
+      niceBlock+
+    '</div>';
+  }
+
+  // In-place DOM updates — avoid full rerender so scroll position is preserved
+  // and the checkbox toggle feels instant.
+  function packUpdateItemDom(idx) {
+    var row = document.querySelector('.aa-pack-item[data-idx="'+idx+'"]');
+    if (!row) return;
+    var check = row.querySelector('.aa-pack-check');
+    var name  = row.querySelector('.aa-pack-name');
+    var isChecked = !!packState.checked[idx];
+    row.style.opacity = isChecked ? '0.55' : '1';
+    if (check) {
+      check.style.background   = isChecked ? T.teal : 'transparent';
+      check.style.borderColor  = isChecked ? T.teal : T.border;
+      check.innerText          = isChecked ? '✓' : '';
+    }
+    if (name) {
+      name.style.textDecoration = isChecked ? 'line-through' : 'none';
+      name.style.color          = isChecked ? T.subtle : T.text;
+    }
+  }
+
+  function packUpdateProgressCount() {
+    var el = document.getElementById('aa-pack-progress-count');
+    if (!el) return;
+    var n = 0;
+    for (var k in packState.checked) { if (packState.checked[k]) n++; }
+    el.innerText = n;
+  }
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  function buildPack() {
+    return panelHdr('🎒 ' + t('packTitle')) + packRenderPhase();
+  }
+
+  function packRenderPhase() {
+    if (packState.phase === 'question') return packRenderQuestion();
+    if (packState.phase === 'loading')  return packRenderLoading();
+    if (packState.phase === 'results')  return packRenderResults();
+    return packRenderEntry();
+  }
+
+  function packRenderEntry() {
+    var country = window.activeCountry;
+    var countryName = country ? (COUNTRY_NAMES[country] || country) : 'your destination';
+    return '<div style="padding:24px 20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      '<div style="background:#fff;border:1px solid '+T.border+';border-radius:14px;padding:28px 20px;text-align:center;">'+
+        '<div style="font-size:48px;margin-bottom:12px;">🎒</div>'+
+        '<div style="font-size:18px;font-weight:700;color:'+T.text+';margin-bottom:8px;">'+
+          'Build your personalized pack list</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';line-height:1.5;margin-bottom:20px;">'+
+          '7 quick questions. We\'ll put together a list tailored to you and '+countryName+', '+
+          'including current risk context.</div>'+
+        '<button id="aa-pack-start" style="width:100%;padding:14px;background:'+T.teal+';color:#fff;'+
+          'border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;'+
+          'font-family:'+T.font+';">'+
+          'Build my personalized list →</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderQuestion() {
+    var q = PACK_QUESTIONS[packState.qIndex];
+    var total = PACK_QUESTIONS.length;
+    var currentNum = packState.qIndex + 1;
+    var isMulti = q.type === 'multi';
+    var selected = packState.answers[q.key];
+
+    // Progress dots
+    var dots = '';
+    for (var i = 0; i < total; i++) {
+      var on = i <= packState.qIndex;
+      dots += '<div style="width:8px;height:8px;border-radius:50%;background:'+
+        (on ? T.teal : T.border)+';"></div>';
+    }
+
+    // Option tiles
+    var optionsHtml = q.options.map(function(opt) {
+      var isSel = isMulti
+        ? (selected || []).indexOf(opt.value) !== -1
+        : selected === opt.value;
+      var bg = isSel ? T.tealLight : '#fff';
+      var bColor = isSel ? T.teal : T.border;
+      var tColor = isSel ? T.teal : T.text;
+      var shape = isMulti ? '4px' : '50%';
+      return '<button class="aa-pack-opt" data-value="'+opt.value+'" '+
+        'style="width:100%;text-align:left;padding:14px 16px;background:'+bg+';'+
+        'border:2px solid '+bColor+';border-radius:10px;margin-bottom:10px;'+
+        'font-size:14px;font-weight:'+(isSel?'700':'600')+';color:'+tColor+';'+
+        'cursor:pointer;font-family:'+T.font+';display:flex;align-items:center;gap:12px;">'+
+        '<div style="width:20px;height:20px;border-radius:'+shape+';'+
+          'border:2px solid '+bColor+';background:'+(isSel?T.teal:'transparent')+';'+
+          'flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">'+
+          (isSel ? '✓' : '')+
+        '</div>'+
+        '<span style="flex:1;">'+opt.label+'</span>'+
+      '</button>';
+    }).join('');
+
+    // Free-text reveal for Q4 "other". Stored locally; not sent to API in v1.
+    var noteFieldHtml = '';
+    if (q.key === 'purpose' && selected === 'other') {
+      var noteVal = (packState.answers.purpose_note || '').replace(/"/g, '&quot;');
+      noteFieldHtml = '<div style="margin-top:-4px;margin-bottom:12px;">'+
+        '<input id="aa-pack-note" type="text" placeholder="Tell us more (optional)" '+
+          'value="'+noteVal+'" maxlength="200" '+
+          'style="width:100%;border:1.5px solid '+T.border+';border-radius:8px;'+
+          'padding:10px 12px;font-size:13px;color:'+T.text+';background:#fff;outline:none;'+
+          'box-sizing:border-box;font-family:'+T.font+';">'+
+      '</div>';
+    }
+
+    // Next button state
+    var hasAnswer = isMulti ? (selected && selected.length > 0) : !!selected;
+    var nextDisabled = !hasAnswer;
+    var nextLabel = (packState.qIndex === total - 1) ? 'Build my list →' : 'Next →';
+    var nextStyles = 'flex:2;padding:14px;background:'+(nextDisabled ? T.subtle : T.teal)+';'+
+      'color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;'+
+      'font-family:'+T.font+';cursor:'+(nextDisabled ? 'not-allowed' : 'pointer')+';'+
+      'opacity:'+(nextDisabled ? '0.5' : '1')+';';
+
+    var backDisabled = packState.qIndex === 0;
+    var backStyles = 'flex:1;padding:14px;background:none;color:'+T.muted+';'+
+      'border:1px solid '+T.border+';border-radius:10px;font-size:14px;font-weight:600;'+
+      'font-family:'+T.font+';cursor:'+(backDisabled ? 'not-allowed' : 'pointer')+';'+
+      'opacity:'+(backDisabled ? '0.4' : '1')+';';
+
+    return '<div style="padding:16px 20px 24px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      // Progress
+      '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">'+dots+'</div>'+
+      '<div style="font-size:11px;color:'+T.muted+';text-align:center;font-family:'+T.mono+';'+
+        'text-transform:uppercase;letter-spacing:1px;margin-bottom:18px;">'+
+        'Question '+currentNum+' of '+total+'</div>'+
+      // Title
+      '<div style="font-size:18px;font-weight:700;color:'+T.text+';line-height:1.35;margin-bottom:'+
+        (q.subtitle ? '4px' : '16px')+';">'+q.title+'</div>'+
+      (q.subtitle
+        ? '<div style="font-size:12px;color:'+T.muted+';margin-bottom:16px;">'+q.subtitle+'</div>'
+        : '')+
+      // Option tiles
+      optionsHtml +
+      // Free-text reveal (only when purpose === 'other')
+      noteFieldHtml +
+      // Nav buttons
+      '<div style="display:flex;gap:10px;margin-top:20px;">'+
+        '<button id="aa-pack-back" style="'+backStyles+'"'+(backDisabled ? ' disabled' : '')+'>← Back</button>'+
+        '<button id="aa-pack-next" style="'+nextStyles+'"'+(nextDisabled ? ' disabled' : '')+'>'+nextLabel+'</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function packRenderLoading() {
+    return '<div style="padding:60px 20px;background:'+T.bg+';text-align:center;'+
+      'min-height:calc(100vh - 110px);">'+
+      '<div style="font-size:40px;margin-bottom:20px;display:inline-block;'+
+        'animation:aa-pack-spin 1.2s linear infinite;">⏳</div>'+
+      '<div id="aa-pack-loading-msg" style="font-size:14px;color:'+T.text+';font-weight:600;'+
+        'margin-bottom:8px;min-height:20px;">Thinking about your destination…</div>'+
+      '<div style="font-size:11px;color:'+T.subtle+';font-family:'+T.mono+';">'+
+        'Usually takes 3–6 seconds</div>'+
+      '<style>@keyframes aa-pack-spin{to{transform:rotate(360deg);}}</style>'+
+    '</div>';
+  }
+
+  function packRenderResults() {
+    // 502 / network error — retry button
+    if (packState.error && packState.error.type === 'retry') {
+      return '<div style="padding:40px 20px;background:'+T.bg+';text-align:center;'+
+        'min-height:calc(100vh - 110px);">'+
+        '<div style="font-size:40px;margin-bottom:16px;">⚠️</div>'+
+        '<div style="font-size:15px;color:'+T.text+';font-weight:700;margin-bottom:8px;">'+
+          "Couldn't build your list</div>"+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:24px;line-height:1.5;'+
+          'max-width:320px;margin-left:auto;margin-right:auto;">'+
+          (packState.error.message || 'Something went wrong.')+'</div>'+
+        '<button id="aa-pack-retry" style="width:100%;max-width:320px;padding:14px;background:'+T.teal+';'+
+          'color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;'+
+          'font-family:'+T.font+';cursor:pointer;margin-bottom:10px;">Try again</button>'+
+        '<button id="aa-pack-restart" style="width:100%;max-width:320px;padding:12px;background:'+T.card+';'+
+          'color:'+T.muted+';border:1px solid '+T.border+';border-radius:10px;font-size:13px;'+
+          'font-weight:600;font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+      '</div>';
+    }
+
+    // 503 — generator unavailable, show hardcoded 10-item fallback (D2)
+    if (packState.error && packState.error.type === 'fallback') {
+      var fallback = [
+        ['🛂','Passport & Visas','All travel documents and entry requirements'],
+        ['🔌','Power Adapter','Check destination voltage and plug type'],
+        ['📱','Local SIM / Data','International plan or local SIM card'],
+        ['💊','Medications','Prescriptions + first aid kit'],
+        ['💵','Emergency Cash','Local currency for power outages / no signal'],
+        ['📋','Document Copies','Photos of passport, insurance, contacts'],
+        ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
+        ['🌊','Water Purification','Tablets or filter for high-risk areas'],
+        ['🔦','Torch / Headlamp','For power cuts and night navigation'],
+        ['🗺️','Offline Maps','Download before you go — no data needed'],
+      ];
+      var rows = fallback.map(function(f) {
+        return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;'+
+          'background:'+T.card+';border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
+          '<div style="font-size:22px;flex-shrink:0;line-height:1;">'+f[0]+'</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:3px;">'+f[1]+'</div>'+
+            '<div style="font-size:11px;color:'+T.muted+';line-height:1.4;">'+f[2]+'</div>'+
+          '</div></div>';
+      }).join('');
+      return '<div style="padding:20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+        '<div style="padding:12px 14px;background:'+T.goldLight+';border:1px solid '+T.gold+';'+
+          'border-radius:10px;margin-bottom:14px;font-size:12px;color:'+T.text+';line-height:1.5;">'+
+          '<strong>Generator unavailable</strong> — showing a generic list instead.</div>'+
+        rows+
+        '<button id="aa-pack-restart" style="width:100%;padding:12px;margin-top:10px;background:'+T.teal+';'+
+          'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;'+
+          'font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+      '</div>';
+    }
+
+    // Success — category-grouped, priority-sorted, rationale-visible list
+    var g = packState.generatedList || {};
+    var items = g.items || [];
+    var cName = g.country_name || 'your destination';
+    var total = items.length;
+
+    // Group items by category, preserving original index for checked-state lookups
+    var byCat = {};
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var cat = it.category || 'Region-specific';
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push({ item: it, idx: i });
+    }
+
+    // Progress count
+    var packed = 0;
+    for (var k in packState.checked) { if (packState.checked[k]) packed++; }
+
+    // Render canonical categories in order, then any unknown categories as "Other"
+    var sections = '';
+    var seen = {};
+    for (var c = 0; c < PACK_CATEGORIES.length; c++) {
+      var catDef = PACK_CATEGORIES[c];
+      seen[catDef.key] = true;
+      if (byCat[catDef.key] && byCat[catDef.key].length) {
+        sections += packRenderCategorySection(catDef, byCat[catDef.key]);
+      }
+    }
+    for (var extra in byCat) {
+      if (!seen[extra]) {
+        sections += packRenderCategorySection({ key: extra, icon: '📦' }, byCat[extra]);
+      }
+    }
+
+    // Empty response guard
+    if (!total) {
+      sections = '<div style="padding:24px;text-align:center;color:'+T.muted+';font-size:13px;">'+
+        'No items returned. Try rebuilding with different answers.</div>';
+    }
+
+    return '<div style="padding:16px 16px 40px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+      // Progress / rebuild header
+      '<div style="background:'+T.card+';border:1px solid '+T.border+';border-radius:12px;'+
+        'padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;'+
+        'justify-content:space-between;gap:12px;">'+
+        '<div style="min-width:0;">'+
+          '<div style="font-size:14px;font-weight:700;color:'+T.text+';">'+
+            '<span id="aa-pack-progress-count">'+packed+'</span> of '+total+' packed</div>'+
+          '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;'+
+            'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+
+            'Personalized for '+packEsc(cName)+'</div>'+
+        '</div>'+
+        '<button id="aa-pack-restart" style="padding:8px 14px;background:'+T.bg+';color:'+T.muted+';'+
+          'border:1px solid '+T.border+';border-radius:8px;font-size:11px;font-weight:600;'+
+          'font-family:'+T.font+';cursor:pointer;flex-shrink:0;">Rebuild</button>'+
+      '</div>'+
+      sections+
+    '</div>';
+  }
+
+  // ─── State transitions ────────────────────────────────────────────────────
+
+  function packRerender() {
+    showOverlay(buildPack());
+    setTimeout(function() {
+      var cb = document.getElementById('aa-close-btn');
+      if (cb) cb.addEventListener('click', function() { switchTab('map'); });
+      wirePack();
+    }, 0);
+  }
+
+  function packGoToEntry()      { packState.phase = 'entry';    packState.qIndex = 0;   packRerender(); }
+  function packGoToQuestion(i)  { packState.phase = 'question'; packState.qIndex = i;   packRerender(); }
+  function packGoToResults() {
+    if (!window.activeCountry) {
+      showToast('Pick a country first', 'error');
+      return;
+    }
+
+    packState.phase = 'loading';
+    packState.error = null;
+    packState.generatedList = null;
+    packState.checked = {};
+    packState.expandedNiceHaves = {};
+    packRerender();
+
+    var body = {
+      country_code: window.activeCountry,
+      answers: {
+        travelers:  packState.answers.travelers,
+        duration:   packState.answers.duration,
+        style:      packState.answers.style,
+        purpose:    packState.answers.purpose,
+        health:     packState.answers.health,
+        tech:       packState.answers.tech,
+        experience: packState.answers.experience,
+      },
+    };
+
+    fetch('/api/pack/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function(resp) {
+      return resp.json().then(
+        function(data) { return { status: resp.status, data: data }; },
+        function()     { return { status: resp.status, data: {} }; }
+      );
+    }).then(function(result) {
+      var stillVisible = !!document.getElementById('aa-pack-loading-msg');
+      var status = result.status;
+      var data = result.data || {};
+
+      if (status >= 200 && status < 300) {
+        packState.generatedList = data;
+        packState.error = null;
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
         return;
       }
-      
-      generateBtn.textContent = '🤖 Generating...';
-      generateBtn.disabled = true;
-      
-      fetch('/api/pack/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination: destination,
-          duration: days,
-          trip_type: tripType,
-          country_code: window.activeCountry
-        })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) {
-          showToast('❌ '+data.error, 'error');
-          return;
-        }
-        displayPackResults(data);
-      })
-      .catch(function() {
-        showToast('❌ Failed to generate pack list', 'error');
-      })
-      .finally(function() {
-        generateBtn.textContent = '🤖 Generate AI Pack List';
-        generateBtn.disabled = false;
-      });
+
+      if (status === 503) {
+        packState.error = { type: 'fallback', message: data.error || 'Generator unavailable' };
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
+        return;
+      }
+
+      if (status === 502) {
+        packState.error = { type: 'retry', message: data.error || "We couldn't build your list right now." };
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
+        return;
+      }
+
+      showToast(data.error || ('Error ' + status), 'error');
+      packState.phase = 'question';
+      packState.qIndex = PACK_QUESTIONS.length - 1;
+      if (stillVisible) packRerender();
+    }).catch(function(err) {
+      console.error('[pack] generate failed:', err);
+      var stillVisible = !!document.getElementById('aa-pack-loading-msg');
+      packState.error = { type: 'retry', message: 'Network error. Check your connection and try again.' };
+      packState.phase = 'results';
+      if (stillVisible) packRerender();
     });
   }
 
-  function displayPackResults(packData) {
-    var resultsDiv = document.getElementById('aa-pack-ai-results');
-    var defaultDiv = document.getElementById('aa-pack-default');
-    
-    if (!resultsDiv || !packData.categories) return;
-    
-    resultsDiv.innerHTML = 
-      '<div style="background:'+T.greenLight+';border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:14px;margin-bottom:16px;">'+
-        '<div style="font-size:13px;font-weight:700;color:'+T.green+';margin-bottom:4px;">✅ AI Pack List Generated</div>'+
-        '<div style="font-size:12px;color:'+T.green+';opacity:0.8;">'+(packData.summary || 'Customized for your trip')+'</div>'+
-      '</div>'+
-      packData.categories.map(function(category) {
-        return '<div style="margin-bottom:20px;">'+
-          '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;display:flex;align-items:center;gap:8px;">'+
-            '<span style="font-size:18px;">'+category.icon+'</span>'+category.name+
-          '</div>'+
-          category.items.map(function(item) {
-            var essential = item.essential ? 'border:2px solid '+T.teal+';background:'+T.tealLight : 'border:2px solid '+T.border+';background:#fff';
-            return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;'+
-              essential+';border-radius:10px;margin-bottom:8px;">'+
-              '<div style="flex:1;">'+
-                '<div style="font-size:13px;font-weight:600;color:'+T.text+';">'+item.text+'</div>'+
-                (item.essential ? '<div style="font-size:10px;color:'+T.teal+';font-weight:700;text-transform:uppercase;margin-top:2px;">Essential</div>' : '')+
-              '</div>'+
-              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid '+(item.essential?T.teal:T.border)+';background:'+(item.essential?T.teal:'transparent')+';flex-shrink:0;cursor:pointer;" onclick="this.style.background=this.style.background===\'transparent\'?\'' + T.teal + '\':(this.style.background?\'\':\'transparent\');this.style.borderColor=this.style.background?\'' + T.teal + '\':\'' + T.border + '\';"></div>'+
-            '</div>';
-          }).join('')+
-        '</div>';
-      }).join('');
-    
-    resultsDiv.style.display = 'block';
-    if (defaultDiv) defaultDiv.style.display = 'none';
+  function packSelectOption(q, value) {
+    if (q.type === 'single') {
+      packState.answers[q.key] = value;
+      // If leaving "other" on purpose question, clear the note
+      if (q.key === 'purpose' && value !== 'other') packState.answers.purpose_note = '';
+      return;
+    }
+    // Multi-select with exclusive-option handling
+    var arr = (packState.answers[q.key] || []).slice();
+    var option = null;
+    for (var i = 0; i < q.options.length; i++) {
+      if (q.options[i].value === value) { option = q.options[i]; break; }
+    }
+    var idx = arr.indexOf(value);
+    if (idx !== -1) {
+      arr.splice(idx, 1);                  // toggle off
+    } else if (option && option.exclusive) {
+      arr = [value];                        // exclusive: clear everything else
+    } else {
+      // Selecting a non-exclusive: strip any exclusive values first
+      arr = arr.filter(function(v) {
+        for (var j = 0; j < q.options.length; j++) {
+          if (q.options[j].value === v && q.options[j].exclusive) return false;
+        }
+        return true;
+      });
+      arr.push(value);
+    }
+    packState.answers[q.key] = arr;
   }
+
+  // ─── Wiring ───────────────────────────────────────────────────────────────
+
+  function wirePack() {
+    // Single source of truth for loading timer lifecycle:
+    // stop it anytime we're not in loading phase.
+    if (packState.phase !== 'loading') packStopLoadingMessages();
+
+    if (packState.phase === 'entry')    return wirePackEntry();
+    if (packState.phase === 'question') return wirePackQuestion();
+    if (packState.phase === 'loading')  return packStartLoadingMessages();
+    if (packState.phase === 'results')  return wirePackResults();
+  }
+
+  function wirePackEntry() {
+    var btn = document.getElementById('aa-pack-start');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      packResetAnswers();
+      packGoToQuestion(0);
+    });
+  }
+
+  function wirePackQuestion() {
+    var q = PACK_QUESTIONS[packState.qIndex];
+    var total = PACK_QUESTIONS.length;
+
+    // Option tiles
+    var opts = document.querySelectorAll('.aa-pack-opt');
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].onclick = function() {
+      var value = this.getAttribute('data-value');
+      packSelectOption(q, value);
+      packRerender();
+    };
+    }
+
+    // Optional "other" note input (no rerender on input — value persists on change)
+    var noteInput = document.getElementById('aa-pack-note');
+    if (noteInput) {
+      noteInput.addEventListener('input', function() {
+        packState.answers.purpose_note = this.value;
+      });
+    }
+
+    // Back
+    var backBtn = document.getElementById('aa-pack-back');
+    if (backBtn && packState.qIndex > 0) {
+      backBtn.addEventListener('click', function() {
+        packGoToQuestion(packState.qIndex - 1);
+      });
+    }
+
+    // Next / Submit
+    var nextBtn = document.getElementById('aa-pack-next');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        if (nextBtn.disabled) return;
+        var isLast = packState.qIndex === total - 1;
+        if (isLast) packGoToResults();
+        else        packGoToQuestion(packState.qIndex + 1);
+      });
+    }
+  }
+
+  function wirePackResults() {
+    var restart = document.getElementById('aa-pack-restart');
+    if (restart) restart.onclick = function() { packGoToEntry(); };
+
+    var retry = document.getElementById('aa-pack-retry');
+    if (retry) retry.onclick = function() { packGoToResults(); };
+
+    // Checkbox toggles — update state + DOM in place (no rerender, preserves scroll)
+    var checks = document.querySelectorAll('.aa-pack-check');
+    for (var i = 0; i < checks.length; i++) {
+      checks[i].onclick = function() {
+        var idx = this.getAttribute('data-idx');
+        packState.checked[idx] = !packState.checked[idx];
+        packUpdateItemDom(idx);
+        packUpdateProgressCount();
+      };
+    }
+
+    // Nice-to-have expand/collapse — toggle display + button label in place
+    var toggles = document.querySelectorAll('.aa-pack-nice-toggle');
+    for (var j = 0; j < toggles.length; j++) {
+      toggles[j].onclick = function() {
+        var cat = this.getAttribute('data-cat');
+        var willExpand = !packState.expandedNiceHaves[cat];
+        packState.expandedNiceHaves[cat] = willExpand;
+        var panel = document.querySelector('.aa-pack-nice-items[data-cat="'+
+          cat.replace(/"/g,'\\"')+'"]');
+        if (panel) panel.style.display = willExpand ? 'block' : 'none';
+        var n = parseInt(this.getAttribute('data-count'), 10) || 0;
+        this.innerText = (willExpand ? '▲ Hide ' : '▼ Show ') + n +
+          ' nice-to-have' + (n !== 1 ? 's' : '');
+      };
+    }
+  }
+
 
   /* ══════════════════════════════════════════════════════════════════════════════
      WORLD/COUNTRIES PANEL - KEEP ORIGINAL EXACTLY AS-IS  
@@ -1376,7 +1986,7 @@
       var cb=document.getElementById('aa-close-btn');
       if(cb) cb.addEventListener('click',function(){switchTab('map');});
       if(name==='feed'){_feedTab='news';wireFeedTabs();loadNews(window.activeCountry);}
-      if(name==='pack') wirePackGenerator(); // WIRE THE NEW AI PACK GENERATOR
+      if(name==='pack') wirePack(); // WIRE THE NEW AI PACK GENERATOR
       if(name==='countries') loadWorldCountries();
       if(name==='account')   wireAccount();
     },0);
@@ -1443,6 +2053,9 @@
     window.closeSheet        = function(id){var s=document.getElementById(id);if(s)s.classList.remove('open');};
     window.openNavSection    = function(pid){switchTab(pid.replace('-panel',''));if(navPanel)navPanel.classList.remove('open');};
     window.toast             = window.toast||showToast;
+    window.loadNews          = loadNews;
+    window.loadAlerts        = loadAlerts;
+    window.loadCrime         = loadCrime;
 
     var _origSet=window.setActiveCountry;
     window.setActiveCountry=function(code,pos){
@@ -1453,11 +2066,6 @@
         if(_feedTab==='news')   loadNews(code);
         if(_feedTab==='alerts') loadAlerts(code);
         if(_feedTab==='crime')  loadCrime(code);
-      }
-      // Update pack destination when country changes
-      var packDest = document.getElementById('aa-pack-dest');
-      if (packDest && code) {
-        packDest.value = COUNTRY_NAMES[code] || code;
       }
       return r;
     };

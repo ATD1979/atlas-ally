@@ -7,7 +7,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { fetchRSS } = require('../lib/rss');
-const { getCountryName } = require('../lib/countries-meta');
+const { getCountryName, isRelevantToCountry } = require('../lib/countries-meta');
 const { classifyEvent, EVENT_TYPE_TO_FEED_CAT } = require('../lib/classify');
 
 // Per-language "security" query fragments for the live Google News augmentation.
@@ -32,6 +32,22 @@ const SECURITY_QUERIES = {
   tr: ['saldırı OR patlama OR füze OR protesto OR suç OR afet OR uyarı OR güvenlik'],
   hi: ['हमला OR विस्फोट OR मिसाइल OR विरोध OR अपराध OR आपदा OR चेतावनी OR सुरक्षा'],
 };
+
+// Jordan-specific noise filter — ported from news.js to catch sports/sneaker
+// content that slips through keyword-based country matching. Expanded to cover
+// named-person collisions (Simon Jordan pundit, Jordan Henderson footballer,
+// Eddie Jordan F1, Jordan Spieth golf, etc.) and football league references.
+// Only applied when countryCode is JO.
+function passesJordanNoiseFilter(title) {
+  const t = title.toLowerCase();
+  if (/\b(basketball|nba|wnba|sneaker|sports|athlete|game|court|premier league|champions league)\b/.test(t)) {
+    return false;
+  }
+  if (/\b(michael jordan|air jordan|jordan brand|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan)\b/.test(t)) {
+    return false;
+  }
+  return true;
+}
 
 // Fetch security-flavoured news and shape it like a stored event row.
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
@@ -58,6 +74,15 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     const key = title.toLowerCase().slice(0, 60);
 
     if (title.length < 10 || (url && seen.has(url)) || seen.has(key)) continue;
+
+    // Country-relevance gate — stricter than news.js's title+description check
+    // because Google News search is extremely loose. Require the country name
+    // or an alias to appear in the TITLE specifically (a "Jordan" mention
+    // buried in the description of a US local news story isn't enough).
+    const description = String(item.description || '').replace(/<[^>]*>/g, '').trim();
+    if (!isRelevantToCountry(title, countryCode)) continue;
+    if (countryCode === 'JO' && !passesJordanNoiseFilter(title)) continue;
+
     if (url) seen.add(url);
     seen.add(key);
 
