@@ -980,6 +980,7 @@
       health: [], tech: [], experience: null,
     },
     generatedList: null,   // populated in 3c from /api/pack/generate
+    error: null,           // 3c — { type: 'retry'|'fallback', message } or null
     checked: {},           // populated in 3d/3e (item name -> bool)
   };
 
@@ -990,7 +991,30 @@
       health: [], tech: [], experience: null,
     };
   }
+// ─── Loading-state message cycling (3c) ──────────────────────────────────
+  // Updates innerText of #aa-pack-loading-msg without rerendering the whole
+  // panel — otherwise the spinner would flicker on every message swap.
+  var packLoadingTimer = null;
 
+  function packStartLoadingMessages() {
+    var messages = [
+      'Thinking about your destination…',
+      'Checking current risk feeds…',
+      'Personalizing recommendations…',
+    ];
+    var idx = 0;
+    packStopLoadingMessages(); // defensive: never stack
+    packLoadingTimer = setInterval(function() {
+      var el = document.getElementById('aa-pack-loading-msg');
+      if (!el) { packStopLoadingMessages(); return; } // self-cleanup if DOM gone
+      idx = (idx + 1) % messages.length;
+      el.innerText = messages[idx];
+    }, 1800);
+  }
+
+  function packStopLoadingMessages() {
+    if (packLoadingTimer) { clearInterval(packLoadingTimer); packLoadingTimer = null; }
+  }
   // ─── Render ───────────────────────────────────────────────────────────────
 
   function buildPack() {
@@ -1114,27 +1138,87 @@
   }
 
   function packRenderLoading() {
-    // Stub for 3b — real loading UI with rotating messages ships in 3c
-    return '<div style="padding:40px 20px;background:'+T.bg+';text-align:center;'+
+    return '<div style="padding:60px 20px;background:'+T.bg+';text-align:center;'+
       'min-height:calc(100vh - 110px);">'+
-      '<div style="font-size:32px;margin-bottom:16px;">⏳</div>'+
-      '<div style="font-size:14px;color:'+T.muted+';">Building your list…</div>'+
-      '<div style="font-size:11px;color:'+T.subtle+';margin-top:8px;font-family:'+T.mono+';">'+
-        '(Loading UI ships in step 3c)</div>'+
+      '<div style="font-size:40px;margin-bottom:20px;display:inline-block;'+
+        'animation:aa-pack-spin 1.2s linear infinite;">⏳</div>'+
+      '<div id="aa-pack-loading-msg" style="font-size:14px;color:'+T.text+';font-weight:600;'+
+        'margin-bottom:8px;min-height:20px;">Thinking about your destination…</div>'+
+      '<div style="font-size:11px;color:'+T.subtle+';font-family:'+T.mono+';">'+
+        'Usually takes 3–6 seconds</div>'+
+      '<style>@keyframes aa-pack-spin{to{transform:rotate(360deg);}}</style>'+
     '</div>';
   }
 
   function packRenderResults() {
-    // Stub for 3b — real renderer ships in 3d. For now, dump captured answers
-    // so we can visually confirm the questionnaire collected what we expected.
-    var dump = JSON.stringify(packState.answers, null, 2)
+    // 502 / network error — retry button
+    if (packState.error && packState.error.type === 'retry') {
+      return '<div style="padding:40px 20px;background:'+T.bg+';text-align:center;'+
+        'min-height:calc(100vh - 110px);">'+
+        '<div style="font-size:40px;margin-bottom:16px;">⚠️</div>'+
+        '<div style="font-size:15px;color:'+T.text+';font-weight:700;margin-bottom:8px;">'+
+          "Couldn't build your list</div>"+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:24px;line-height:1.5;'+
+          'max-width:320px;margin-left:auto;margin-right:auto;">'+
+          (packState.error.message || 'Something went wrong.')+'</div>'+
+        '<button id="aa-pack-retry" style="width:100%;max-width:320px;padding:14px;background:'+T.teal+';'+
+          'color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;'+
+          'font-family:'+T.font+';cursor:pointer;margin-bottom:10px;">Try again</button>'+
+        '<button id="aa-pack-restart" style="width:100%;max-width:320px;padding:12px;background:'+T.card+';'+
+          'color:'+T.muted+';border:1px solid '+T.border+';border-radius:10px;font-size:13px;'+
+          'font-weight:600;font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+      '</div>';
+    }
+
+    // 503 — generator unavailable, show hardcoded 10-item fallback (D2)
+    if (packState.error && packState.error.type === 'fallback') {
+      var fallback = [
+        ['🛂','Passport & Visas','All travel documents and entry requirements'],
+        ['🔌','Power Adapter','Check destination voltage and plug type'],
+        ['📱','Local SIM / Data','International plan or local SIM card'],
+        ['💊','Medications','Prescriptions + first aid kit'],
+        ['💵','Emergency Cash','Local currency for power outages / no signal'],
+        ['📋','Document Copies','Photos of passport, insurance, contacts'],
+        ['🏥','Travel Insurance','Medical coverage and emergency evacuation'],
+        ['🌊','Water Purification','Tablets or filter for high-risk areas'],
+        ['🔦','Torch / Headlamp','For power cuts and night navigation'],
+        ['🗺️','Offline Maps','Download before you go — no data needed'],
+      ];
+      var rows = fallback.map(function(f) {
+        return '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;'+
+          'background:'+T.card+';border:1px solid '+T.border+';border-radius:10px;margin-bottom:8px;">'+
+          '<div style="font-size:22px;flex-shrink:0;line-height:1;">'+f[0]+'</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:3px;">'+f[1]+'</div>'+
+            '<div style="font-size:11px;color:'+T.muted+';line-height:1.4;">'+f[2]+'</div>'+
+          '</div></div>';
+      }).join('');
+      return '<div style="padding:20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
+        '<div style="padding:12px 14px;background:'+T.goldLight+';border:1px solid '+T.gold+';'+
+          'border-radius:10px;margin-bottom:14px;font-size:12px;color:'+T.text+';line-height:1.5;">'+
+          '<strong>Generator unavailable</strong> — showing a generic list instead.</div>'+
+        rows+
+        '<button id="aa-pack-restart" style="width:100%;padding:12px;margin-top:10px;background:'+T.teal+';'+
+          'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;'+
+          'font-family:'+T.font+';cursor:pointer;">Start over</button>'+
+      '</div>';
+    }
+
+    // Success — real renderer ships in 3d. Placeholder confirms the API worked
+    // and dumps the response so we can eyeball the payload during 3d dev.
+    var g = packState.generatedList || {};
+    var count = (g.items && g.items.length) || 0;
+    var cName = g.country_name || 'your destination';
+    var dump = JSON.stringify(g, null, 2)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     return '<div style="padding:20px;background:'+T.bg+';min-height:calc(100vh - 110px);">'+
-      '<div style="font-size:13px;font-weight:700;color:'+T.text+';margin-bottom:12px;">'+
-        '✅ Answers captured (3b stub — real list comes in 3c/3d)</div>'+
-      '<pre style="background:#fff;border:1px solid '+T.border+';border-radius:10px;padding:14px;'+
-        'font-size:11px;color:'+T.text+';overflow-x:auto;font-family:'+T.mono+';'+
-        'white-space:pre-wrap;word-wrap:break-word;">'+dump+'</pre>'+
+      '<div style="padding:12px 14px;background:'+T.greenLight+';border:1px solid '+T.green+';'+
+        'border-radius:10px;margin-bottom:14px;font-size:12px;color:'+T.text+';line-height:1.5;">'+
+        '<strong>✅ Got '+count+' items for '+cName+'</strong><br>'+
+        '<span style="color:'+T.muted+';">Full list renderer ships in step 3d.</span></div>'+
+      '<pre style="background:'+T.card+';border:1px solid '+T.border+';border-radius:10px;'+
+        'padding:14px;font-size:11px;color:'+T.text+';overflow-x:auto;font-family:'+T.mono+';'+
+        'white-space:pre-wrap;word-wrap:break-word;max-height:50vh;">'+dump+'</pre>'+
       '<button id="aa-pack-restart" style="width:100%;padding:12px;margin-top:14px;background:'+T.teal+';'+
         'color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;'+
         'font-family:'+T.font+';cursor:pointer;">Start over</button>'+
@@ -1154,11 +1238,77 @@
 
   function packGoToEntry()      { packState.phase = 'entry';    packState.qIndex = 0;   packRerender(); }
   function packGoToQuestion(i)  { packState.phase = 'question'; packState.qIndex = i;   packRerender(); }
-  function packGoToResults()    {
-    packState.phase = 'results';
-    // 3c will replace this with a real API call. For now, just log.
-    console.log('[pack] answers submitted:', JSON.parse(JSON.stringify(packState.answers)));
+  function packGoToResults() {
+    if (!window.activeCountry) {
+      showToast('Pick a country first', 'error');
+      return;
+    }
+
+    packState.phase = 'loading';
+    packState.error = null;
+    packState.generatedList = null;
     packRerender();
+
+    var body = {
+      country_code: window.activeCountry,
+      answers: {
+        travelers:  packState.answers.travelers,
+        duration:   packState.answers.duration,
+        style:      packState.answers.style,
+        purpose:    packState.answers.purpose,
+        health:     packState.answers.health,
+        tech:       packState.answers.tech,
+        experience: packState.answers.experience,
+      },
+    };
+
+    fetch('/api/pack/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function(resp) {
+      return resp.json().then(
+        function(data) { return { status: resp.status, data: data }; },
+        function()     { return { status: resp.status, data: {} }; }
+      );
+    }).then(function(result) {
+      var stillVisible = !!document.getElementById('aa-pack-loading-msg');
+      var status = result.status;
+      var data = result.data || {};
+
+      if (status >= 200 && status < 300) {
+        packState.generatedList = data;
+        packState.error = null;
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
+        return;
+      }
+
+      if (status === 503) {
+        packState.error = { type: 'fallback', message: data.error || 'Generator unavailable' };
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
+        return;
+      }
+
+      if (status === 502) {
+        packState.error = { type: 'retry', message: data.error || "We couldn't build your list right now." };
+        packState.phase = 'results';
+        if (stillVisible) packRerender();
+        return;
+      }
+
+      showToast(data.error || ('Error ' + status), 'error');
+      packState.phase = 'question';
+      packState.qIndex = PACK_QUESTIONS.length - 1;
+      if (stillVisible) packRerender();
+    }).catch(function(err) {
+      console.error('[pack] generate failed:', err);
+      var stillVisible = !!document.getElementById('aa-pack-loading-msg');
+      packState.error = { type: 'retry', message: 'Network error. Check your connection and try again.' };
+      packState.phase = 'results';
+      if (stillVisible) packRerender();
+    });
   }
 
   function packSelectOption(q, value) {
@@ -1195,10 +1345,14 @@
   // ─── Wiring ───────────────────────────────────────────────────────────────
 
   function wirePack() {
+    // Single source of truth for loading timer lifecycle:
+    // stop it anytime we're not in loading phase.
+    if (packState.phase !== 'loading') packStopLoadingMessages();
+
     if (packState.phase === 'entry')    return wirePackEntry();
     if (packState.phase === 'question') return wirePackQuestion();
+    if (packState.phase === 'loading')  return packStartLoadingMessages();
     if (packState.phase === 'results')  return wirePackResults();
-    // 'loading' phase has nothing to wire
   }
 
   function wirePackEntry() {
@@ -1253,8 +1407,11 @@
   }
 
   function wirePackResults() {
-    var btn = document.getElementById('aa-pack-restart');
-    if (btn) btn.addEventListener('click', function() { packGoToEntry(); });
+    var restart = document.getElementById('aa-pack-restart');
+    if (restart) restart.onclick = function() { packGoToEntry(); };
+
+    var retry = document.getElementById('aa-pack-retry');
+    if (retry) retry.onclick = function() { packGoToResults(); };
   }
 
 
