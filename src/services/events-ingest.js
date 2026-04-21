@@ -16,6 +16,7 @@ const fetch  = require('node-fetch');
 const xml2js = require('xml2js');
 const db     = require('../db');
 const { extractLocation } = require('../geocoder');
+const { isRelevantToCountry } = require('../lib/countries-meta');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -77,6 +78,17 @@ function isRelevant(text) {
   return SECURITY_KEYWORDS.some(k => lower.includes(k));
 }
 
+// Jordan-specific noise filter — ported from news.js to catch sports/sneaker
+// content that slips through keyword-based country tagging (e.g. Michael Jordan,
+// Jordan brand sneakers, Jordan Peterson). Only applied when country_code is JO.
+function passesJordanNoiseFilter(title) {
+  const t = title.toLowerCase();
+  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court)\b/.test(t)) {
+    return false;
+  }
+  return true;
+}
+
 // ── Dedup ─────────────────────────────────────────────────────────────────────
 const seenUrls = new Set();
 
@@ -93,6 +105,7 @@ function isDuplicate(sourceUrl, title) {
 
 function insertEvent(ev) {
   if (!isEnglish(ev.title)) return false;
+  if (ev.country_code === 'JO' && !passesJordanNoiseFilter(ev.title)) return false;
   if (isDuplicate(ev.source_url, ev.title)) return false;
   seenUrls.add(ev.source_url);
   try {
@@ -322,6 +335,11 @@ async function ingestGDELT(code) {
         const title = String(art.title || '').trim();
         if (!title || title.length < 10 || !isEnglish(title)) continue;
         if (!isRelevant(title)) continue;
+        // GDELT query uses FIPS code as a free-text keyword, not a country filter,
+        // so results routinely include unrelated articles (e.g. US local news tagged
+        // JO because "jo" appears somewhere in the text). Drop anything that doesn't
+        // actually mention the country.
+        if (!isRelevantToCountry(title, code)) continue;
         const { type, severity } = classify(title);
         const geo = extractLocation(title, code);
         const ok  = insertEvent({
