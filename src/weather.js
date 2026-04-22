@@ -1,5 +1,5 @@
-const fetch = require('node-fetch');
 // v2026.04.15 — clean slate
+const { fetchWithTimeout } = require('./lib/http');
 const { COUNTRIES } = require('./countries');
 const db = require('./db');
 
@@ -25,7 +25,7 @@ async function getWeatherAlert(lat, lng, cityName, countryCode) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,windspeed_10m,weathercode,precipitation&daily=weathercode,precipitation_sum,windspeed_10m_max,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3`;
 
-    const res = await fetch(url, { timeout: 6000 });
+    const res = await fetchWithTimeout(url, {}, 6000);
     if (!res.ok) return null;
     const data = await res.json();
 

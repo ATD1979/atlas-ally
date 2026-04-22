@@ -10,7 +10,7 @@
 // the frontend migrates. Delete after buildPack() in nav.js points at /generate.
 
 const router = require('express').Router();
-const fetch  = require('node-fetch');
+const { fetchWithTimeout } = require('../lib/http');
 
 const db = require('../db');
 const { COUNTRIES, ADVISORY_LEVELS } = require('../countries');
@@ -320,7 +320,7 @@ router.post('/pack/generate', async (req, res) => {
   const userMessage = buildUserMessage(answers, ctx);
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type':      'application/json',
@@ -489,7 +489,7 @@ Rules:
 - Include current safety considerations and local situational awareness`;
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type':      'application/json',

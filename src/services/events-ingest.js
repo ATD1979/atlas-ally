@@ -12,7 +12,7 @@
 
 'use strict';
 
-const fetch  = require('node-fetch');
+const { fetchWithTimeout } = require('../lib/http');
 const xml2js = require('xml2js');
 const db     = require('../db');
 const { extractLocation } = require('../geocoder');
@@ -131,10 +131,9 @@ function insertEvent(ev) {
 // ── RSS helper ────────────────────────────────────────────────────────────────
 async function fetchRSS(url) {
   try {
-    const res = await fetch(url, {
-      timeout: 10000,
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'AtlasAlly/1.0', 'Accept': 'application/rss+xml,*/*' },
-    });
+    }, 10000);
     if (!res.ok) return [];
     const xml  = await res.text();
     const data = await parser.parseStringPromise(xml);
@@ -270,7 +269,7 @@ async function ingestReliefWeb(code) {
     + `&fields[include][]=title&fields[include][]=body-html&fields[include][]=url&fields[include][]=date`
     + `&limit=10&sort[]=date:desc`;
   try {
-    const res   = await fetch(url, { timeout: 10000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+    const res   = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } }, 10000);
     if (!res.ok) return 0;
     const data  = await res.json();
     let count   = 0;
@@ -326,7 +325,7 @@ async function ingestGDELT(code) {
       + `?query=${fips}+(${encodeURIComponent(keywords)})`
       + `&mode=artlist&maxrecords=10&format=json&timespan=1440&sourcelang=english`;
     try {
-      const res  = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      const res  = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } }, 12000);
       if (!res.ok) continue;
       const text = await res.text();
       if (!text.startsWith('{') && !text.startsWith('[')) continue;
@@ -387,14 +386,13 @@ async function ingestUCDP(code) {
     + `?pagesize=50&StartDate=${since}&country=${gwCode}`;
 
   try {
-    const res  = await fetch(url, {
-      timeout: 12000,
+    const res  = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'AtlasAlly/1.0',
         'Accept': 'application/json',
         'x-ucdp-access-token': UCDP_API_KEY,
       },
-    });
+    }, 12000);
     if (!res.ok) {
       // Log loudly — previously this silently returned 0 and hid the Feb 2026 auth change for ~2 months.
       let bodySnippet = '';
