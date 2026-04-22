@@ -1,7 +1,7 @@
 // Atlas Ally — Server entry point
 // v2026.04.15 — clean slate
-require('dotenv').config();
-const express    = require('express');
+const config      = require('./config');
+const express     = require('express');
 const cors       = require('cors');
 const path       = require('path');
 const cookieParser = require('cookie-parser');

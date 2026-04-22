@@ -5,11 +5,12 @@
 const crypto   = require('crypto');
 const path     = require('path');
 const nodemailer = require('nodemailer');
+const config    = require('./config');
 
 const GATE_EMAIL     = 'info@atlas-ally.com';
-const GATE_PASSWORD  = process.env.GATE_PASSWORD  || 'TravelGuardian0405';
-const SESSION_SECRET = process.env.GATE_SECRET    || 'atlas-gate-secret-2026';
-const SMTP_PASSWORD  = process.env.IMPROVMX_PASSWORD || '6WkNttWW7kxd';
+const GATE_PASSWORD  = config.GATE_PASSWORD;
+const SESSION_SECRET = config.GATE_SECRET;
+const SMTP_PASSWORD  = config.IMPROVMX_PASSWORD;
 
 // In-memory stores (fine for a single-instance preview gate)
 const validSessions = new Set();
