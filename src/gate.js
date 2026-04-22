@@ -9,8 +9,10 @@ const config    = require('./config');
 
 const GATE_EMAIL     = 'info@atlas-ally.com';
 const GATE_PASSWORD  = config.GATE_PASSWORD;
-const SESSION_SECRET = config.GATE_SECRET;
 const SMTP_PASSWORD  = config.IMPROVMX_PASSWORD;
+// Note: GATE_SECRET is no longer consumed here — makeSessionToken() uses
+// crypto.randomBytes. The env var can be kept in Railway for now; a future
+// cleanup can make it optional/remove it from config.js.
 
 // In-memory stores (fine for a single-instance preview gate)
 const validSessions = new Set();
@@ -32,7 +34,7 @@ const transporter = nodemailer.createTransport({
 });
 
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 async function sendOTPEmail(toEmail, code) {
@@ -72,9 +74,11 @@ async function sendOTPEmail(toEmail, code) {
   }
 }
 
-function makeSessionToken(email) {
-  const payload = `${email}:${Date.now()}:${SESSION_SECRET}`;
-  return crypto.createHash('sha256').update(payload).digest('hex');
+function makeSessionToken() {
+  // Cryptographically random, 256 bits of entropy.
+  // Session validity is tracked by the validSessions Set in memory —
+  // the token is just a high-entropy key, no structure needed.
+  return crypto.randomBytes(32).toString('hex');
 }
 
 const PUBLIC_PATHS = [
@@ -173,7 +177,7 @@ function setupGateRoutes(app) {
 
     // OTP correct — create session
     pendingOTPs.delete(key);
-    const token = makeSessionToken(email);
+    const token = makeSessionToken();
     validSessions.add(token);
 
     res.cookie('atlas_gate', token, {
