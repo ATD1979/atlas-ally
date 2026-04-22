@@ -359,8 +359,14 @@ async function ingestGDELT(code) {
 }
 
 // ── Source 5: UCDP (Uppsala Conflict Data Program) ───────────────────────────
-// Free academic conflict event data — GPS-tagged, no API key required.
-// Updated regularly. Best structured conflict data available without auth.
+// Free academic conflict event data — GPS-tagged.
+// As of Feb 2026 UCDP introduced x-ucdp-access-token auth (5,000 req/day limit).
+// Request a token at https://ucdp.uu.se/apidocs/ and set UCDP_API_KEY in env.
+
+const UCDP_API_KEY = process.env.UCDP_API_KEY || '';
+if (!UCDP_API_KEY) {
+  console.warn('⚠️  UCDP_API_KEY not set — UCDP ingestion will be skipped. Request a token at https://ucdp.uu.se/apidocs/');
+}
 
 const UCDP_COUNTRIES = {
   // UCDP uses Gleditsch-Ward state codes
@@ -370,17 +376,32 @@ const UCDP_COUNTRIES = {
 };
 
 async function ingestUCDP(code) {
+  if (!UCDP_API_KEY) return 0;                      // skip silently if no token (warned once at boot)
   const gwCode = UCDP_COUNTRIES[code];
   if (!gwCode) return 0;
 
-  // Fetch last 90 days of georeferenced conflict events
-  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const url   = `https://ucdpapi.pcr.uu.se/api/gedevents/23.1`
+  // Fetch last 2 years of conflict events (UCDP GED v25.1 is annually released; coverage runs 12-18 months behind current date)
+  // Version 25.1 is current as of April 2026 (was 23.1 pre-auth era)
+  const since = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const url   = `https://ucdpapi.pcr.uu.se/api/gedevents/25.1`
     + `?pagesize=50&StartDate=${since}&country=${gwCode}`;
 
   try {
-    const res  = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0', 'Accept': 'application/json' } });
-    if (!res.ok) return 0;
+    const res  = await fetch(url, {
+      timeout: 12000,
+      headers: {
+        'User-Agent': 'AtlasAlly/1.0',
+        'Accept': 'application/json',
+        'x-ucdp-access-token': UCDP_API_KEY,
+      },
+    });
+    if (!res.ok) {
+      // Log loudly — previously this silently returned 0 and hid the Feb 2026 auth change for ~2 months.
+      let bodySnippet = '';
+      try { bodySnippet = (await res.text()).slice(0, 200); } catch {}
+      console.warn(`  UCDP non-OK ${code}: HTTP ${res.status} ${res.statusText} — ${bodySnippet}`);
+      return 0;
+    }
     const data = await res.json();
     const events = data.Result || [];
     let count = 0;
