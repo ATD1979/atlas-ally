@@ -1,5 +1,6 @@
 // Atlas Ally — Auth middleware & token helpers
 // v2026.04.15 — clean slate
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
 const config = require('./config');
@@ -7,7 +8,7 @@ const config = require('./config');
 const JWT_SECRET = config.JWT_SECRET;
 
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function createToken(user) {

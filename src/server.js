@@ -40,7 +40,23 @@ seedAdminUsers();
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1);
-app.use(cors());
+
+// CORS: allowlist production + local dev. Same-origin browser requests have
+// no Origin header and are allowed through. Third-party sites cannot make
+// credentialed requests to the API.
+const ALLOWED_ORIGINS = [
+  'https://atlas-ally.com',
+  'https://www.atlas-ally.com',
+  'http://localhost:3000',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);                    // same-origin, mobile, curl
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(null, false);                                       // silent reject
+  },
+  credentials: true,
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(securityHeaders);
@@ -133,25 +149,33 @@ app.post('/api/feedback', softAuth, (req, res) => {
   }
 });
 
-// Invite tokens (public validate + use)
-app.get('/api/invite/:token', (req, res) => {
+// Invite tokens (public validate + use) — under authLimiter since these are
+// auth-adjacent (invite tokens gate registration into the product).
+app.get('/api/invite/:token', authLimiter, (req, res) => {
   const t = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(req.params.token.toUpperCase());
   if (!t)                  return res.status(404).json({ error: 'Invalid or expired invite' });
   if (t.uses >= t.max_uses) return res.status(400).json({ error: 'This invite has been used' });
   res.json({ ok: true, token: t.token });
 });
 
-app.post('/api/invite/:token/use', softAuth, (req, res) => {
+app.post('/api/invite/:token/use', authLimiter, softAuth, (req, res) => {
   const token = req.params.token.toUpperCase();
-  const t     = db.db.prepare(`SELECT * FROM invite_tokens WHERE token=? AND active=1`).get(token);
-  if (!t || t.uses >= t.max_uses) return res.status(400).json({ error: 'Invalid invite' });
-  db.db.prepare(`UPDATE invite_tokens SET uses=uses+1, used_by=?, used_at=datetime('now') WHERE token=?`)
-    .run(req.user?.whatsapp || 'anonymous', token);
+  // Atomic UPDATE — validation + mutation in one SQL statement to prevent
+  // TOCTOU. If two simultaneous POSTs race, the second's WHERE clause will
+  // no longer match once the first commits, giving changes=0.
+  const result = db.db.prepare(`
+    UPDATE invite_tokens
+    SET uses = uses + 1, used_by = ?, used_at = datetime('now')
+    WHERE token = ? AND active = 1 AND uses < max_uses
+  `).run(req.user?.whatsapp || 'anonymous', token);
+  if (result.changes === 0) {
+    return res.status(400).json({ error: 'Invalid or exhausted invite' });
+  }
   res.json({ ok: true });
 });
 
-// Legacy register (backward compat)
-app.post('/api/register', softAuth, (req, res) => {
+// Legacy register (backward compat) — also under authLimiter, see above.
+app.post('/api/register', authLimiter, softAuth, (req, res) => {
   const { whatsapp, name, countries } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
   const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');

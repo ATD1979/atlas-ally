@@ -19,20 +19,23 @@ const apiSlowDown = slowDown({
   maxDelayMs: 5000,
 });
 
-// ── Bot / scraper fingerprinting ──────────────────────────────────────────────
-
-const BLOCKED_AGENTS = ['python-requests', 'curl/', 'wget/', 'scrapy', 'httpclient', 'okhttp', 'axios/'];
+// ── Request logging for forensics ─────────────────────────────────────────────
+//
+// Previously this middleware blocked specific User-Agent strings (curl/, axios/,
+// python-requests, etc.). That was security theater — any attacker trivially
+// sets UA to "Mozilla/5.0 ..." and the check is moot. Meanwhile it broke
+// legitimate tooling (uptime monitors, mobile apps using axios, debugging
+// with curl).
+//
+// Retained: logging of unauthenticated API requests with no valid Referer.
+// Patterns in suspicious_request logs are more valuable for forensics than
+// real-time blocking ever was.
 
 function apiFingerprint(req, res, next) {
   const ua      = req.headers['user-agent'] || '';
   const referer = req.headers['referer']    || '';
-  const isBot   = BLOCKED_AGENTS.some(b => ua.toLowerCase().includes(b));
-
   const hasValidReferer = referer.includes('atlas-ally.com') || referer.includes('localhost');
   const hasAuth         = !!req.headers.authorization;
-
-  if (isBot && !hasAuth && !hasValidReferer)
-    return res.status(403).json({ error: 'Access denied' });
 
   if (!hasAuth && !hasValidReferer && req.path.startsWith('/api/')) {
     try {
