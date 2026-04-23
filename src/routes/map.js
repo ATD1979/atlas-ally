@@ -1,7 +1,7 @@
 // Atlas Ally — Map, events & country routes  // Atlas Ally clean slate — built 2026-04-16 03:22
 // v2026.04.15 — clean slate
 const router  = require('express').Router();
-const fetch   = require('node-fetch');
+const { fetchWithTimeout } = require('../lib/http');
 const db      = require('../db');
 const { COUNTRIES, ADVISORY_LEVELS } = require('../countries');
 const { dispatchAlerts } = require('../alerts');
@@ -57,7 +57,7 @@ router.get('/country/:code/weather', async (req, res) => {
   try {
     const [lat, lng] = c.center;
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=temperature_2m,weathercode,windspeed_10m&forecast_days=1`;
-    const r   = await fetch(url, { timeout: 8000 });
+    const r   = await fetchWithTimeout(url, {}, 8000);
     const d   = await r.json();
     const cw  = d.current_weather || {};
     res.json({ current: { temp: Math.round(cw.temperature), wind: Math.round(cw.windspeed || 0), code: cw.weathercode }, alerts: [] });
@@ -104,9 +104,10 @@ router.post('/detect-country', async (req, res) => {
   const { lat, lng } = req.body;
   if (!lat || !lng) return res.status(400).json({ error: 'lat and lng required' });
   try {
-    const r = await fetch(
+    const r = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { 'User-Agent': 'AtlasAlly/1.0' }, timeout: 5000 }
+      { headers: { 'User-Agent': 'AtlasAlly/1.0' } },
+      5000
     );
     const d           = await r.json();
     const countryCode = d.address?.country_code?.toUpperCase();
@@ -136,13 +137,14 @@ router.get('/weather/point', async (req, res) => {
     const lng = parseFloat(req.query.lng);
     if (isNaN(lat) || isNaN(lng)) return res.json({ error: 'invalid coords' });
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m&timezone=auto`;
-    const r = await fetch(url, { timeout: 6000 });
+    const r = await fetchWithTimeout(url, {}, 6000);
     if (!r.ok) return res.json({ error: 'weather fetch failed' });
     const data = await r.json();
     const temp = Math.round(data?.current?.temperature_2m);
     res.json({ temp, lat, lng });
-  } catch(e) {
-    res.json({ error: e.message });
+  } catch (e) {
+    req.logErr('weather_point', e);
+    res.json({ error: 'Weather lookup unavailable' });
   }
 });
 
