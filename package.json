@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Atlas Ally — Global Travel Intelligence Platform",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "prestart": "node prestart.js",
     "start": "node src/server.js",
