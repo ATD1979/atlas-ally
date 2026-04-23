@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "node -e \"try{require('husky')()}catch{}\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
