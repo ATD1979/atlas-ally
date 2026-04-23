@@ -10,7 +10,7 @@
 //   - User-submitted community_crime reports
 
 const router = require('express').Router();
-const fetch  = require('node-fetch');
+const { fetchWithTimeout } = require('../lib/http');
 const db     = require('../db');
 const { fetchRSS } = require('../lib/rss');
 const { getCountryName, getUcdpCode, getDrugKeywords } = require('../lib/countries-meta');
@@ -84,7 +84,7 @@ async function fetchWorldBank(code) {
   const results = await Promise.all(indicators.map(async ind => {
     try {
       const url = `https://api.worldbank.org/v2/country/${code}/indicator/${ind.id}?format=json&mrv=3&per_page=3`;
-      const r = await fetch(url, { timeout: 8000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      const r = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } }, 8000);
       if (!r.ok) return { ...ind, value: null, date: null };
       const data = await r.json();
       const rows = Array.isArray(data[1]) ? data[1] : [];
@@ -106,7 +106,7 @@ async function fetchUCDP(countryName, countryCode) {
   const url = `https://ucdpapi.pcr.uu.se/api/gedevents/23.1?pagesize=100&StartDate=${since}&country=${gw}`;
 
   try {
-    const r = await fetch(url, { timeout: 10000, headers: { 'User-Agent': 'AtlasAlly/1.0', Accept: 'application/json' } });
+    const r = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0', Accept: 'application/json' } }, 10000);
     if (!r.ok) return null;
     const data = await r.json();
     const events = data.Result || [];

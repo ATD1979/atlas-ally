@@ -171,8 +171,15 @@ router.post('/signup', (req, res) => {
                     state_origin: state_origin || null, country_origin: country_origin || null,
                     trial_code: trial_code || null, distributor_id });
 
-    if (trialDays !== 7)
-      db.db.prepare(`UPDATE users SET trial_end = datetime('now', '+${trialDays} days') WHERE whatsapp = ?`).run(clean);
+    if (trialDays !== 7) {
+      // Parameterize the datetime modifier rather than interpolating trialDays
+      // into the SQL template literal. trialDays originates from req.body in
+      // admin.js's /distributor/codes handler (stored via invite_tokens) and
+      // could carry hostile content; datetime() receives it as a bound string
+      // and rejects anything that isn't a valid modifier like '+7 days'.
+      const days = parseInt(trialDays, 10) || 7;
+      db.db.prepare(`UPDATE users SET trial_end = datetime('now', ?) WHERE whatsapp = ?`).run(`+${days} days`, clean);
+    }
 
     const user = db.getUser(clean);
     res.json({ ok: true, token: createToken(user), user: sanitizeUser(user), ...trialStatus(user) });

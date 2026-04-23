@@ -1,7 +1,6 @@
 // Atlas Ally — User routes (/api/user/*)
 // v2026.04.15 — clean slate
 const router = require('express').Router();
-const fetch  = require('node-fetch');
 const db     = require('../db');
 const { COUNTRIES } = require('../countries');
 const { sendCheckinAlert } = require('../alerts');
