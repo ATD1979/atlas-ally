@@ -12,7 +12,7 @@
 
 'use strict';
 
-const { fetchWithTimeout } = require('../lib/http');
+const fetch  = require('node-fetch');
 const xml2js = require('xml2js');
 const db     = require('../db');
 const { extractLocation } = require('../geocoder');
@@ -23,6 +23,7 @@ const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 // ── Language guard ────────────────────────────────────────────────────────────
 function isEnglish(text) {
   if (!text || text.trim().length < 5) return false;
+  // eslint-disable-next-line no-control-regex -- intentional: match any char outside ASCII 0x00-0x7F
   const nonLatin = (text.match(/[^\x00-\x7F]/g) || []).length;
   return (nonLatin / text.length) < 0.20;
 }
@@ -131,9 +132,10 @@ function insertEvent(ev) {
 // ── RSS helper ────────────────────────────────────────────────────────────────
 async function fetchRSS(url) {
   try {
-    const res = await fetchWithTimeout(url, {
+    const res = await fetch(url, {
+      timeout: 10000,
       headers: { 'User-Agent': 'AtlasAlly/1.0', 'Accept': 'application/rss+xml,*/*' },
-    }, 10000);
+    });
     if (!res.ok) return [];
     const xml  = await res.text();
     const data = await parser.parseStringPromise(xml);
@@ -269,7 +271,7 @@ async function ingestReliefWeb(code) {
     + `&fields[include][]=title&fields[include][]=body-html&fields[include][]=url&fields[include][]=date`
     + `&limit=10&sort[]=date:desc`;
   try {
-    const res   = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } }, 10000);
+    const res   = await fetch(url, { timeout: 10000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
     if (!res.ok) return 0;
     const data  = await res.json();
     let count   = 0;
@@ -301,7 +303,7 @@ const GDELT_CODES = {
   PK:'PAK', AF:'AFG', YE:'YEM', MX:'MEX', CO:'COL', NG:'NGA', SO:'SOM',
   SD:'SDN', LY:'LBY', ET:'ETH', MM:'MMR', PH:'PHL', FR:'FRA', JP:'JPN',
   ZA:'ZAF', IN:'IND', BR:'BRA', KE:'KEN', TR:'TUR', MA:'MAR', TH:'THA',
-  VE:'VEN', HN:'HND', GT:'GTM', HT:'HTI', UA:'UKR',
+  VE:'VEN', HN:'HND', GT:'GTM', HT:'HTI',
 };
 
 const STABLE = new Set(['FRA','JPN','IND','BRA','KEN','TUR','MAR','THA']);
@@ -325,7 +327,7 @@ async function ingestGDELT(code) {
       + `?query=${fips}+(${encodeURIComponent(keywords)})`
       + `&mode=artlist&maxrecords=10&format=json&timespan=1440&sourcelang=english`;
     try {
-      const res  = await fetchWithTimeout(url, { headers: { 'User-Agent': 'AtlasAlly/1.0' } }, 12000);
+      const res  = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
       if (!res.ok) continue;
       const text = await res.text();
       if (!text.startsWith('{') && !text.startsWith('[')) continue;
@@ -386,13 +388,14 @@ async function ingestUCDP(code) {
     + `?pagesize=50&StartDate=${since}&country=${gwCode}`;
 
   try {
-    const res  = await fetchWithTimeout(url, {
+    const res  = await fetch(url, {
+      timeout: 12000,
       headers: {
         'User-Agent': 'AtlasAlly/1.0',
         'Accept': 'application/json',
         'x-ucdp-access-token': UCDP_API_KEY,
       },
-    }, 12000);
+    });
     if (!res.ok) {
       // Log loudly — previously this silently returned 0 and hid the Feb 2026 auth change for ~2 months.
       let bodySnippet = '';

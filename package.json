@@ -10,7 +10,12 @@
     "prestart": "node prestart.js",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "echo No tests yet placeholder && exit 0"
+    "test": "echo No tests yet placeholder && exit 0",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,5 +33,18 @@
     "twilio": "^4.23.0",
     "xml2js": "^0.6.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix"
+    ]
+  }
 }
