@@ -28,7 +28,6 @@ module.exports = {
   // Secrets — server won't boot without these
   JWT_SECRET:        required('JWT_SECRET'),
   GATE_PASSWORD:     required('GATE_PASSWORD'),
-  GATE_SECRET:       required('GATE_SECRET'),
   IMPROVMX_PASSWORD: required('IMPROVMX_PASSWORD'),
   ANTHROPIC_API_KEY: required('ANTHROPIC_API_KEY'),
 
