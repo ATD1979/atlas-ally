@@ -45,33 +45,15 @@ try {
     safeAddColumn('events', 'submitted_user_id', 'INTEGER');
     safeAddColumn('events', 'is_test', 'INTEGER DEFAULT 0');
   }
-  // News cache migrations
+  // News cache migrations — safeAddColumn handles the only legitimate
+  // schema drift (older prod DBs predating the lat/lng columns). The
+  // canonical table definition lives in the main schema block below.
   const newsExists = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='news_cache'`).get();
   if (newsExists) {
     safeAddColumn('news_cache', 'lat', 'REAL');
     safeAddColumn('news_cache', 'lng', 'REAL');
   }
-  // Wipe and recreate news_cache with correct schema
-  try {
-    db.exec(`
-      DROP TABLE IF EXISTS news_cache;
-      CREATE TABLE news_cache (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        country_code  TEXT NOT NULL,
-        lang          TEXT NOT NULL DEFAULT 'en',
-        source_name   TEXT,
-        title         TEXT,
-        description   TEXT,
-        url           TEXT,
-        lat           REAL,
-        lng           REAL,
-        published_at  TEXT,
-        cached_at     TEXT DEFAULT (datetime('now')),
-        UNIQUE(url, lang)
-      );
-    `);
-  } catch(e) { console.warn('news_cache migration:', e.message); }
-  } catch(e) { console.warn('Migration warning (non-fatal):', e.message); }
+} catch(e) { console.warn('Migration warning (non-fatal):', e.message); }
 
 // ─── Schema (CREATE TABLE IF NOT EXISTS — safe to run on existing db) ─────────
 db.exec(`
