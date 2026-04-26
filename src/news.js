@@ -7,7 +7,7 @@
 
 const db = require('./db');
 const { fetchRSS } = require('./lib/rss');
-const { getCountryName, isRelevantToCountry, META } = require('./lib/countries-meta');
+const { getCountryName, isRelevantToCountry, passesNoiseFilter, META } = require('./lib/countries-meta');
 
 // Strip the trailing " - Source Name" that Google News appends to every title.
 function cleanTitle(raw) {
@@ -18,18 +18,6 @@ function cleanTitle(raw) {
 function extractSource(raw, fallback = 'Google News') {
   const dash = raw.lastIndexOf(' - ');
   return dash > 10 ? raw.slice(dash + 3).trim() : fallback;
-}
-
-// Jordan-specific noise filter. "Jordan" the country collides with Jordan the basketball
-// player, Jordan the sneaker brand, Jordan Peterson, Jordan Davis (NFL/college football),
-// Barbara Jordan (US politician — Texas park named after her), and NASCAR/racing coverage.
-// Only apply when code is JO.
-function passesJordanNoiseFilter(title) {
-  const t = title.toLowerCase();
-  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court|nascar|racing|barbara jordan|jordan davis)\b/.test(t)) {
-    return false;
-  }
-  return true;
 }
 
 // Fetch Google News RSS for a country and return DB-shaped news rows.
@@ -66,7 +54,7 @@ async function fetchCountryNews(code, lang = 'en') {
 
     // Relevance filter — title must mention the country
     if (!isRelevantToCountry(title + ' ' + item.description, code)) continue;
-    if (code === 'JO' && !passesJordanNoiseFilter(title)) continue;
+    if (!passesNoiseFilter(title, code)) continue;
 
     let published = new Date().toISOString();
     try {
