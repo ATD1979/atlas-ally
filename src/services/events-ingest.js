@@ -317,9 +317,12 @@ async function ingestGDELT(code) {
   for (const keywords of queries) {
     const url = `https://api.gdeltproject.org/api/v2/doc/doc`
       + `?query=${fips}+(${encodeURIComponent(keywords)})`
-      + `&mode=artlist&maxrecords=10&format=json&timespan=1440&sourcelang=english`;
+      + `&mode=artlist&maxrecords=10&format=json&timespan=10080&sourcelang=english`;
     try {
-      const res  = await fetch(url, { timeout: 12000, headers: { 'User-Agent': 'AtlasAlly/1.0' } });
+      const res  = await fetch(url, {
+        timeout: 30000,
+        headers: { 'User-Agent': 'AtlasAlly/1.0 (+https://atlas-ally.com)' },
+      });
       if (!res.ok) continue;
       const text = await res.text();
       if (!text.startsWith('{') && !text.startsWith('[')) continue;
