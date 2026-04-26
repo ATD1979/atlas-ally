@@ -587,13 +587,28 @@ async function ingestSecurityEvents() {
     await new Promise(r => setTimeout(r, 300));
   }
 
-  // 8. GDELT — both conflict and drug/crime queries
-  for (const code of Object.keys(GDELT_CODES)) {
-    const n = await ingestGDELT(code);
-    total += n;
-    if (n) console.log(`  📡 GDELT ${code}: +${n}`);
-    await new Promise(r => setTimeout(r, 500));
-  }
+  // 8. GDELT — DISABLED.
+  //
+  // GDELT API consistently times out (network timeout, 30s) when called from
+  // Railway's egress IPs. Verified via direct browser test: same URL responds
+  // instantly with valid JSON from a residential connection. Tuning attempts
+  // in PR #23 (timeout 12s→30s, timespan 24h→7d, descriptive User-Agent) did
+  // not resolve the issue. Strongly suggests GDELT is throttling or blocking
+  // Railway's IP range.
+  //
+  // Function definitions (ingestGDELT, GDELT_CODES) preserved for clean
+  // re-enable if Railway/GDELT relationship changes or if we move to a
+  // different host.
+  //
+  // Async homework: contact GDELT support to confirm/resolve the IP-throttling
+  // hypothesis. See HANDOFF_v6_16.md Plan B for context and message template.
+  //
+  // for (const code of Object.keys(GDELT_CODES)) {
+  //   const n = await ingestGDELT(code);
+  //   total += n;
+  //   if (n) console.log(`  📡 GDELT ${code}: +${n}`);
+  //   await new Promise(r => setTimeout(r, 500));
+  // }
 
   console.log(`⚡ Ingestion complete — ${total} new events added`);
   return total;
