@@ -982,8 +982,10 @@
     },
   ];
 
-  // Module-local state. Survives tab-switches within a session; resets on reload.
-  // Persistence to localStorage is added in step 3e.
+  // Module-local state, persisted to localStorage via savePackState() (step 3e).
+  // 'loading' is coerced to 'entry' on restore so a reload mid-API-call doesn't
+  // leave the user staring at a permanent spinner. 'error' is intentionally NOT
+  // persisted (transient).
   var packState = {
     phase: 'entry',        // 'entry' | 'question' | 'loading' | 'results'
     qIndex: 0,             // 0..6 when phase === 'question'
@@ -993,10 +995,109 @@
       health: [], tech: [], experience: null,
     },
     generatedList: null,   // populated in 3c from /api/pack/generate
-    error: null,           // 3c — { type: 'retry'|'fallback', message } or null
+    error: null,           // 3c — { type: 'retry'|'fallback', message } or null (transient, not persisted)
     expandedNiceHaves: {}, // 3d — category name -> bool (all collapsed by default)
-    checked: {},           // populated in 3d/3e (item name -> bool)
+    checked: {},           // 3d/3e — item idx -> bool
   };
+
+  // ─── 3e — Persistence helpers ─────────────────────────────────────────────
+
+  function savePackState() {
+    try {
+      var snap = {
+        phase:             packState.phase,
+        qIndex:            packState.qIndex,
+        answers:           packState.answers,
+        generatedList:     packState.generatedList,
+        expandedNiceHaves: packState.expandedNiceHaves,
+        checked:           packState.checked,
+      };
+      localStorage.setItem('atlas_pack_state', JSON.stringify(snap));
+    } catch (e) { /* quota / disabled / private mode — silent */ }
+  }
+
+  function restorePackState() {
+    try {
+      var raw = localStorage.getItem('atlas_pack_state');
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s || typeof s !== 'object') return;
+      // Sanitize: never restore a stuck loading state
+      if (s.phase === 'loading') s.phase = 'entry';
+      if (typeof s.phase  === 'string') packState.phase  = s.phase;
+      if (typeof s.qIndex === 'number') packState.qIndex = s.qIndex;
+      if (s.answers           && typeof s.answers           === 'object') packState.answers           = s.answers;
+      if (s.generatedList     && typeof s.generatedList     === 'object') packState.generatedList     = s.generatedList;
+      if (s.expandedNiceHaves && typeof s.expandedNiceHaves === 'object') packState.expandedNiceHaves = s.expandedNiceHaves;
+      if (s.checked           && typeof s.checked           === 'object') packState.checked           = s.checked;
+    } catch (e) { /* malformed JSON or storage unavailable — silent */ }
+  }
+
+  // ─── 3e — Switched-country banner ─────────────────────────────────────────
+  // Hybrid C: ~10s auto-fade + ✕ button + tap-anywhere-on-banner dismiss.
+  // Rapid switches replace the existing banner instead of stacking.
+
+  var _switchBannerEl        = null;
+  var _switchBannerTimer     = null;
+  var _switchBannerFadeTimer = null;
+
+  function clearSwitchBanner() {
+    if (_switchBannerTimer)     { clearTimeout(_switchBannerTimer);     _switchBannerTimer = null; }
+    if (_switchBannerFadeTimer) { clearTimeout(_switchBannerFadeTimer); _switchBannerFadeTimer = null; }
+    if (_switchBannerEl && _switchBannerEl.parentNode) {
+      _switchBannerEl.parentNode.removeChild(_switchBannerEl);
+    }
+    _switchBannerEl = null;
+  }
+
+  function showSwitchBanner(prevCode, newCode) {
+    var prevName = COUNTRY_NAMES[prevCode] || prevCode;
+    var newName  = COUNTRY_NAMES[newCode]  || newCode;
+
+    clearSwitchBanner();
+
+    var el = document.createElement('div');
+    el.id = 'aa-switch-banner';
+    el.style.cssText =
+      'position:fixed;top:12px;left:12px;right:12px;z-index:600000;' +
+      'background:' + T.tealLight + ';border:1px solid ' + T.teal + ';' +
+      'border-radius:10px;padding:11px 40px 11px 14px;' +
+      'box-shadow:0 4px 12px rgba(0,0,0,0.10);' +
+      'font-family:' + T.font + ';font-size:13px;color:' + T.tealDark + ';' +
+      'cursor:pointer;opacity:0;transition:opacity 0.25s ease;';
+    el.innerHTML =
+      '🌍 Now viewing <strong>' + newName + '</strong> — last viewed ' + prevName +
+      '<button type="button" aria-label="Dismiss" id="aa-switch-banner-x" style="' +
+        'position:absolute;top:4px;right:6px;background:none;border:none;' +
+        'font-size:20px;line-height:1;color:' + T.tealDark + ';' +
+        'cursor:pointer;padding:4px 10px;font-family:' + T.font + ';opacity:0.7;' +
+      '">×</button>';
+
+    document.body.appendChild(el);
+    _switchBannerEl = el;
+
+    // Fade in on next frame
+    _switchBannerFadeTimer = setTimeout(function () {
+      if (el && el.parentNode) el.style.opacity = '1';
+    }, 10);
+
+    function dismiss() {
+      if (_switchBannerTimer)     { clearTimeout(_switchBannerTimer);     _switchBannerTimer = null; }
+      if (_switchBannerFadeTimer) { clearTimeout(_switchBannerFadeTimer); _switchBannerFadeTimer = null; }
+      if (!el || !el.parentNode) return;
+      el.style.opacity = '0';
+      setTimeout(function () {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        if (_switchBannerEl === el) _switchBannerEl = null;
+      }, 300);
+    }
+
+    // Tap anywhere on banner (including the ✕) dismisses
+    el.addEventListener('click', dismiss);
+
+    // Auto-fade after 10s
+    _switchBannerTimer = setTimeout(dismiss, 10000);
+  }
 
   function packResetAnswers() {
     packState.answers = {
@@ -1433,6 +1534,7 @@
       if (cb) cb.addEventListener('click', function() { switchTab('map'); });
       wirePack();
     }, 0);
+    savePackState(); // 3e
   }
 
   function packGoToEntry()      { packState.phase = 'entry';    packState.qIndex = 0;   packRerender(); }
@@ -1584,6 +1686,7 @@
     if (noteInput) {
       noteInput.addEventListener('input', function() {
         packState.answers.purpose_note = this.value;
+        savePackState(); // 3e
       });
     }
 
@@ -1622,6 +1725,7 @@
         packState.checked[idx] = !packState.checked[idx];
         packUpdateItemDom(idx);
         packUpdateProgressCount();
+        savePackState(); // 3e
       };
     }
 
@@ -1638,6 +1742,7 @@
         var n = parseInt(this.getAttribute('data-count'), 10) || 0;
         this.innerText = (willExpand ? '▲ Hide ' : '▼ Show ') + n +
           ' nice-to-have' + (n !== 1 ? 's' : '');
+        savePackState(); // 3e
       };
     }
   }
@@ -1681,7 +1786,12 @@
     el.addEventListener('click',function(e){
       var row=e.target.closest('.aa-crow');
       if(!row) return;
-      window.activeCountry=row.dataset.code;
+      // 3e — route through setActiveCountry so persistence + banner fire centrally
+      if (typeof window.setActiveCountry === 'function') {
+        window.setActiveCountry(row.dataset.code);
+      } else {
+        window.activeCountry = row.dataset.code;
+      }
       if(window.map&&row.dataset.lat&&row.dataset.lng) window.map.setView([parseFloat(row.dataset.lat),parseFloat(row.dataset.lng)],6);
       switchTab('map');
     });
@@ -2059,9 +2169,16 @@
 
     var _origSet=window.setActiveCountry;
     window.setActiveCountry=function(code,pos){
+      var prev = window.activeCountry || null; // 3e — capture before any update
       var r=_origSet?_origSet(code,pos):null;
       window.activeCountry=code;
       window.activeCountryPos=pos;
+      // 3e — persist last-selected country (silent on storage errors)
+      try { if (code) localStorage.setItem('atlas_last_country', code); } catch (e) {}
+      // 3e — switched-country banner: only on real change, never on initial set
+      if (prev && code && prev !== code) {
+        showSwitchBanner(prev, code);
+      }
       if(overlay&&overlay.style.display!=='none'&&document.getElementById('aa-feed-body')){
         if(_feedTab==='news')   loadNews(code);
         if(_feedTab==='alerts') loadAlerts(code);
@@ -2069,6 +2186,19 @@
       }
       return r;
     };
+
+    // 3e — Restore pack state from previous session (must precede any pack render)
+    restorePackState();
+
+    // 3e — Resolve initial active country: saved → home country → none.
+    // Done AFTER the wrapper is installed so persistence runs through it and
+    // the banner skips (prev is null at this point, so no banner fires).
+    try {
+      var _saved = localStorage.getItem('atlas_last_country');
+      var _home  = localStorage.getItem('atlas_origin');
+      var _initialCountry = _saved || _home || null;
+      if (_initialCountry) window.setActiveCountry(_initialCountry);
+    } catch (e) { /* storage unavailable — silent */ }
 
     switchTab('map');
 
