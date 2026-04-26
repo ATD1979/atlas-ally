@@ -1,4 +1,4 @@
-// Atlas Ally — Event ingestion v2 — ACLED removed, UCDP primary
+// Atlas Ally — Event ingestion v2 — UCDP primary
 // v2026.04.15 — clean slate
 // Sources:
 //   1. US Embassy RSS (shelter-in-place, missile alerts)
@@ -8,7 +8,6 @@
 //   5. UCDP / Uppsala University (free academic conflict data, GPS-tagged)
 //   6. InSight Crime RSS (organized crime & drug trafficking — Americas)
 //   7. UNODC RSS (UN drug & crime reports — global)
-//   8. ACLED OAuth (when approved)
 
 'use strict';
 
