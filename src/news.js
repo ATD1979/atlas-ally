@@ -21,10 +21,12 @@ function extractSource(raw, fallback = 'Google News') {
 }
 
 // Jordan-specific noise filter. "Jordan" the country collides with Jordan the basketball
-// player, Jordan the sneaker brand, Jordan Peterson, etc. Only apply when code is JO.
+// player, Jordan the sneaker brand, Jordan Peterson, Jordan Davis (NFL/college football),
+// Barbara Jordan (US politician — Texas park named after her), and NASCAR/racing coverage.
+// Only apply when code is JO.
 function passesJordanNoiseFilter(title) {
   const t = title.toLowerCase();
-  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court)\b/.test(t)) {
+  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court|nascar|racing|barbara jordan|jordan davis)\b/.test(t)) {
     return false;
   }
   return true;
