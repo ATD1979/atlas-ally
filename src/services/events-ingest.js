@@ -15,7 +15,7 @@ const fetch  = require('node-fetch');
 const xml2js = require('xml2js');
 const db     = require('../db');
 const { extractLocation } = require('../geocoder');
-const { isRelevantToCountry } = require('../lib/countries-meta');
+const { isRelevantToCountry, passesNoiseFilter } = require('../lib/countries-meta');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -78,16 +78,9 @@ function isRelevant(text) {
   return SECURITY_KEYWORDS.some(k => lower.includes(k));
 }
 
-// Jordan-specific noise filter — ported from news.js to catch sports/sneaker
-// content that slips through keyword-based country tagging (e.g. Michael Jordan,
-// Jordan brand sneakers, Jordan Peterson). Only applied when country_code is JO.
-function passesJordanNoiseFilter(title) {
-  const t = title.toLowerCase();
-  if (/\b(basketball|nba|wnba|michael jordan|air jordan|jordan brand|jordan peterson|sneaker|sports|athlete|game|court)\b/.test(t)) {
-    return false;
-  }
-  return true;
-}
+// Jordan-specific noise filter now lives in countries-meta.js as `passesNoiseFilter()`.
+// Imported above. Same comprehensive term list applies across news.js, events.js, and
+// events-ingest.js.
 
 // ── Dedup ─────────────────────────────────────────────────────────────────────
 const seenUrls = new Set();
@@ -105,7 +98,7 @@ function isDuplicate(sourceUrl, title) {
 
 function insertEvent(ev) {
   if (!isEnglish(ev.title)) return false;
-  if (ev.country_code === 'JO' && !passesJordanNoiseFilter(ev.title)) return false;
+  if (!passesNoiseFilter(ev.title, ev.country_code)) return false;
   if (isDuplicate(ev.source_url, ev.title)) return false;
   seenUrls.add(ev.source_url);
   try {

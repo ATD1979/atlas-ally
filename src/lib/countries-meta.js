@@ -79,6 +79,35 @@ function isRelevantToCountry(text, code) {
   return aliases.some(alias => lower.includes(alias));
 }
 
+// Country-specific noise filter for news/events titles.
+//
+// "Jordan" the country has heavy English-language collisions: basketball
+// (Michael Jordan, NBA), the sneaker brand (Air Jordan), public figures
+// (Jordan Peterson, Barbara Jordan), athletes named Jordan (Jordan Davis,
+// Jordan Henderson, Jordan Spieth, etc.), and motorsport (NASCAR, F1's
+// Eddie Jordan). Without filtering, these articles flood the JO feed.
+//
+// Other countries with name collisions (Turkey-the-bird, China-the-porcelain,
+// India-ink, etc.) were sampled in v6.15 and found to have negligible noise —
+// the relevance filter + topic-keyword query construction handle them cleanly.
+// JO is the only country requiring this extra filtering layer today.
+//
+// Returns true if the title passes (should be kept), false if it's noise
+// (should be dropped). For non-JO countries, always returns true.
+function passesNoiseFilter(title, code) {
+  if (code !== 'JO') return true;
+  const t = String(title || '').toLowerCase();
+  // Generic sports / product / motorsport terms
+  if (/\b(basketball|nba|wnba|sneaker|sports|athlete|game|court|premier league|champions league|nascar|racing)\b/.test(t)) {
+    return false;
+  }
+  // Specific named people who collide with "Jordan"
+  if (/\b(michael jordan|air jordan|jordan brand|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan|barbara jordan|jordan davis)\b/.test(t)) {
+    return false;
+  }
+  return true;
+}
+
 module.exports = {
   META,
   getCountryMeta,
@@ -87,4 +116,5 @@ module.exports = {
   getDrugKeywords,
   getUcdpCode,
   isRelevantToCountry,
+  passesNoiseFilter,
 };

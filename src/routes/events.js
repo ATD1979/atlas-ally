@@ -7,7 +7,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { fetchRSS } = require('../lib/rss');
-const { getCountryName, isRelevantToCountry } = require('../lib/countries-meta');
+const { getCountryName, isRelevantToCountry, passesNoiseFilter } = require('../lib/countries-meta');
 const { classifyEvent, EVENT_TYPE_TO_FEED_CAT } = require('../lib/classify');
 
 // Per-language "security" query fragments for the live Google News augmentation.
@@ -33,21 +33,9 @@ const SECURITY_QUERIES = {
   hi: ['हमला OR विस्फोट OR मिसाइल OR विरोध OR अपराध OR आपदा OR चेतावनी OR सुरक्षा'],
 };
 
-// Jordan-specific noise filter — ported from news.js to catch sports/sneaker
-// content that slips through keyword-based country matching. Expanded to cover
-// named-person collisions (Simon Jordan pundit, Jordan Henderson footballer,
-// Eddie Jordan F1, Jordan Spieth golf, etc.) and football league references.
-// Only applied when countryCode is JO.
-function passesJordanNoiseFilter(title) {
-  const t = title.toLowerCase();
-  if (/\b(basketball|nba|wnba|sneaker|sports|athlete|game|court|premier league|champions league)\b/.test(t)) {
-    return false;
-  }
-  if (/\b(michael jordan|air jordan|jordan brand|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan)\b/.test(t)) {
-    return false;
-  }
-  return true;
-}
+// Jordan-specific noise filter now lives in countries-meta.js as `passesNoiseFilter()`.
+// Imported above. Same comprehensive term list applies across news.js, events.js, and
+// events-ingest.js.
 
 // Fetch security-flavoured news and shape it like a stored event row.
 async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
@@ -81,7 +69,7 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     // buried in the description of a US local news story isn't enough).
     const description = String(item.description || '').replace(/<[^>]*>/g, '').trim();
     if (!isRelevantToCountry(title, countryCode)) continue;
-    if (countryCode === 'JO' && !passesJordanNoiseFilter(title)) continue;
+    if (!passesNoiseFilter(title, countryCode)) continue;
 
     if (url) seen.add(url);
     seen.add(key);
