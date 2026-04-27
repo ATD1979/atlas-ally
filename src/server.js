@@ -1,5 +1,5 @@
 // Atlas Ally — Server entry point
-// v2026.04.15 — clean slate
+// v2026.04.26 — webhook before json + requireAuth on checkin/zone-alert (PR #26)
 const config      = require('./config');
 const express     = require('express');
 const cors       = require('cors');
@@ -58,6 +58,18 @@ app.use(cors({
   credentials: true,
 }));
 app.use(cookieParser());
+
+// Stripe webhook MUST mount before express.json() so that express.raw() sees
+// the raw request body for signature verification. Routing it via paymentRoutes
+// (mounted below) would fail: app.use(express.json()) would have already
+// consumed the body, breaking stripe.webhooks.constructEvent. Also placed
+// before gateMiddleware so Stripe is never redirected to coming-soon, and
+// before /api/ rate limiters since the webhook is authenticated by signature,
+// not by IP/fingerprint. (PR #26)
+app.post('/api/stripe-webhook',
+  express.raw({ type: 'application/json' }),
+  require('./routes/payments').handleStripeWebhook);
+
 app.use(express.json());
 app.use(securityHeaders);
 app.use(attachErrorLogger);
@@ -86,9 +98,11 @@ app.use('/api', softAuth, mapRoutes);
 // User: country subscriptions, contacts, account deletion
 app.use('/api/user', requireAuth, userRoutes);
 
-// Check-in and zone-alert (softAuth — no login required)
-app.post('/api/checkin',    softAuth, require('./routes/user').handleCheckin);
-app.post('/api/zone-alert', softAuth, require('./routes/user').handleZoneAlert);
+// Check-in and zone-alert (requireAuth as of PR #26 — was softAuth; whatsapp
+// is now derived from req.user inside the handlers, never from the body, to
+// prevent arbitrary impersonation of any user's emergency contacts).
+app.post('/api/checkin',    requireAuth, require('./routes/user').handleCheckin);
+app.post('/api/zone-alert', requireAuth, require('./routes/user').handleZoneAlert);
 
 // Crime stats, route planning, news
 app.use('/api', softAuth, crimeRoutes);
@@ -99,7 +113,7 @@ app.use('/api', softAuth, routePlanningRoutes);
 // AI pack list
 app.use('/api', softAuth, packRoutes);
 
-// Stripe checkout & webhook
+// Stripe checkout (webhook is mounted earlier, before express.json())
 app.use('/api', softAuth, paymentRoutes);
 
 // Admin routes (login/verify are public; individual routes enforce their own auth)
