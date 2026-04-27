@@ -1,7 +1,6 @@
 // Atlas Ally — Payment routes (Stripe checkout & webhooks)
-// v2026.04.15 — clean slate
+// v2026.04.26 — webhook handler extracted for raw-body mounting (PR #26)
 const router = require('express').Router();
-const express = require('express');
 const db      = require('../db');
 const { getStripe } = require('../stripe');
 
@@ -38,8 +37,12 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
-// Stripe webhook — raw body required for signature verification
-router.post('/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+// Stripe webhook handler — exported for direct mounting in server.js BEFORE
+// express.json(), so express.raw() actually sees the raw body. Mounting through
+// the standard router would not work: app.use(express.json()) runs first and
+// consumes the body, breaking signature verification (silent premium-upgrade
+// failure pre-PR #26).
+function handleStripeWebhook(req, res) {
   const stripe = getStripe();
   if (!stripe) return res.json({ ok: true });
 
@@ -59,6 +62,7 @@ router.post('/stripe-webhook', express.raw({ type: 'application/json' }), (req, 
     }
   }
   res.json({ ok: true });
-});
+}
 
 module.exports = router;
+module.exports.handleStripeWebhook = handleStripeWebhook;
