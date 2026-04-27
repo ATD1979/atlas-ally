@@ -1,11 +1,13 @@
 // Atlas Ally — Preview Gate (full email OTP — DNS verified green)
-// v2026.04.15 — clean slate + timeout fixes
+// v2026.04.27 — PR #27 gate hardening (rate limit, attempts counter,
+// timing-safe compare, periodic sweep)
 'use strict';
 
-const crypto   = require('crypto');
-const path     = require('path');
-const nodemailer = require('nodemailer');
-const config    = require('./config');
+const crypto       = require('crypto');
+const path         = require('path');
+const nodemailer   = require('nodemailer');
+const rateLimit    = require('express-rate-limit');
+const config       = require('./config');
 
 const GATE_EMAIL     = 'info@atlas-ally.com';
 const GATE_PASSWORD  = config.GATE_PASSWORD;
@@ -16,7 +18,12 @@ const SMTP_PASSWORD  = config.IMPROVMX_PASSWORD;
 
 // In-memory stores (fine for a single-instance preview gate)
 const validSessions = new Set();
-const pendingOTPs   = new Map(); // email → { code, expires }
+const pendingOTPs   = new Map(); // email → { code, expires, attempts }
+
+// Hardening constants
+const OTP_TTL_MS         = 10 * 60 * 1000;  // 10 minutes
+const MAX_OTP_ATTEMPTS   = 5;
+const SWEEP_INTERVAL_MS  = 5 * 60 * 1000;   // 5 minutes
 
 // ── SMTP transport via ImprovMX with defensive timeouts ──────────────────────
 const transporter = nodemailer.createTransport({
@@ -33,13 +40,36 @@ const transporter = nodemailer.createTransport({
   socketTimeout:     20000,   // 20s for socket inactivity
 });
 
+// ── Rate limiter for gate endpoints ──────────────────────────────────────────
+// 10 requests per 15 minutes per IP, applied to /gate/login and /gate/verify.
+// Without this, a 6-digit OTP is brute-forceable in ~17 minutes. With it,
+// the same brute-force takes >100 days at the rate-limit ceiling.
+const gateLimiter = rateLimit({
+  windowMs:        15 * 60 * 1000,
+  max:             10,
+  standardHeaders: true,   // RateLimit-* response headers
+  legacyHeaders:   false,  // disable X-RateLimit-* (deprecated)
+  message:         { ok: false, error: 'Too many attempts. Try again in 15 minutes.' },
+});
+
+// ── Timing-safe equality for secrets ─────────────────────────────────────────
+// crypto.timingSafeEqual throws on length mismatch — guard against that.
+// Always compare buffers of equal length to avoid leaking length info.
+function safeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const aBuf = Buffer.from(a, 'utf8');
+  const bBuf = Buffer.from(b, 'utf8');
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 function generateOTP() {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
 async function sendOTPEmail(toEmail, code) {
   console.log(`Gate: Attempting to send OTP to ${toEmail} via ImprovMX...`);
-  
+
   // Wrap the entire send operation in a promise race with timeout
   const sendPromise = transporter.sendMail({
     from:    `"Atlas Ally" <${GATE_EMAIL}>`,
@@ -81,6 +111,24 @@ function makeSessionToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// ── Periodic sweep of expired pendingOTPs ────────────────────────────────────
+// Every 5 minutes, drop entries whose `expires` is in the past. Without this,
+// expired entries accumulate forever — small leak, but bounded leak class
+// matters more than the size. .unref() so the interval doesn't keep the
+// event loop alive on SIGTERM.
+const sweepHandle = setInterval(() => {
+  const now = Date.now();
+  let removed = 0;
+  for (const [key, entry] of pendingOTPs.entries()) {
+    if (now > entry.expires) {
+      pendingOTPs.delete(key);
+      removed++;
+    }
+  }
+  if (removed > 0) console.log(`Gate: swept ${removed} expired OTP entr${removed === 1 ? 'y' : 'ies'}`);
+}, SWEEP_INTERVAL_MS);
+sweepHandle.unref();
+
 const PUBLIC_PATHS = [
   '/gate', '/gate/login', '/gate/verify', '/gate/logout',
   '/coming-soon', '/favicon.ico',
@@ -116,19 +164,19 @@ function setupGateRoutes(app) {
   });
 
   // Step 1 — verify email + password, send OTP
-  app.post('/gate/login', express.json(), async (req, res) => {
+  app.post('/gate/login', gateLimiter, express.json(), async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password)
       return res.json({ ok: false, error: 'Email and password required.' });
     if (email.toLowerCase() !== GATE_EMAIL.toLowerCase())
       return res.json({ ok: false, error: 'Invalid credentials.' });
-    if (password !== GATE_PASSWORD)
+    if (!safeCompare(password, GATE_PASSWORD))
       return res.json({ ok: false, error: 'Invalid credentials.' });
 
     // Credentials correct — generate and email OTP
     const code    = generateOTP();
-    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
-    pendingOTPs.set(email.toLowerCase(), { code, expires });
+    const expires = Date.now() + OTP_TTL_MS;
+    pendingOTPs.set(email.toLowerCase(), { code, expires, attempts: 0 });
 
     try {
       await sendOTPEmail(email, code);
@@ -136,11 +184,11 @@ function setupGateRoutes(app) {
       res.json({ ok: true, needs_otp: true, message: 'Verification code sent to your email.' });
     } catch (e) {
       console.error('Gate OTP email failed:', e.message);
-      
+
       // Log more details for debugging
       if (e.code) console.error(`Gate: SMTP Error code: ${e.code}`);
       if (e.response) console.error(`Gate: SMTP Response: ${e.response}`);
-      
+
       // Return specific error instead of fallback session
       let errorMsg = 'Email service temporarily unavailable. ';
       if (e.message.includes('timeout')) {
@@ -152,13 +200,13 @@ function setupGateRoutes(app) {
       } else {
         errorMsg += 'Please try again or contact support.';
       }
-      
+
       res.json({ ok: false, error: errorMsg });
     }
   });
 
   // Step 2 — verify OTP, create session
-  app.post('/gate/verify', express.json(), (req, res) => {
+  app.post('/gate/verify', gateLimiter, express.json(), (req, res) => {
     const { email, code } = req.body || {};
     if (!email || !code)
       return res.json({ ok: false, error: 'Email and code required.' });
@@ -172,8 +220,20 @@ function setupGateRoutes(app) {
       pendingOTPs.delete(key);
       return res.json({ ok: false, error: 'Code expired. Please log in again.' });
     }
-    if (pending.code !== code.toString().trim())
+
+    // Timing-safe OTP comparison. Increment attempts on mismatch; invalidate
+    // the pending entry after MAX_OTP_ATTEMPTS so an attacker can't keep
+    // guessing against a single pending session.
+    const submitted = code.toString().trim();
+    if (!safeCompare(submitted, pending.code)) {
+      pending.attempts = (pending.attempts || 0) + 1;
+      if (pending.attempts >= MAX_OTP_ATTEMPTS) {
+        pendingOTPs.delete(key);
+        console.log(`Gate: OTP invalidated for ${email} after ${MAX_OTP_ATTEMPTS} failed attempts`);
+        return res.json({ ok: false, error: 'Too many incorrect attempts. Please log in again.' });
+      }
       return res.json({ ok: false, error: 'Incorrect code. Please try again.' });
+    }
 
     // OTP correct — create session
     pendingOTPs.delete(key);
