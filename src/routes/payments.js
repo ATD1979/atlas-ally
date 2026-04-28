@@ -2,6 +2,7 @@
 // v2026.04.26 — webhook handler extracted for raw-body mounting (PR #26)
 const router = require('express').Router();
 const db      = require('../db');
+const config  = require('../config');
 const { getStripe } = require('../stripe');
 
 // Stripe checkout — creates a session or falls back to trial
@@ -23,12 +24,12 @@ router.post('/checkout', async (req, res) => {
   }
 
   try {
-    const priceId = plan === 'family' ? process.env.STRIPE_FAMILY_PRICE_ID : process.env.STRIPE_BASE_PRICE_ID;
+    const priceId = plan === 'family' ? config.STRIPE_FAMILY_PRICE_ID : config.STRIPE_BASE_PRICE_ID;
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.BASE_URL}/?checkout=success`,
-      cancel_url:  `${process.env.BASE_URL}/landing`,
+      success_url: `${config.BASE_URL}/?checkout=success`,
+      cancel_url:  `${config.BASE_URL}/landing`,
       metadata:    { whatsapp: whatsapp || '', plan: plan || 'traveler' },
     });
     res.json({ url: session.url });
@@ -49,7 +50,7 @@ function handleStripeWebhook(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET);
   } catch {
     return res.status(400).send('Webhook error');
   }
