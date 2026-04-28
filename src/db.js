@@ -269,6 +269,18 @@ db.exec(`
     value       TEXT,
     updated_at  TEXT DEFAULT (datetime('now'))
   );
+
+  -- ─── Indexes (PR #28 Part A) ───────────────────────────────────────────────
+  -- All idempotent via IF NOT EXISTS. Created at boot after tables exist.
+  CREATE INDEX IF NOT EXISTS idx_events_country_created ON events(country_code, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_events_status_created  ON events(status, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_news_country_lang_pub  ON news_cache(country_code, lang, published_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_news_cached_at         ON news_cache(cached_at);
+  CREATE INDEX IF NOT EXISTS idx_otp_whatsapp_used      ON otp_codes(whatsapp, used, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_user_countries_user    ON user_countries(user_id);
+  CREATE INDEX IF NOT EXISTS idx_user_countries_country ON user_countries(country_code);
+  CREATE INDEX IF NOT EXISTS idx_error_log_created      ON error_log(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_emergency_user_active  ON emergency_contacts(user_id, active);
 `);
 
 // Default settings
