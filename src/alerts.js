@@ -2,12 +2,13 @@
 // v2026.04.15 — clean slate
 require('dotenv').config();
 const twilio = require('twilio');
+const config = require('./config');
 const { getSubscribersForCountry, isTrialActive, logNotify } = require('./db');
 const { COUNTRIES } = require('./countries');
 
 let client = null;
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+if (config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN) {
+  client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
   console.log('✅ Twilio WhatsApp ready');
 } else {
   console.warn('⚠️  Twilio not configured — alerts disabled');
@@ -41,7 +42,7 @@ function buildMessage(event, subscriber) {
     hour: '2-digit', minute: '2-digit',
     timeZone: country?.timezone || 'UTC',
   });
-  const unsubUrl  = `${process.env.BASE_URL}/unsubscribe?wa=${encodeURIComponent(subscriber.whatsapp)}`;
+  const unsubUrl  = `${config.BASE_URL}/unsubscribe?wa=${encodeURIComponent(subscriber.whatsapp)}`;
 
   return (
     `${sevEmoji} *ATLAS ALLY ALERT*\n` +
@@ -61,7 +62,7 @@ async function sendWhatsApp(to, body) {
   const clean = to.replace(/^whatsapp:/i, '').trim();
   try {
     const msg = await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_FROM,
+      from: config.TWILIO_WHATSAPP_FROM,
       to: `whatsapp:${clean}`,
       body,
     });
@@ -106,7 +107,7 @@ async function sendCheckinAlert(toNumber, body) {
   const clean = toNumber.replace(/^whatsapp:/i, '').trim();
   try {
     await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_FROM,
+      from: config.TWILIO_WHATSAPP_FROM,
       to: `whatsapp:${clean}`,
       body,
     });

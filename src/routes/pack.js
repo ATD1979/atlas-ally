@@ -10,9 +10,10 @@ const router = require('express').Router();
 const { fetchWithTimeout } = require('../lib/http');
 
 const db = require('../db');
+const config = require('../config');
 const { COUNTRIES, ADVISORY_LEVELS } = require('../countries');
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_API_KEY = config.ANTHROPIC_API_KEY;
 const MODEL = 'claude-sonnet-4-5-20250929';
 
 // ── System prompt ─────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const crypto = require('crypto');
 const db     = require('../db');
+const config = require('../config');
 const { dispatchAlerts }          = require('../alerts');
 const { refreshAllNews }          = require('../news');
 const { sanitizeUser }            = require('./auth');
@@ -142,13 +143,13 @@ router.post('/login', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Invalid password' });
   } else {
     // Fall back to global ADMIN_PASSWORD on first login
-    if (password !== process.env.ADMIN_PASSWORD)
+    if (password !== config.ADMIN_PASSWORD)
       return res.status(401).json({ error: 'Invalid password' });
   }
 
   const token = 'admin-' + Buffer.from(clean + ':' + password.slice(0,4)).toString('base64');
   // Store token hash so verify can check it without re-hashing
-  const tokenFull = 'admin-' + Buffer.from(clean + ':' + (user.admin_password || process.env.ADMIN_PASSWORD)).toString('base64').slice(0,32);
+  const tokenFull = 'admin-' + Buffer.from(clean + ':' + (user.admin_password || config.ADMIN_PASSWORD)).toString('base64').slice(0,32);
   res.json({ ok: true, token: tokenFull, adminName: user.name, adminWhatsapp: clean });
 });
 
@@ -180,7 +181,7 @@ router.post('/set-password', requireAdmin, async (req, res) => {
     const ok = await bcrypt.compare(currentPassword, user.admin_password);
     if (!ok) return res.status(401).json({ error: 'Current password incorrect' });
   } else {
-    if (currentPassword !== process.env.ADMIN_PASSWORD)
+    if (currentPassword !== config.ADMIN_PASSWORD)
       return res.status(401).json({ error: 'Current password incorrect' });
   }
 

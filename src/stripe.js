@@ -4,11 +4,13 @@
 //   traveler_extra $1/mo per additional country
 //   family         $8/mo — 1 account + 3 emergency contacts
 
+const config = require('./config');
+
 let stripe = null;
 
 function getStripe() {
-  if (!stripe && process.env.STRIPE_SECRET_KEY) {
-    try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); }
+  if (!stripe && config.STRIPE_SECRET_KEY) {
+    try { stripe = require('stripe')(config.STRIPE_SECRET_KEY); }
     catch (e) { console.warn('Stripe not available:', e.message); }
   }
   return stripe;
@@ -19,11 +21,11 @@ async function createCheckoutSession({ email, whatsapp, plan, countries, success
   if (!s) throw new Error('Stripe not configured — add STRIPE_SECRET_KEY to Railway variables');
 
   const lineItems = plan === 'family'
-    ? [{ price: process.env.STRIPE_FAMILY_PRICE_ID, quantity: 1 }]
+    ? [{ price: config.STRIPE_FAMILY_PRICE_ID, quantity: 1 }]
     : [
-        { price: process.env.STRIPE_BASE_PRICE_ID, quantity: 1 },
-        ...(Math.max(0, (countries?.length || 1) - 1) > 0 && process.env.STRIPE_EXTRA_PRICE_ID
-          ? [{ price: process.env.STRIPE_EXTRA_PRICE_ID, quantity: Math.max(0, (countries?.length || 1) - 1) }]
+        { price: config.STRIPE_BASE_PRICE_ID, quantity: 1 },
+        ...(Math.max(0, (countries?.length || 1) - 1) > 0 && config.STRIPE_EXTRA_PRICE_ID
+          ? [{ price: config.STRIPE_EXTRA_PRICE_ID, quantity: Math.max(0, (countries?.length || 1) - 1) }]
           : []),
       ];
 
@@ -40,8 +42,8 @@ async function createCheckoutSession({ email, whatsapp, plan, countries, success
       },
     },
     metadata: { whatsapp: whatsapp || '', plan: plan || 'traveler' },
-    success_url: successUrl || `${process.env.BASE_URL}/?checkout=success`,
-    cancel_url: cancelUrl || `${process.env.BASE_URL}/landing`,
+    success_url: successUrl || `${config.BASE_URL}/?checkout=success`,
+    cancel_url: cancelUrl || `${config.BASE_URL}/landing`,
     allow_promotion_codes: true,
   });
 
@@ -52,7 +54,7 @@ async function handleWebhook(rawBody, signature) {
   const s = getStripe();
   if (!s) return { handled: false };
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = config.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) return { handled: false, error: 'No webhook secret configured' };
 
   let event;

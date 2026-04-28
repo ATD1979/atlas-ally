@@ -14,6 +14,7 @@
 const fetch  = require('node-fetch');
 const xml2js = require('xml2js');
 const db     = require('../db');
+const config = require('../config');
 const { extractLocation } = require('../geocoder');
 const { isRelevantToCountry, passesNoiseFilter } = require('../lib/countries-meta');
 
@@ -359,7 +360,7 @@ async function ingestGDELT(code) {
 // As of Feb 2026 UCDP introduced x-ucdp-access-token auth (5,000 req/day limit).
 // Request a token at https://ucdp.uu.se/apidocs/ and set UCDP_API_KEY in env.
 
-const UCDP_API_KEY = process.env.UCDP_API_KEY || '';
+const UCDP_API_KEY = config.UCDP_API_KEY || '';
 if (!UCDP_API_KEY) {
   console.warn('⚠️  UCDP_API_KEY not set — UCDP ingestion will be skipped. Request a token at https://ucdp.uu.se/apidocs/');
 }
