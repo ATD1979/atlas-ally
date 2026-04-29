@@ -119,7 +119,7 @@ app.use('/api', softAuth, paymentRoutes);
 // Admin routes (login/verify are public; individual routes enforce their own auth)
 app.use('/api/admin',       adminRoutes);
 // Force news cache refresh
-app.get('/api/admin/refresh-news', async (req, res) => {
+app.get('/api/admin/refresh-news', requireAdmin, async (req, res) => {
   db.clearOldNews.run();
   refreshAllNews().catch(console.error);
   res.json({ ok: true, message: 'News cache cleared and refresh started' });

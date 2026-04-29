@@ -5,6 +5,7 @@ const { fetchWithTimeout } = require('../lib/http');
 const db      = require('../db');
 const { COUNTRIES, ADVISORY_LEVELS } = require('../countries');
 const { dispatchAlerts } = require('../alerts');
+const { requireAdmin }   = require('../auth');
 
 // ── Countries ─────────────────────────────────────────────────────────────────
 
@@ -88,12 +89,12 @@ router.post('/events', (req, res) => {
   res.json({ ok: true, event });
 });
 
-router.delete('/events/:id', (req, res) => {
+router.delete('/events/:id', requireAdmin, (req, res) => {
   db.removeEvent.run(req.params.id);
   res.json({ ok: true });
 });
 
-router.patch('/events/:id/test', (req, res) => {
+router.patch('/events/:id/test', requireAdmin, (req, res) => {
   db.markTestEvent.run(req.params.id);
   res.json({ ok: true });
 });
