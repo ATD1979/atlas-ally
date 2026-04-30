@@ -4,8 +4,7 @@ const router  = require('express').Router();
 const { fetchWithTimeout } = require('../lib/http');
 const db      = require('../db');
 const { COUNTRIES, ADVISORY_LEVELS } = require('../countries');
-const { dispatchAlerts } = require('../alerts');
-const { requireAdmin }   = require('../auth');
+const { requireAuth, requireAdmin } = require('../auth');
 
 // ── Countries ─────────────────────────────────────────────────────────────────
 
@@ -70,22 +69,27 @@ router.get('/country/:code/weather', async (req, res) => {
 // ── Events (POST only — GET is handled by data.js with full stats) ────────────
 
 
-router.post('/events', (req, res) => {
-  const { country_code, type, title, description, location, lat, lng, severity, source_url } = req.body;
+router.post('/events', requireAuth, (req, res) => {
+  let { country_code, type, title, description, location, lat, lng, severity, source_url } = req.body;
   if (!country_code || !type || !title)
     return res.status(400).json({ error: 'country_code, type, title required' });
 
-  const result = db.addEvent.run({
+  // PR #31: user-submitted events are always 'pending' until an admin approves.
+  // Length caps prevent flooding via long free-form fields.
+  title = String(title).slice(0, 200);
+  if (description) description = String(description).slice(0, 1000);
+  if (location) location = String(location).slice(0, 200);
+
+  const result = db.addPendingEvent.run({
     country_code: country_code.toUpperCase(), type, title,
     description: description || null, location: location || null,
     lat: lat || null, lng: lng || null, severity: severity || 'warn',
     source: 'user', source_url: source_url || null,
-    submitted_by: req.user?.whatsapp || 'anonymous',
-    submitted_user_id: req.user?.id || null,
+    submitted_by: req.user.whatsapp,
+    submitted_user_id: req.user.id,
     is_test: 0,
   });
   const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(result.lastInsertRowid);
-  dispatchAlerts(event).catch(() => {});
   res.json({ ok: true, event });
 });
 

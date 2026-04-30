@@ -349,6 +349,13 @@ const helpers = {
 
   // Events
   addEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test)`),
+  // User-submitted events land in 'pending' awaiting admin review.
+  // approved_at is NULL until the admin approve handler flips status.
+  addPendingEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test, status, approved_at) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test, 'pending', NULL)`),
+  // Race-safe: the WHERE status='pending' clause means a second concurrent
+  // approve/reject returns changes=0 and the handler can no-op.
+  approvePendingEvent: db.prepare(`UPDATE events SET status='approved', approved_at=datetime('now') WHERE id = ? AND status='pending'`),
+  rejectPendingEvent: db.prepare(`UPDATE events SET status='rejected' WHERE id = ? AND status='pending'`),
   getEventsByCountry: db.prepare(`SELECT * FROM events WHERE country_code = ? AND status = 'approved' AND is_test = 0 AND created_at > datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 200`),
   getEvents72h: db.prepare(`SELECT * FROM events WHERE status = 'approved' AND is_test = 0 AND created_at > datetime('now', '-72 hours') ORDER BY created_at DESC`),
   getRecentEvents: db.prepare(`SELECT * FROM events ORDER BY created_at DESC LIMIT 100`),
@@ -400,6 +407,7 @@ const helpers = {
     distributors: db.prepare(`SELECT COUNT(*) as c FROM users WHERE role='distributor'`).get().c,
     events:       db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='approved'`).get().c,
     events_72h:   db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='approved' AND created_at > datetime('now', '-72 hours')`).get().c,
+    pending:      db.prepare(`SELECT COUNT(*) as c FROM events WHERE status='pending'`).get().c,
     countries:    db.prepare(`SELECT COUNT(DISTINCT country_code) as c FROM user_countries`).get().c,
     errors_24h:   db.prepare(`SELECT COUNT(*) as c FROM error_log WHERE created_at > datetime('now', '-24 hours')`).get().c,
   }),
