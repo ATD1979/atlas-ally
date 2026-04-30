@@ -66,8 +66,30 @@ router.delete('/events/test', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/queue', requireAdmin, (req, res) => {
+// PR #31: lists events submitted by users awaiting admin moderation.
+// Renamed from /queue to /pending to match the existing admin.html UI calls.
+router.get('/pending', requireAdmin, (req, res) => {
   res.json(db.db.prepare(`SELECT * FROM events WHERE status='pending' ORDER BY created_at DESC`).all());
+});
+
+// PR #31: admin approval flips status -> 'approved' AND fires WhatsApp dispatch.
+// The WHERE status='pending' clause in approvePendingEvent makes this race-safe:
+// a second concurrent approve returns changes=0 and we no-op cleanly.
+router.post('/approve/:id', requireAdmin, (req, res) => {
+  const result = db.approvePendingEvent.run(req.params.id);
+  if (result.changes === 0)
+    return res.status(404).json({ error: 'Event not found or already processed' });
+  const event = db.db.prepare(`SELECT * FROM events WHERE id = ?`).get(req.params.id);
+  if (!event.is_test) dispatchAlerts(event).catch(() => {});
+  res.json({ ok: true, success: true, event });
+});
+
+// PR #31: admin rejection flips status -> 'rejected'. No alerts are dispatched.
+router.post('/reject/:id', requireAdmin, (req, res) => {
+  const result = db.rejectPendingEvent.run(req.params.id);
+  if (result.changes === 0)
+    return res.status(404).json({ error: 'Event not found or already processed' });
+  res.json({ ok: true, success: true });
 });
 
 // ── Admin: settings ───────────────────────────────────────────────────────────
