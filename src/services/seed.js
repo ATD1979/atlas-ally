@@ -1,6 +1,7 @@
 // Atlas Ally — Startup tasks (data seeding)
 // v2026.04.15 — clean slate
 const db = require('../db');
+const config = require('../config');
 const { CRIME_DATA } = require('../crime-data');
 
 function seedCrimeData() {
@@ -25,23 +26,25 @@ function seedCrimeData() {
   console.log(`✅ Crime data seeded: ${CRIME_DATA.length} cities`);
 }
 
-// Both admins are hardcoded — no env variable dependency
+// PR #34: admin records sourced from env vars via config.js. PII no longer
+// lives in source. Note: existing entries remain in Git history; full
+// sanitization requires `git filter-repo` and is a separate decision.
 const ADMINS = [
   {
-    whatsapp:       '+16825617016',
-    name:           'Adrian Druba',
-    email:          'atdruba@gmail.com',
-    dob:            '1979-04-10',
-    state_origin:   'Texas',
-    country_origin: 'United States',
+    whatsapp:       config.ADMIN_1_WHATSAPP,
+    name:           config.ADMIN_1_NAME,
+    email:          config.ADMIN_1_EMAIL,
+    dob:            config.ADMIN_1_DOB,
+    state_origin:   config.ADMIN_1_STATE_ORIGIN,
+    country_origin: config.ADMIN_1_COUNTRY_ORIGIN,
   },
   {
-    whatsapp:       '+962797640020',
-    name:           'Noor Mohammed',
-    email:          'Noor@capella.io',
-    dob:            '1990-01-01',
-    state_origin:   null,
-    country_origin: 'Jordan',
+    whatsapp:       config.ADMIN_2_WHATSAPP,
+    name:           config.ADMIN_2_NAME,
+    email:          config.ADMIN_2_EMAIL,
+    dob:            config.ADMIN_2_DOB,
+    state_origin:   config.ADMIN_2_STATE_ORIGIN,
+    country_origin: config.ADMIN_2_COUNTRY_ORIGIN,
   },
 ];
 
