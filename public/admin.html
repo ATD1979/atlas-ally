@@ -73,15 +73,29 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div>Atlas Ally</div>
     </div>
     <div class="login-sub">Admin Panel</div>
-    <div class="field-group">
-      <div class="field-label">Your WhatsApp Number</div>
-      <input class="field-input" type="tel" id="wa-input" placeholder="+1 XXX XXX XXXX" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
+
+    <!-- Step A: WhatsApp number + send code -->
+    <div id="otp-step-a">
+      <div class="field-group">
+        <div class="field-label">Your WhatsApp Number</div>
+        <input class="field-input" type="tel" id="wa-input" placeholder="+1 XXX XXX XXXX" onkeydown="if(event.key==='Enter')sendOtp()">
+      </div>
+      <button class="btn-primary" onclick="sendOtp()" id="send-otp-btn">Send Code</button>
     </div>
-    <div class="field-group">
-      <div class="field-label">Admin Password</div>
-      <input class="field-input" type="password" id="pw-input" placeholder="Enter your password" onkeydown="if(event.key==='Enter')login()">
+
+    <!-- Step B: enter the 6-digit code (hidden until step A succeeds) -->
+    <div id="otp-step-b" style="display:none;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:12px;text-align:center;">
+        Code sent via WhatsApp to <span id="otp-wa-display"></span>
+      </div>
+      <div class="field-group">
+        <div class="field-label">6-Digit Code</div>
+        <input class="field-input" type="text" inputmode="numeric" maxlength="6" id="code-input" placeholder="123456" onkeydown="if(event.key==='Enter')verifyOtp()" style="text-align:center;letter-spacing:8px;font-size:18px;">
+      </div>
+      <button class="btn-primary" onclick="verifyOtp()" id="verify-otp-btn">Verify &amp; Sign In</button>
+      <button onclick="resetOtpFlow()" style="background:transparent;border:none;color:var(--accent2);font-family:var(--mono);font-size:11px;width:100%;margin-top:10px;cursor:pointer;">← Use a different number</button>
     </div>
-    <button class="btn-primary" onclick="login()" id="login-btn">Sign In</button>
+
     <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;">Invalid credentials</div>
   </div>
 </div>
@@ -114,7 +128,6 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <button class="tab-btn" onclick="switchPanel('events',this)">🗑️ Events</button>
       <button class="tab-btn" onclick="switchPanel('tokens',this)">🎟️ Invites</button>
       <button class="tab-btn" onclick="switchPanel('feedback',this)">📋 Feedback</button>
-      <button class="tab-btn" onclick="switchPanel('password',this)">🔑 Password</button>
     </div>
 
     <!-- Moderation Queue -->
@@ -231,28 +244,6 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 
       <div id="subs-list"><div class="empty-state">Loading…</div></div>
     </div>
 
-    <!-- Change Password -->
-    <div id="panel-password" class="panel" style="display:none;">
-      <div class="section-label">Change Your Admin Password</div>
-      <div style="max-width:400px;margin-top:12px;">
-        <div id="pw-change-who" style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:16px;"></div>
-        <div class="field-group">
-          <div class="field-label">Current Password</div>
-          <input class="field-input" type="password" id="pw-current" placeholder="Your current password">
-        </div>
-        <div class="field-group">
-          <div class="field-label">New Password</div>
-          <input class="field-input" type="password" id="pw-new" placeholder="At least 8 characters">
-        </div>
-        <div class="field-group">
-          <div class="field-label">Confirm New Password</div>
-          <input class="field-input" type="password" id="pw-confirm" placeholder="Repeat new password">
-        </div>
-        <button class="btn-primary" onclick="changePassword()" id="pw-change-btn" style="width:100%;">Update Password</button>
-        <div id="pw-change-msg" style="font-family:var(--mono);font-size:12px;text-align:center;margin-top:10px;display:none;"></div>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -268,31 +259,75 @@ function showToast(msg, type='success') {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-async function login() {
+async function sendOtp() {
   const wa  = document.getElementById('wa-input').value.trim();
-  const pw  = document.getElementById('pw-input').value;
-  const btn = document.getElementById('login-btn');
+  const btn = document.getElementById('send-otp-btn');
   const err = document.getElementById('login-error');
   err.style.display = 'none';
-  if (!wa || !pw) { err.textContent = 'Enter your WhatsApp number and password'; err.style.display = 'block'; return; }
-  btn.disabled = true; btn.textContent = 'Signing in…';
+  if (!wa) { err.textContent = 'Enter your WhatsApp number'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const res  = await fetch(API + '/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({whatsapp:wa, password:pw}) });
+    const res  = await fetch(API + '/api/auth/send-otp', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ whatsapp: wa, purpose: 'admin-login' })
+    });
     const data = await res.json();
-    if (data.token) {
-      TOKEN = data.token;
-      localStorage.setItem('jsn_admin_token', TOKEN);
-      localStorage.setItem('jsn_admin_wa', wa);
-      showAdminApp();
+    if (data.ok) {
+      // Reveal step B, hide step A
+      document.getElementById('otp-step-a').style.display = 'none';
+      document.getElementById('otp-step-b').style.display = 'block';
+      document.getElementById('otp-wa-display').textContent = wa;
+      document.getElementById('code-input').focus();
     } else {
-      err.textContent = data.error || 'Invalid credentials';
+      err.textContent = data.error || 'Failed to send code';
       err.style.display = 'block';
     }
   } catch(e) {
     err.textContent = 'Connection error';
     err.style.display = 'block';
   }
-  btn.disabled = false; btn.textContent = 'Sign In';
+  btn.disabled = false; btn.textContent = 'Send Code';
+}
+
+async function verifyOtp() {
+  const wa   = document.getElementById('wa-input').value.trim();
+  const code = document.getElementById('code-input').value.trim();
+  const btn  = document.getElementById('verify-otp-btn');
+  const err  = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!code || code.length !== 6) { err.textContent = 'Enter the 6-digit code'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const res  = await fetch(API + '/api/auth/admin-login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ whatsapp: wa, code: code })
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      TOKEN = data.token;
+      localStorage.setItem('jsn_admin_token', TOKEN);
+      localStorage.setItem('jsn_admin_wa', wa);
+      showAdminApp();
+    } else {
+      err.textContent = data.error || 'Invalid or expired code';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Verify & Sign In';
+}
+
+function resetOtpFlow() {
+  document.getElementById('otp-step-a').style.display = 'block';
+  document.getElementById('otp-step-b').style.display = 'none';
+  document.getElementById('code-input').value = '';
+  document.getElementById('login-error').style.display = 'none';
 }
 
 function logout() {
@@ -310,43 +345,7 @@ function showAdminApp() {
   document.getElementById('admin-app').style.display = 'block';
   const wa = localStorage.getItem('jsn_admin_wa') || '';
   document.getElementById('admin-sub').textContent = 'Logged in as ' + wa + ' · ' + new Date().toLocaleTimeString();
-  const whoEl = document.getElementById('pw-change-who');
-  if (whoEl) whoEl.textContent = 'Changing password for: ' + wa;
   loadStats(); loadQueue(); loadSubscribers();
-}
-
-async function changePassword() {
-  const current  = document.getElementById('pw-current').value;
-  const newPw    = document.getElementById('pw-new').value;
-  const confirm  = document.getElementById('pw-confirm').value;
-  const btn      = document.getElementById('pw-change-btn');
-  const msg      = document.getElementById('pw-change-msg');
-
-  msg.style.display = 'none';
-  if (!current || !newPw) { msg.textContent = 'Fill in all fields'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
-  if (newPw !== confirm)  { msg.textContent = 'Passwords do not match'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
-  if (newPw.length < 8)  { msg.textContent = 'Password must be at least 8 characters'; msg.style.color='var(--danger2)'; msg.style.display='block'; return; }
-
-  btn.disabled = true; btn.textContent = 'Updating…';
-  try {
-    const res  = await fetch(API + '/api/admin/set-password', { method:'POST', headers: authHeaders(), body: JSON.stringify({ currentPassword: current, newPassword: newPw }) });
-    const data = await res.json();
-    if (data.ok) {
-      msg.textContent = '✅ Password updated! Use it next time you log in.';
-      msg.style.color = 'var(--safe2)';
-      document.getElementById('pw-current').value = '';
-      document.getElementById('pw-new').value = '';
-      document.getElementById('pw-confirm').value = '';
-    } else {
-      msg.textContent = data.error || 'Failed to update';
-      msg.style.color = 'var(--danger2)';
-    }
-  } catch(e) {
-    msg.textContent = 'Connection error';
-    msg.style.color = 'var(--danger2)';
-  }
-  msg.style.display = 'block';
-  btn.disabled = false; btn.textContent = 'Update Password';
 }
 
 async function loadStats() {
