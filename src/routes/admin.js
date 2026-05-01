@@ -3,7 +3,6 @@
 const router = require('express').Router();
 const crypto = require('crypto');
 const db     = require('../db');
-const config = require('../config');
 const { dispatchAlerts }          = require('../alerts');
 const { refreshAllNews }          = require('../news');
 const { sanitizeUser }            = require('./auth');
@@ -143,73 +142,6 @@ router.post('/invite-tokens', requireAdmin, (req, res) => {
 router.delete('/invite-tokens/:token', requireAdmin, (req, res) => {
   db.db.prepare(`UPDATE invite_tokens SET active=0 WHERE token=?`).run(req.params.token);
   res.json({ ok: true });
-});
-
-// ── Admin: per-user password login ───────────────────────────────────────────
-const bcrypt = require('bcryptjs');
-
-router.post('/login', async (req, res) => {
-  const { whatsapp, password } = req.body;
-  if (!whatsapp || !password)
-    return res.status(400).json({ error: 'WhatsApp and password required' });
-
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
-  const user  = db.getUser(clean);
-
-  if (!user || user.role !== 'admin')
-    return res.status(403).json({ error: 'Not an admin account' });
-
-  // If admin has a personal password set, verify it
-  if (user.admin_password) {
-    const ok = await bcrypt.compare(password, user.admin_password);
-    if (!ok) return res.status(401).json({ error: 'Invalid password' });
-  } else {
-    // Fall back to global ADMIN_PASSWORD on first login
-    if (password !== config.ADMIN_PASSWORD)
-      return res.status(401).json({ error: 'Invalid password' });
-  }
-
-  const token = 'admin-' + Buffer.from(clean + ':' + password.slice(0,4)).toString('base64');
-  // Store token hash so verify can check it without re-hashing
-  const tokenFull = 'admin-' + Buffer.from(clean + ':' + (user.admin_password || config.ADMIN_PASSWORD)).toString('base64').slice(0,32);
-  res.json({ ok: true, token: tokenFull, adminName: user.name, adminWhatsapp: clean });
-});
-
-router.post('/verify', async (req, res) => {
-  const { token } = req.body;
-  if (!token || !token.startsWith('admin-')) return res.json({ ok: false });
-  // Decode and find the admin
-  try {
-    const decoded = Buffer.from(token.replace('admin-',''), 'base64').toString();
-    const whatsapp = decoded.split(':')[0];
-    if (!whatsapp) return res.json({ ok: false });
-    const clean = whatsapp.replace(/\s/g,'').replace(/^00/,'+');
-    const user = db.getUser(clean);
-    if (!user || user.role !== 'admin') return res.json({ ok: false });
-    res.json({ ok: true, adminName: user.name, adminWhatsapp: clean });
-  } catch { res.json({ ok: false }); }
-});
-
-// ── Admin: set own password ───────────────────────────────────────────────────
-router.post('/set-password', requireAdmin, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  if (!newPassword || newPassword.length < 8)
-    return res.status(400).json({ error: 'New password must be at least 8 characters' });
-
-  const user = db.getUserById(req.user.id);
-
-  // Verify current password
-  if (user.admin_password) {
-    const ok = await bcrypt.compare(currentPassword, user.admin_password);
-    if (!ok) return res.status(401).json({ error: 'Current password incorrect' });
-  } else {
-    if (currentPassword !== config.ADMIN_PASSWORD)
-      return res.status(401).json({ error: 'Current password incorrect' });
-  }
-
-  const hash = await bcrypt.hash(newPassword, 10);
-  db.db.prepare('UPDATE users SET admin_password = ? WHERE id = ?').run(hash, req.user.id);
-  res.json({ ok: true, message: 'Admin password updated' });
 });
 
 // ── Distributor: trial codes ──────────────────────────────────────────────────
