@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0E7490;--teal-light:#E0F2F7;
+  --gold:#F59E0B;--gold-light:#FEF3C7;
+  --bg:#F8FAFB;--card:#fff;--border:#E5EAEF;
+  --text:#1A2332;--muted:#6B7C93;--subtle:#A8B5C4;
+  --red:#EF4444;--red-light:#FEF2F2;
+  --green:#10B981;--green-light:#ECFDF5;
+}
+body{font-family:'DM Sans',sans-serif;background:#E8EDF2;padding:24px 16px}
+h2{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#6B7C93;text-align:center;margin-bottom:20px}
+.grid{display:flex;flex-direction:column;gap:32px}
+.screen-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.screen-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6B7C93}
+.phone{width:320px;background:#fff;border-radius:24px;box-shadow:0 12px 40px rgba(0,0,0,0.14);overflow:hidden;border:1px solid rgba(0,0,0,0.06)}
+.status{background:var(--teal);padding:8px 16px 5px;display:flex;justify-content:space-between}
+.status span{color:rgba(255,255,255,0.85);font-size:10px;font-weight:500}
+.topbar{background:var(--teal);padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-0.2px}
+.topbar-sub{color:rgba(255,255,255,0.65);font-size:9px;letter-spacing:1.2px;text-transform:uppercase}
+.topbar-icon{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px}
+
+/* Feed */
+.feed-tabs{display:flex;background:#fff;border-bottom:1px solid var(--border)}
+.ftab{flex:1;padding:10px 0;text-align:center;font-size:11px;font-weight:600;color:var(--muted)}
+.ftab.on{color:var(--teal);border-bottom:2px solid var(--teal)}
+.feed-meta{display:flex;justify-content:space-between;padding:8px 14px 4px;background:var(--bg)}
+.fmeta{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;margin-right:3px}
+.fitem{padding:10px 14px;border-bottom:1px solid var(--border);background:#fff;display:flex;gap:9px;align-items:flex-start}
+.ficon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.fi-red{background:var(--red-light)}
+.fi-amber{background:var(--gold-light)}
+.fi-green{background:var(--green-light)}
+.fi-blue{background:var(--teal-light)}
+.fbody{flex:1}
+.fhead{font-size:11px;font-weight:500;color:var(--text);line-height:1.3;margin-bottom:3px}
+.fsub{display:flex;gap:6px;align-items:center}
+.ftag{padding:2px 6px;border-radius:8px;font-size:8px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+.tr{background:var(--red-light);color:var(--red)}
+.ta{background:var(--gold-light);color:#92400E}
+.tg{background:var(--green-light);color:#065F46}
+.tb{background:var(--teal-light);color:var(--teal)}
+.ftime{font-size:9px;color:var(--subtle);font-family:'DM Mono',monospace}
+.tabbar{background:#fff;border-top:1px solid var(--border);padding:6px 0 3px;display:flex;justify-content:space-around}
+.tbi{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tbi-icon{font-size:17px;color:var(--subtle)}
+.tbi-icon.on{color:var(--teal)}
+.tbi-label{font-size:8px;color:var(--subtle);font-weight:500}
+.tbi-label.on{color:var(--teal);font-weight:700}
+
+/* Countries */
+.ch{padding:10px 14px 8px;background:#fff;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.ch h3{font-size:11px;font-weight:600;color:var(--text)}
+.addbtn{padding:4px 10px;background:var(--teal);color:#fff;border:none;border-radius:16px;font-size:10px;font-weight:600}
+.ccard{margin:8px 12px 0;background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.ctop{padding:10px 12px;display:flex;align-items:center;gap:8px}
+.cflag{font-size:20px}
+.cinfo{flex:1}
+.cname{font-size:12px;font-weight:600;color:var(--text)}
+.cscore{font-size:10px;color:var(--muted);margin-top:1px}
+.sbadge{padding:3px 8px;border-radius:16px;font-size:9px;font-weight:700}
+.ss{background:var(--green-light);color:#065F46}
+.sw{background:var(--gold-light);color:#92400E}
+.sd{background:var(--red-light);color:var(--red)}
+.cbar{height:3px;background:var(--border);margin:0 12px 10px}
+.cfill{height:100%;border-radius:2px}
+.cacts{display:flex;border-top:1px solid var(--border)}
+.cact{flex:1;padding:7px;text-align:center;font-size:10px;font-weight:600;color:var(--teal);background:none;border:none}
+.cact+.cact{border-left:1px solid var(--border)}
+
+/* Add Country */
+.swrap{padding:10px 14px;background:#fff;border-bottom:1px solid var(--border)}
+.sbox{display:flex;align-items:center;gap:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px}
+.sbox span{color:var(--subtle);font-size:13px}
+.sbox input{border:none;background:none;flex:1;font-size:11px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
+.rlabel{padding:10px 14px 5px;font-size:9px;font-weight:700;color:var(--subtle);letter-spacing:1px;text-transform:uppercase}
+.crow{display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border-bottom:1px solid var(--border)}
+.crflag{font-size:19px;width:28px;text-align:center}
+.crinfo{flex:1}
+.crname{font-size:12px;font-weight:500;color:var(--text)}
+.crrisk{font-size:10px;color:var(--muted)}
+.cradd{width:22px;height:22px;border-radius:50%;background:var(--teal-light);color:var(--teal);border:none;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* Checklists */
+.dlbanner{margin:10px 12px 6px;background:var(--teal-light);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;border:1px solid rgba(14,116,144,0.18)}
+.dlbt{flex:1}
+.dlbt-title{font-size:11px;font-weight:600;color:var(--teal)}
+.dlbt-sub{font-size:9px;color:var(--muted);margin-top:1px}
+.dlbtn{padding:5px 10px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:600}
+.clgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 12px}
+.clcard{background:#fff;border-radius:10px;border:1px solid var(--border);padding:11px;position:relative}
+.clicon{font-size:18px;margin-bottom:6px}
+.cltitle{font-size:11px;font-weight:600;color:var(--text);margin-bottom:1px}
+.clcount{font-size:9px;color:var(--muted)}
+.cldl{position:absolute;top:8px;right:8px;width:20px;height:20px;background:var(--teal-light);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--teal)}
+
+/* Safe Route */
+.rform{padding:12px 14px;background:#fff;border-bottom:1px solid var(--border)}
+.rfield{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;margin-bottom:7px}
+.rdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.rdot.s{background:var(--green)}
+.rdot.e{background:var(--red)}
+.rfield input{border:none;background:none;flex:1;font-size:11px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
+.rbtn{width:100%;padding:9px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600}
+.mapbox{height:180px;background:linear-gradient(135deg,#E8F4F8,#C8E8F2);position:relative;display:flex;align-items:center;justify-content:center}
+.mroute{position:absolute;left:48px;top:40px;right:48px;bottom:40px;border:2px dashed var(--teal);border-radius:32px;opacity:0.45}
+.mpin-s{position:absolute;left:42px;top:34px;font-size:16px}
+.mpin-e{position:absolute;right:38px;bottom:30px;font-size:16px}
+.msafe{position:absolute;top:10px;right:10px;background:var(--green);color:#fff;padding:3px 8px;border-radius:14px;font-size:9px;font-weight:700}
+.rstats{display:flex;padding:10px 12px;gap:7px;background:#fff;border-bottom:1px solid var(--border)}
+.rstat{flex:1;background:var(--bg);border-radius:7px;padding:8px;text-align:center}
+.rstatv{font-size:13px;font-weight:700;color:var(--text)}
+.rstatl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:1px}
+.rinfo{padding:8px 12px}
+.rrow{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text)}
+.rrow:last-child{border:none}
+.rrowicon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+
+/* Account */
+.ahero{background:linear-gradient(135deg,var(--teal),#0A5F75);padding:16px 16px 14px;color:#fff}
+.aname{font-size:16px;font-weight:700;margin-bottom:1px}
+.asub{font-size:10px;opacity:0.75}
+.atbar{margin-top:12px;background:rgba(255,255,255,0.15);border-radius:7px;padding:9px 11px}
+.atlabel{display:flex;justify-content:space-between;font-size:10px;margin-bottom:5px}
+.atbarinner{height:5px;background:rgba(255,255,255,0.2);border-radius:3px}
+.atfill{height:100%;background:var(--gold);border-radius:3px;width:70%}
+.asections{padding:10px 12px}
+.upcard{background:linear-gradient(135deg,var(--teal),#0A5F75);border-radius:12px;padding:12px;color:#fff;margin-bottom:9px}
+.uptitle{font-size:13px;font-weight:700;margin-bottom:3px}
+.upsub{font-size:10px;opacity:0.8;margin-bottom:10px}
+.upplans{display:flex;gap:7px;margin-bottom:10px}
+.upplan{flex:1;background:rgba(255,255,255,0.12);border-radius:7px;padding:7px;text-align:center;border:1px solid rgba(255,255,255,0.18)}
+.upplan.best{background:rgba(255,255,255,0.2);border-color:var(--gold)}
+.uppname{font-size:8px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;margin-bottom:1px}
+.uppprice{font-size:15px;font-weight:800}
+.upppsub{font-size:8px;opacity:0.7}
+.upcta{width:100%;padding:8px;background:var(--gold);color:#92400E;border:none;border-radius:7px;font-size:11px;font-weight:700}
+.asect{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:8px;overflow:hidden}
+.asecttitle{padding:7px 12px;font-size:9px;font-weight:700;color:var(--subtle);letter-spacing:1px;text-transform:uppercase;background:var(--bg);border-bottom:1px solid var(--border)}
+.arow{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.arow:last-child{border:none}
+.arowicon{width:28px;height:28px;border-radius:8px;background:var(--teal-light);display:flex;align-items:center;justify-content:center;font-size:13px}
+.arowtext{flex:1}
+.arowtitle{font-size:12px;font-weight:500;color:var(--text)}
+.arowsub{font-size:10px;color:var(--muted);margin-top:1px}
+.arowarrow{color:var(--subtle);font-size:13px}
+</style>
+</head>
+<body>
+<h2>Atlas Ally · UI Redesign Screens</h2>
+<div class="grid">
+
+<!-- ── SCREEN 1: LIVE FEED ── -->
+<div class="screen-wrap">
+  <div class="screen-label">01 · Live Feed</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="topbar">
+      <div><div class="topbar-title">Atlas Ally</div><div class="topbar-sub">Global Intelligence</div></div>
+      <div class="topbar-icon">🔔</div>
+    </div>
+    <div class="feed-tabs">
+      <div class="ftab on">📰 News</div>
+      <div class="ftab">⚠️ Incidents</div>
+      <div class="ftab">🔴 Crime</div>
+    </div>
+    <div class="feed-meta" style="background:var(--bg)">
+      <span class="fmeta"><span class="ldot"></span>LIVE · 8s ago</span>
+      <span class="fmeta">🌍 Global</span>
+    </div>
+    <div class="fitem"><div class="ficon fi-red">🔴</div><div class="fbody"><div class="fhead">Air sirens in northern Israel — shelter advised</div><div class="fsub"><span class="ftag tr">Urgent</span><span class="ftime">2m ago</span></div></div></div>
+    <div class="fitem"><div class="ficon fi-amber">📰</div><div class="fbody"><div class="fhead">Jordan tightens border controls amid tensions</div><div class="fsub"><span class="ftag ta">Advisory</span><span class="ftime">11m ago</span></div></div></div>
+    <div class="fitem"><div class="ficon fi-green">✅</div><div class="fbody"><div class="fhead">Thailand lifts flood emergency in Chiang Mai</div><div class="fsub"><span class="ftag tg">All Clear</span><span class="ftime">34m ago</span></div></div></div>
+    <div class="fitem"><div class="ficon fi-blue">📡</div><div class="fbody"><div class="fhead">US State Dept Level 2 advisory for Ecuador</div><div class="fsub"><span class="ftag tb">Advisory</span><span class="ftime">1h ago</span></div></div></div>
+    <div class="fitem"><div class="ficon fi-amber">⛈️</div><div class="fbody"><div class="fhead">Severe weather system tracking toward Philippines</div><div class="fsub"><span class="ftag ta">Weather</span><span class="ftime">2h ago</span></div></div></div>
+    <div class="tabbar">
+      <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+      <div class="tbi"><div class="tbi-icon on">📡</div><div class="tbi-label on">Feed</div></div>
+      <div class="tbi"><div class="tbi-icon">🎒</div><div class="tbi-label">Packing</div></div>
+      <div class="tbi"><div class="tbi-icon">🌍</div><div class="tbi-label">Countries</div></div>
+      <div class="tbi"><div class="tbi-icon">👤</div><div class="tbi-label">Account</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 2: MY COUNTRIES ── -->
+<div class="screen-wrap">
+  <div class="screen-label">02 · My Countries</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="topbar">
+      <div><div class="topbar-title">My Countries</div><div class="topbar-sub">3 Monitored</div></div>
+      <div class="topbar-icon">➕</div>
+    </div>
+    <div style="background:var(--bg);padding-bottom:12px">
+      <div class="ccard">
+        <div class="ctop"><div class="cflag">🇯🇴</div><div class="cinfo"><div class="cname">Jordan</div><div class="cscore">Score 78 · Low risk</div></div><div class="sbadge ss">SAFE</div></div>
+        <div class="cbar"><div class="cfill" style="background:var(--green);width:78%"></div></div>
+        <div class="cacts"><button class="cact">📡 Feed</button><button class="cact">📋 Brief</button><button class="cact">🗺️ Map</button></div>
+      </div>
+      <div class="ccard" style="margin-top:8px">
+        <div class="ctop"><div class="cflag">🇲🇽</div><div class="cinfo"><div class="cname">Mexico</div><div class="cscore">Score 52 · Moderate risk</div></div><div class="sbadge sw">CAUTION</div></div>
+        <div class="cbar"><div class="cfill" style="background:var(--gold);width:52%"></div></div>
+        <div class="cacts"><button class="cact">📡 Feed</button><button class="cact">📋 Brief</button><button class="cact">🗺️ Map</button></div>
+      </div>
+      <div class="ccard" style="margin-top:8px">
+        <div class="ctop"><div class="cflag">🇾🇪</div><div class="cinfo"><div class="cname">Yemen</div><div class="cscore">Score 14 · High risk</div></div><div class="sbadge sd">DANGER</div></div>
+        <div class="cbar"><div class="cfill" style="background:var(--red);width:28%"></div></div>
+        <div class="cacts"><button class="cact">📡 Feed</button><button class="cact">📋 Brief</button><button class="cact">🗺️ Map</button></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+      <div class="tbi"><div class="tbi-icon">📡</div><div class="tbi-label">Feed</div></div>
+      <div class="tbi"><div class="tbi-icon">🎒</div><div class="tbi-label">Packing</div></div>
+      <div class="tbi"><div class="tbi-icon on">🌍</div><div class="tbi-label on">Countries</div></div>
+      <div class="tbi"><div class="tbi-icon">👤</div><div class="tbi-label">Account</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 3: ADD COUNTRY ── -->
+<div class="screen-wrap">
+  <div class="screen-label">03 · Add Country</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="topbar">
+      <div><div class="topbar-title">Add Country</div><div class="topbar-sub">Monitor a Region</div></div>
+      <div class="topbar-icon">✕</div>
+    </div>
+    <div class="swrap"><div class="sbox"><span>🔍</span><input type="text" placeholder="Search country or region…"></div></div>
+    <div style="background:var(--bg)">
+      <div class="rlabel">Middle East</div>
+      <div class="crow"><div class="crflag">🇸🇦</div><div class="crinfo"><div class="crname">Saudi Arabia</div><div class="crrisk">🟡 Moderate risk</div></div><div class="cradd">+</div></div>
+      <div class="crow"><div class="crflag">🇦🇪</div><div class="crinfo"><div class="crname">UAE</div><div class="crrisk">🟢 Low risk</div></div><div class="cradd">+</div></div>
+      <div class="crow"><div class="crflag">🇮🇶</div><div class="crinfo"><div class="crname">Iraq</div><div class="crrisk">🔴 High risk</div></div><div class="cradd">+</div></div>
+      <div class="rlabel">Europe</div>
+      <div class="crow"><div class="crflag">🇫🇷</div><div class="crinfo"><div class="crname">France</div><div class="crrisk">🟢 Low risk</div></div><div class="cradd">+</div></div>
+      <div class="crow"><div class="crflag">🇩🇪</div><div class="crinfo"><div class="crname">Germany</div><div class="crrisk">🟢 Low risk</div></div><div class="cradd">+</div></div>
+      <div class="crow"><div class="crflag">🇺🇦</div><div class="crinfo"><div class="crname">Ukraine</div><div class="crrisk">🔴 High risk</div></div><div class="cradd">+</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 4: CHECKLISTS ── -->
+<div class="screen-wrap">
+  <div class="screen-label">04 · Travel Checklists</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="topbar">
+      <div><div class="topbar-title">Checklists</div><div class="topbar-sub">6 Templates</div></div>
+      <div class="topbar-icon">📥</div>
+    </div>
+    <div style="background:var(--bg);padding-top:10px">
+      <div class="dlbanner">
+        <span style="font-size:18px">📥</span>
+        <div class="dlbt"><div class="dlbt-title">Save for offline use</div><div class="dlbt-sub">Access without internet while traveling</div></div>
+        <button class="dlbtn">Save All</button>
+      </div>
+      <div class="clgrid">
+        <div class="clcard"><div class="clicon">✈️</div><div class="cltitle">Pre-departure</div><div class="clcount">18 items</div><div class="cldl">↓</div></div>
+        <div class="clcard"><div class="clicon">🎒</div><div class="cltitle">Go-bag</div><div class="clcount">24 items</div><div class="cldl">↓</div></div>
+        <div class="clcard"><div class="clicon">👨‍👩‍👧</div><div class="cltitle">Family travel</div><div class="clcount">31 items</div><div class="cldl">↓</div></div>
+        <div class="clcard"><div class="clicon">💼</div><div class="cltitle">Business trip</div><div class="clcount">15 items</div><div class="cldl">↓</div></div>
+        <div class="clcard"><div class="clicon">🏕️</div><div class="cltitle">Adventure</div><div class="clcount">22 items</div><div class="cldl">↓</div></div>
+        <div class="clcard"><div class="clicon">🚨</div><div class="cltitle">Emergency</div><div class="clcount">12 items</div><div class="cldl">↓</div></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+      <div class="tbi"><div class="tbi-icon">📡</div><div class="tbi-label">Feed</div></div>
+      <div class="tbi"><div class="tbi-icon on">🎒</div><div class="tbi-label on">Packing</div></div>
+      <div class="tbi"><div class="tbi-icon">🌍</div><div class="tbi-label">Countries</div></div>
+      <div class="tbi"><div class="tbi-icon">👤</div><div class="tbi-label">Account</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 5: SAFE ROUTE ── -->
+<div class="screen-wrap">
+  <div class="screen-label">05 · Safe Route Planner</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="topbar">
+      <div><div class="topbar-title">Safe Route</div><div class="topbar-sub">Risk-Avoiding Navigation</div></div>
+      <div class="topbar-icon">🛡️</div>
+    </div>
+    <div class="rform">
+      <div class="rfield"><div class="rdot s"></div><input type="text" value="Amman, Jordan"></div>
+      <div class="rfield"><div class="rdot e"></div><input type="text" value="Aqaba, Jordan"></div>
+      <button class="rbtn">🛡️ Find Safest Route</button>
+    </div>
+    <div class="mapbox">
+      <div class="mroute"></div>
+      <div class="mpin-s">🟢</div>
+      <div class="mpin-e">📍</div>
+      <div class="msafe">✅ SAFEST ROUTE</div>
+      <span style="color:var(--muted);font-size:11px;font-weight:500">In-app map</span>
+    </div>
+    <div class="rstats">
+      <div class="rstat"><div class="rstatv">3.2h</div><div class="rstatl">Duration</div></div>
+      <div class="rstat"><div class="rstatv">318km</div><div class="rstatl">Distance</div></div>
+      <div class="rstat" style="background:var(--green-light)"><div class="rstatv" style="color:var(--green)">Low</div><div class="rstatl">Risk</div></div>
+      <div class="rstat"><div class="rstatv">2</div><div class="rstatl">Checkpoints</div></div>
+    </div>
+    <div class="rinfo">
+      <div class="rrow"><div class="rrowicon" style="background:var(--green-light)">🛡️</div>Avoids 3 flagged risk zones</div>
+      <div class="rrow"><div class="rrowicon" style="background:var(--gold-light)">⚠️</div>Checkpoint near Quweira — 20 min</div>
+      <div class="rrow"><div class="rrowicon" style="background:var(--teal-light)">📶</div>Offline map ready for this route</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCREEN 6: MY ACCOUNT ── -->
+<div class="screen-wrap">
+  <div class="screen-label">06 · My Account</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>⚡ 94%</span></div>
+    <div class="ahero">
+      <div class="aname">Adrian</div>
+      <div class="asub">+1 682 561 7016 · Admin</div>
+      <div class="atbar">
+        <div class="atlabel"><span>Free trial</span><span style="font-weight:700">5 days left</span></div>
+        <div class="atbarinner"><div class="atfill"></div></div>
+      </div>
+    </div>
+    <div class="asections">
+      <div class="upcard">
+        <div class="uptitle">⭐ Upgrade to Premium</div>
+        <div class="upsub">Unlimited countries, family plan & offline briefs</div>
+        <div class="upplans">
+          <div class="upplan"><div class="uppname">Traveler</div><div class="uppprice">$3</div><div class="upppsub">/month</div></div>
+          <div class="upplan best"><div class="uppname">Family ⭐</div><div class="uppprice">$8</div><div class="upppsub">/month</div></div>
+        </div>
+        <button class="upcta">Choose Plan →</button>
+      </div>
+      <div class="asect">
+        <div class="asecttitle">Subscription</div>
+        <div class="arow"><div class="arowicon">🌍</div><div class="arowtext"><div class="arowtitle">Countries monitored</div><div class="arowsub">3 of 3 · +$1/mo per extra</div></div><div class="arowarrow">›</div></div>
+        <div class="arow"><div class="arowicon">💳</div><div class="arowtext"><div class="arowtitle">Billing</div><div class="arowsub">Manage payment method</div></div><div class="arowarrow">›</div></div>
+      </div>
+      <div class="asect">
+        <div class="asecttitle">Alerts</div>
+        <div class="arow"><div class="arowicon">📲</div><div class="arowtext"><div class="arowtitle">WhatsApp alerts</div><div class="arowsub">Active · +1 682 561 7016</div></div><div class="arowarrow">›</div></div>
+        <div class="arow"><div class="arowicon">👥</div><div class="arowtext"><div class="arowtitle">Emergency contacts</div><div class="arowsub">2 contacts added</div></div><div class="arowarrow">›</div></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+      <div class="tbi"><div class="tbi-icon">📡</div><div class="tbi-label">Feed</div></div>
+      <div class="tbi"><div class="tbi-icon">🎒</div><div class="tbi-label">Packing</div></div>
+      <div class="tbi"><div class="tbi-icon">🌍</div><div class="tbi-label">Countries</div></div>
+      <div class="tbi"><div class="tbi-icon on">👤</div><div class="tbi-label on">Account</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
