@@ -29,7 +29,19 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Login required' });
   const payload = verifyToken(token);
   if (!payload) return res.status(401).json({ error: 'Session expired' });
-  req.user = payload;
+
+  // Re-validate against DB on every authenticated request:
+  //   - active=1: deactivated users (admin action OR /unsubscribe?wa=) lose
+  //     access immediately instead of keeping it for up to 30d via JWT.
+  //   - role: refreshed from DB so a demoted admin loses elevated privileges
+  //     immediately. Plan/whatsapp/id stay from the JWT payload.
+  // (PR #38, closes N19)
+  const dbUser = db.getUserById(payload.id);
+  if (!dbUser || dbUser.active !== 1) {
+    return res.status(401).json({ error: 'Session expired' });
+  }
+
+  req.user = { ...payload, role: dbUser.role };
   next();
 }
 
