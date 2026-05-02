@@ -1405,7 +1405,7 @@
       '<div id="aa-pack-loading-msg" style="font-size:14px;color:'+T.text+';font-weight:600;'+
         'margin-bottom:8px;min-height:20px;">Thinking about your destination…</div>'+
       '<div style="font-size:11px;color:'+T.subtle+';font-family:'+T.mono+';">'+
-        'Usually takes 3–6 seconds</div>'+
+        'Sit back — building your custom plan</div>'+
       '<style>@keyframes aa-pack-spin{to{transform:rotate(360deg);}}</style>'+
     '</div>';
   }
