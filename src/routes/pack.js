@@ -333,7 +333,7 @@ router.post('/pack/generate', async (req, res) => {
         tool_choice: { type: 'tool', name: 'submit_pack_list' },
         messages:    [{ role: 'user', content: userMessage }],
       }),
-    });
+    }, 90000); // 90s - Anthropic tool-use call with large prompt commonly takes 30-60s; closes N10/N11
 
     if (!r.ok) {
       const err = await r.text();
