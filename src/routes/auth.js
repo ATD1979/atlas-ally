@@ -138,6 +138,16 @@ router.post('/signup', (req, res) => {
 
   const existing = db.getUser(clean);
   if (existing) {
+    // Block overwriting privileged accounts. Without this, anyone who obtains
+    // a signup-purpose OTP for an admin/distributor's WhatsApp could rewrite
+    // their identifying fields (name/email/dob). Privileged users are seeded
+    // and reach a token via /verify-otp directly — they never legitimately
+    // hit /signup. (PR #38, closes N19 partial)
+    if (existing.role === 'admin' || existing.role === 'distributor') {
+      return res.status(403).json({
+        error: 'This number is registered for staff use. Please use the admin login.',
+      });
+    }
     db.db.prepare(`
       UPDATE users SET
         name           = COALESCE(NULLIF(@name,''), name),
