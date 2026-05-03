@@ -1,4 +1,4 @@
-// Atlas Ally — Unified country metadata
+﻿// Atlas Ally â€” Unified country metadata
 // Single source of truth for country name, aliases (for news relevance filtering),
 // region-specific drug keywords (for crime classification), and UCDP conflict-data
 // country codes. Replaces four separate tables that used to live in news.js and data.js.
@@ -11,7 +11,7 @@
 //   strong = country-specific terms with no significant English-language collision
 //   weak   = polysemous tokens (names, common words) requiring further context
 //
-// Cache-write pipeline (in news.js): strong→keep, none→drop, weak→LLM disambiguate.
+// Cache-write pipeline (in news.js): strongâ†’keep, noneâ†’drop, weakâ†’LLM disambiguate.
 // Serve-time check (in routes/news.js): boolean isRelevantToCountry, trusts cache-write
 // decisions and uses cheap word-boundary regex.
 
@@ -28,7 +28,7 @@ const META = {
   AR: { name: 'Argentina',      strong: ['argentina','argentine','buenos aires'] },
   AU: { name: 'Australia',      strong: ['australia','australian','sydney','melbourne','canberra'] },
   BD: { name: 'Bangladesh',     strong: ['bangladesh','bangladeshi','dhaka'] },
-  BR: { name: 'Brazil',         strong: ['brazil','brazilian','brasilia','rio','sao paulo','são paulo'],              drug: ['cocaine','drug','favela','gang','trafficking'],                      ucdp: 140 },
+  BR: { name: 'Brazil',         strong: ['brazil','brazilian','brasilia','rio','sao paulo','sÃ£o paulo'],              drug: ['cocaine','drug','favela','gang','trafficking'],                      ucdp: 140 },
   CA: { name: 'Canada',         strong: ['canada','canadian','ottawa','toronto','montreal'] },
   CD: { name: 'DR Congo',       strong: ['congo','congolese','kinshasa','dr congo'] },
   CN: { name: 'China',          strong: ['china','chinese','beijing','shanghai'] },
@@ -50,7 +50,7 @@ const META = {
   IR: { name: 'Iran',           strong: ['iran','iranian','tehran','isfahan','khamenei'] },
   IT: { name: 'Italy',          strong: ['italy','italian','rome','milan'] },
 
-  // N20: 'jordan' and 'petra' moved to weak tier — both collide with English-language
+  // N20: 'jordan' and 'petra' moved to weak tier â€” both collide with English-language
   // names (Michael Jordan, Jordan Peterson, Petra Kvitova, etc.). LLM disambiguates.
   JO: { name: 'Jordan',         strong: ['jordanian','amman','zarqa','aqaba','irbid','wadi rum','hashemite','king abdullah'],
                                 weak:   ['jordan','petra'],
@@ -77,7 +77,7 @@ const META = {
   SY: { name: 'Syria',          strong: ['syria','syrian','damascus','aleppo','homs','idlib'],                        drug: ['captagon','hashish','syria drug'],                                   ucdp: 652 },
   TH: { name: 'Thailand',       strong: ['thailand','thai','bangkok'],                                                drug: ['methamphetamine','ya ba','thailand drug','golden triangle'] },
   TN: { name: 'Tunisia',        strong: ['tunisia','tunisian','tunis'] },
-  TR: { name: 'Turkey',         strong: ['turkey','turkish','türkiye','ankara','istanbul'],                                                                                                      ucdp: 640 },
+  TR: { name: 'Turkey',         strong: ['turkey','turkish','tÃ¼rkiye','ankara','istanbul'],                                                                                                      ucdp: 640 },
   TZ: { name: 'Tanzania',       strong: ['tanzania','tanzanian','dodoma','dar es salaam'] },
   UA: { name: 'Ukraine',        strong: ['ukraine','ukrainian','kyiv','kiev','kharkiv','odessa','zelensky'],                                                                                     ucdp: 369 },
   US: { name: 'United States',  strong: ['united states','american','washington','new york','usa'] },
@@ -86,7 +86,7 @@ const META = {
   ZA: { name: 'South Africa',   strong: ['south africa','south african','johannesburg','cape town'] },
 };
 
-// ── Accessors ────────────────────────────────────────────────────────────────
+// â”€â”€ Accessors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getCountryMeta(code)   { return META[String(code || '').toUpperCase()] || null; }
 function getCountryName(code)   { return (getCountryMeta(code) || {}).name || code; }
@@ -104,11 +104,11 @@ function getAliases(code) {
 function getDrugKeywords(code)  { return (getCountryMeta(code) || {}).drug || []; }
 function getUcdpCode(code)      { return (getCountryMeta(code) || {}).ucdp || null; }
 
-// ── Relevance matching ───────────────────────────────────────────────────────
+// â”€â”€ Relevance matching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Build a word-boundary regex for an alias. Handles multi-word aliases ('wadi rum',
-// 'sao paulo'), hyphenated aliases ('port-au-prince'), and non-ASCII chars ('türkiye',
-// 'são paulo') — \b only fires on the ASCII-side word boundaries, which is sufficient
+// 'sao paulo'), hyphenated aliases ('port-au-prince'), and non-ASCII chars ('tÃ¼rkiye',
+// 'sÃ£o paulo') â€” \b only fires on the ASCII-side word boundaries, which is sufficient
 // for the cases we have.
 function aliasRegex(alias) {
   const escaped = String(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -136,11 +136,11 @@ function isRelevantToCountry(text, code) {
   return classifyRelevance(text, code) !== 'none';
 }
 
-// ── LLM disambiguation for weak matches ──────────────────────────────────────
+// â”€â”€ LLM disambiguation for weak matches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // In-memory LRU cache for LLM verdicts. Keyed by `${code}|${url}` (URL is the most
 // stable per-article identifier and Google News results are URL-stable across
-// refreshes). 10K entries ≈ a few MB max. Wipes on process restart.
+// refreshes). 10K entries â‰ˆ a few MB max. Wipes on process restart.
 const _LLM_CACHE_MAX = 10000;
 const _llmCache = new Map();
 
@@ -174,7 +174,7 @@ async function llmIsRelevantToCountry(text, code, url = null) {
   if (cached !== undefined) return cached;
 
   if (!ANTHROPIC_API_KEY) {
-    console.error(`[news/relevance] ANTHROPIC_API_KEY not configured — skipping LLM check for ${code}`);
+    console.error(`[news/relevance] ANTHROPIC_API_KEY not configured â€” skipping LLM check for ${code}`);
     return false;
   }
 
@@ -191,8 +191,15 @@ async function llmIsRelevantToCountry(text, code, url = null) {
         max_tokens: 8,
         system:
           'Classify whether a news headline is genuinely about a specific country, ' +
-          'as opposed to a person, place, or product that shares a name with the country. ' +
-          'Respond with exactly one word: "yes" or "no".',
+          'as opposed to a person, place, or product that shares a name with the country.\n\n' +
+          'Read the entire headline carefully and use grammatical structure as your primary signal:\n' +
+          '- Possessive form (e.g., "Jordan\'s coach", "Jordan\'s wife") signals a person, not the country.\n' +
+          '- Appositive form with role descriptors (e.g., "Jordan, Musician and Scientist", "Jordan, the sportscaster") identifies a person.\n' +
+          '- Compound name patterns (e.g., "Benn Jordan", "Jordan Reed", "Michael B. Jordan", first or last name combined with the country word) signal a person.\n' +
+          '- Sports, entertainment, basketball, or NBA context (e.g., "Game 7", "ex-trainer", "Achilles warning", "playoff") strongly suggests a person, not the country.\n\n' +
+          'The country is the subject when it acts (e.g., "Jordan signs trade deal"), appears alongside other countries (e.g., "Iraq-Jordan oil talks"), or shows up in diplomatic, economic, military, cultural, or tourism reporting about the place itself.\n\n' +
+          'When in doubt, ask: would a reader expect this article to inform them about events in the country? If yes, answer yes. If the article is about a person who happens to share a name with the country, answer no.\n\n' +
+          'Respond with exactly one word: "yes" if genuinely about the country, "no" otherwise.',
         messages: [{
           role: 'user',
           content: `Country: ${meta.name}\nText: ${String(text || '').slice(0, 400)}\n\nIs this article about ${meta.name} the country?`,
@@ -218,13 +225,13 @@ async function llmIsRelevantToCountry(text, code, url = null) {
   }
 }
 
-// ── Noise filter ─────────────────────────────────────────────────────────────
+// â”€â”€ Noise filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Country-specific noise pre-filter for news/events titles. Free, runs before LLM,
 // catches obvious collisions without spending tokens. JO-only today; other countries
 // return true unconditionally.
 //
-// N20 cleanup: removed `\bgame\b` and `\bcourt\b` (false positives — Jordanian
+// N20 cleanup: removed `\bgame\b` and `\bcourt\b` (false positives â€” Jordanian
 // constitutional court coverage was being filtered out). Added missing names that
 // surfaced in v6.26 audit (jordan love, jordan mailata, jordan belfort,
 // jordan burroughs).
@@ -234,7 +241,7 @@ async function llmIsRelevantToCountry(text, code, url = null) {
 function passesNoiseFilter(title, code) {
   if (code !== 'JO') return true;
   const t = String(title || '').toLowerCase();
-  // Generic sports / product / motorsport terms (no game/court — too aggressive)
+  // Generic sports / product / motorsport terms (no game/court â€” too aggressive)
   if (/\b(basketball|nba|wnba|sneaker|sports|athlete|premier league|champions league|nascar|racing)\b/.test(t)) {
     return false;
   }
