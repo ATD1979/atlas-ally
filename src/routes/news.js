@@ -1,4 +1,4 @@
-// Atlas Ally — News routes
+﻿// Atlas Ally — News routes
 // Endpoint: GET /api/news
 //
 // Serves cached news_cache rows, filtered by country relevance (alias test) and
@@ -7,7 +7,11 @@
 
 const router = require('express').Router();
 const db = require('../db');
-const { getCountryName, isRelevantToCountry } = require('../lib/countries-meta');
+const {
+  getCountryName,
+  isRelevantToCountry,
+  passesNoiseFilter,
+} = require('../lib/countries-meta');
 const { refreshNewsForCountry } = require('../news');
 
 const RADIUS_KM = 300; // hard filter when user has GPS
@@ -29,8 +33,16 @@ router.get('/news', (req, res) => {
     items = [];
   }
 
-  // Serve-time relevance filter — kick out cached articles that slipped through
-  items = items.filter(a => isRelevantToCountry(a.title, code));
+  // Serve-time relevance + noise filter. Two reasons to run noise filter here in
+  // addition to cache-write time:
+  //   (1) Stale cache rows inserted before passesNoiseFilter rules existed get
+  //       filtered at query time without requiring a cache flush.
+  //   (2) Defense-in-depth — alias/noise list updates take effect immediately for
+  //       the user-facing feed instead of waiting on the next refresh tick.
+  items = items.filter(a =>
+    isRelevantToCountry(a.title, code) &&
+    passesNoiseFilter(a.title, code)
+  );
 
   // Fire-and-forget refresh if cache is thin
   if (items.length < 5) {
