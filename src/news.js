@@ -7,7 +7,21 @@
 
 const db = require('./db');
 const { fetchRSS } = require('./lib/rss');
-const { getCountryName, isRelevantToCountry, passesNoiseFilter, META } = require('./lib/countries-meta');
+const {
+  getCountryName,
+  classifyRelevance,
+  isRelevantToCountry,
+  llmIsRelevantToCountry,
+  passesNoiseFilter,
+  META,
+} = require('./lib/countries-meta');
+
+// N20: feature flag for the LLM disambiguation step on weak-tier alias matches.
+// When false, weak matches are accepted with only passesNoiseFilter as a guard
+// (≈ pre-fix behavior, but with new word-boundary regex tightening leakage).
+// When true, weak matches go through Claude Haiku 4.5 for final classification.
+// Set NEWS_LLM_DISAMBIGUATION_ENABLED=true in Railway to enable.
+const LLM_DISAMBIGUATION = process.env.NEWS_LLM_DISAMBIGUATION_ENABLED === 'true';
 
 // Strip the trailing " - Source Name" that Google News appends to every title.
 function cleanTitle(raw) {
@@ -52,9 +66,23 @@ async function fetchCountryNews(code, lang = 'en') {
     seen.add(key);
     if (url) seen.add(url);
 
-    // Relevance filter — title must mention the country
-    if (!isRelevantToCountry(title + ' ' + item.description, code)) continue;
-    if (!passesNoiseFilter(title, code)) continue;
+    // ── N20: tier-based relevance filtering ──────────────────────────────────
+    // Strong alias hit → keep without LLM call.
+    // No alias hit at all → drop, no LLM call.
+    // Weak alias only → noise filter, then LLM disambiguation (when flag on).
+    const fullText = title + ' ' + (item.description || '');
+    const tier = classifyRelevance(fullText, code);
+    if (tier === 'none') continue;
+    if (!passesNoiseFilter(title, code)) continue; // free pre-LLM gate
+
+    if (tier === 'weak') {
+      if (LLM_DISAMBIGUATION) {
+        const verdict = await llmIsRelevantToCountry(fullText, code, url);
+        if (!verdict) continue;
+      }
+      // Flag off: accept the weak match. Schema deployed but LLM gate inactive.
+    }
+    // tier === 'strong' falls through to insertion below.
 
     let published = new Date().toISOString();
     try {
