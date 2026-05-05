@@ -245,6 +245,24 @@ function buildCountryContext(code) {
                          emergency.fire && `fire ${emergency.fire}`]
     .filter(Boolean).join(', ') || 'check local sources';
 
+  // Plug type — only present for enriched countries (Tier 1 set as of 2026-05:
+  // JO, JP, BR, FR, EG). Renders an inline line if present, contributes nothing
+  // otherwise so prompts for the 16+ unenriched countries stay byte-identical
+  // to pre-enrichment behavior.
+  const plugLine = c.plugType ? `\n- Plug type: ${c.plugType}` : '';
+
+  // Climate block — same enrichment scope. When present, renders as its own
+  // section between destination context and risk context. Absent = no section.
+  const climateBlock = c.climate
+    ? `
+
+# Climate
+
+- Type: ${c.climate.type}
+- Summer: ${c.climate.summer}
+- Winter: ${c.climate.winter}`
+    : '';
+
   return {
     country_name: c.name,
     context_text: `# Destination context
@@ -253,8 +271,8 @@ function buildCountryContext(code) {
 - Capital: ${c.capital || 'unknown'}
 - Language: ${c.language || 'see country metadata'}
 - Currency: ${c.currency || 'see country metadata'}
-- Timezone: ${c.timezone || 'unknown'}
-- Emergency numbers: ${emergencyLine}
+- Timezone: ${c.timezone || 'unknown'}${plugLine}
+- Emergency numbers: ${emergencyLine}${climateBlock}
 
 # Current risk context
 
@@ -271,6 +289,8 @@ ${healthLines}`,
       advisory_label: advisoryCfg.label || null,
       active_events: events.length,
       has_health_notices: !!(c.healthNotices && c.healthNotices.length),
+      has_plug_type: !!c.plugType,
+      has_climate: !!c.climate,
     },
   };
 }
