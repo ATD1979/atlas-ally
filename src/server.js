@@ -31,6 +31,7 @@ const routePlanningRoutes = require('./routes/route-planning');
 const adminRoutes    = require('./routes/admin');
 const paymentRoutes  = require('./routes/payments');
 const packRoutes     = require('./routes/pack');
+const incidentsRoutes = require('./routes/incidents');
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 ensureRuntimeTables();
@@ -103,6 +104,12 @@ app.use('/api/user', requireAuth, userRoutes);
 // prevent arbitrary impersonation of any user's emergency contacts).
 app.post('/api/checkin',    requireAuth, require('./routes/user').handleCheckin);
 app.post('/api/zone-alert', requireAuth, require('./routes/user').handleZoneAlert);
+
+// User-submitted incident reports — POST /api/incidents/report. Reports
+// land in the events table with status='pending' and flow through the
+// existing admin moderation queue (admin.js GET /pending, /approve/:id,
+// /reject/:id). requireAuth is enforced inside the route file.
+app.use('/api/incidents', incidentsRoutes);
 
 // Crime stats, route planning, news
 app.use('/api', softAuth, crimeRoutes);
