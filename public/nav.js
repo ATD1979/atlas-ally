@@ -2210,7 +2210,127 @@
 
   // Keep all missing functions that were referenced but not defined
   function showReportModal(lat, lng) {
-    showInfoModal('Report Incident', 'Incident reporting functionality coming soon.\n\nThis will allow you to report safety incidents and contribute to the Atlas Ally intelligence network.');
+    closeModal();
+    var modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);'+
+      'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
+    modal.innerHTML=
+      '<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;'+
+      'padding:24px 24px 40px;box-shadow:0 -8px 40px rgba(0,0,0,0.15);">'+
+        // Header
+        '<div style="width:40px;height:4px;background:'+T.border+';border-radius:2px;margin:0 auto 20px;"></div>'+
+        '<div style="font-size:20px;font-weight:800;color:'+T.text+';margin-bottom:6px;font-family:-apple-system,sans-serif;">🚨 Report Incident</div>'+
+        '<div style="font-size:13px;color:'+T.muted+';margin-bottom:20px;line-height:1.5;">Help fellow travelers by reporting safety incidents you\'ve witnessed.</div>'+
+        // Type dropdown
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Type</div>'+
+          '<select id="aa-rp-type" style="width:100%;padding:10px 12px;border:1.5px solid '+T.border+';border-radius:10px;font-size:14px;background:#fff;color:'+T.text+';font-family:-apple-system,sans-serif;box-sizing:border-box;">'+
+            '<option value="crime">Crime</option>'+
+            '<option value="harassment">Harassment</option>'+
+            '<option value="civil_unrest">Civil unrest</option>'+
+            '<option value="transport">Transport disruption</option>'+
+            '<option value="health">Health concern</option>'+
+            '<option value="natural_hazard">Natural hazard</option>'+
+            '<option value="infrastructure">Infrastructure</option>'+
+            '<option value="other">Other</option>'+
+          '</select>'+
+        '</div>'+
+        // Severity pills (warn = default active)
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Severity</div>'+
+          '<div id="aa-rp-sev" style="display:flex;gap:8px;">'+
+            '<button data-sev="info" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.border+';background:#fff;color:'+T.muted+';font-weight:600;font-size:13px;cursor:pointer;touch-action:manipulation;">ℹ️ Info</button>'+
+            '<button data-sev="warn" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.gold+';background:'+T.goldLight+';color:'+T.gold+';font-weight:700;font-size:13px;cursor:pointer;touch-action:manipulation;">⚠️ Warning</button>'+
+            '<button data-sev="crit" style="flex:1;padding:10px;border-radius:10px;border:2px solid '+T.border+';background:#fff;color:'+T.muted+';font-weight:600;font-size:13px;cursor:pointer;touch-action:manipulation;">🚨 Critical</button>'+
+          '</div>'+
+        '</div>'+
+        // Title (required)
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Title <span style="color:'+T.red+';">*</span></div>'+
+          '<input id="aa-rp-title" type="text" maxlength="200" placeholder="Brief description (e.g., pickpocket near metro)" '+
+            'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;'+
+            'font-size:14px;color:'+T.text+';background:'+T.bg+';outline:none;font-family:-apple-system,sans-serif;box-sizing:border-box;">'+
+        '</div>'+
+        // Description (optional)
+        '<div style="margin-bottom:14px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Description (optional)</div>'+
+          '<textarea id="aa-rp-desc" maxlength="2000" placeholder="Add details to help others understand the situation..." '+
+            'style="width:100%;border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;'+
+            'font-size:13px;color:'+T.text+';background:'+T.bg+';outline:none;resize:none;'+
+            'height:80px;box-sizing:border-box;font-family:-apple-system,sans-serif;"></textarea>'+
+        '</div>'+
+        // Location (display-only)
+        '<div style="margin-bottom:20px;">'+
+          '<div style="font-size:11px;font-weight:700;color:'+T.muted+';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Location</div>'+
+          '<div style="font-size:13px;color:'+T.muted+';background:'+T.bg+';border:1.5px solid '+T.border+';border-radius:10px;padding:10px 12px;">'+
+            (window.activeCountry?'📍 '+(COUNTRY_NAMES[window.activeCountry]||window.activeCountry):'Location not set')+
+          '</div>'+
+        '</div>'+
+        // Buttons
+        '<button id="aa-rp-send" style="width:100%;padding:14px;background:'+T.green+';color:#fff;'+
+          'border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;'+
+          'touch-action:manipulation;font-family:-apple-system,sans-serif;margin-bottom:10px;">'+
+          '✅ Submit Report</button>'+
+        '<button id="aa-rp-cancel" style="width:100%;padding:12px;background:none;color:'+T.muted+';'+
+          'border:none;font-size:14px;cursor:pointer;touch-action:manipulation;font-family:-apple-system,sans-serif;">Cancel</button>'+
+      '</div>';
+    document.body.appendChild(modal);
+
+    // Severity pill toggle (mirrors showCheckin status pill logic)
+    var selSeverity='warn';
+    modal.querySelectorAll('[data-sev]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        selSeverity=btn.dataset.sev;
+        var colors={info:[T.muted,'#f0f0f0'],warn:[T.gold,T.goldLight],crit:[T.red,T.redLight]};
+        modal.querySelectorAll('[data-sev]').forEach(function(b){
+          var on=b.dataset.sev===selSeverity;
+          var c=colors[b.dataset.sev];
+          b.style.borderColor=on?c[0]:T.border;
+          b.style.background =on?c[1]:'#fff';
+          b.style.color      =on?c[0]:T.muted;
+          b.style.fontWeight =on?'700':'600';
+        });
+      });
+    });
+
+    // Submit handler
+    var send=document.getElementById('aa-rp-send');
+    if(send) send.addEventListener('click',function(){
+      var title=(document.getElementById('aa-rp-title').value||'').trim();
+      var type =document.getElementById('aa-rp-type').value;
+      var desc =(document.getElementById('aa-rp-desc').value||'').trim();
+      if(!title){ showToast('Please enter a title','error'); return; }
+      if(!window.activeCountry){ showToast('No country selected','error'); return; }
+      var token=localStorage.getItem('atlas_token');
+      if(!token){ showToast('Please sign in to report incidents','error'); return; }
+      send.disabled=true; send.style.opacity='0.6';
+      fetch('/api/incidents/report',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({country_code:window.activeCountry,type:type,title:title,description:desc,severity:selSeverity})
+      }).then(function(r){
+        if(r.status===429){
+          showToast('Too many reports — try again later','error');
+          send.disabled=false; send.style.opacity='1';
+          return;
+        }
+        return r.json().then(function(data){
+          if(r.ok&&data.ok){
+            showToast('✅ Report submitted for review','ok');
+            closeModal();
+          } else {
+            showToast('Submission failed','error');
+            send.disabled=false; send.style.opacity='1';
+          }
+        });
+      }).catch(function(){
+        showToast('Submission failed','error');
+        send.disabled=false; send.style.opacity='1';
+      });
+    });
+
+    var cancel=document.getElementById('aa-rp-cancel');
+    if(cancel) cancel.addEventListener('click',closeModal);
   }
 
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}
