@@ -190,7 +190,7 @@
       </div>
       <div class="nav-item-arrow">›</div>
     </button>
-    <button class="nav-item" onclick="switchTab('feed');closeNav();if(window.toast)toast('📋 Feed opened','ok');" type="button">
+    <button class="nav-item" onclick="closeNav();openReport();" type="button">
       <div class="nav-item-icon">⚠️</div>
       <div class="nav-item-text">
         <div class="nav-item-title">Report Incident</div>
@@ -228,7 +228,7 @@
       <span class="nav-action-icon">✅</span>
       <div><div class="nav-action-label" style="color:#4ade80;">I'm Safe</div><div class="nav-action-sub" style="color:#4ade80;">Notify emergency contacts</div></div>
     </button>
-    <button class="nav-action-btn nav-action-report" onclick="switchTab('feed');closeNav();">
+    <button class="nav-action-btn nav-action-report" onclick="closeNav();openReport();">
       <span class="nav-action-icon">⚠️</span>
       <div><div class="nav-action-label" style="color:#f87171;">Report Incident</div><div class="nav-action-sub" style="color:#f87171;">Post alert to the network</div></div>
     </button>
