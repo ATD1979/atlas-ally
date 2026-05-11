@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — Atlas Ally</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0f1e;--bg2:#0f1628;--bg3:#161e36;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#e8eaf0;--muted:#7a859e;--accent:#3b82f6;--accent2:#60a5fa;--danger:#ef4444;--danger2:#fca5a5;--safe:#10b981;--mono:'IBM Plex Mono',monospace;--display:'Syne',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;flex-direction:column;gap:16px;}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px;}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo div:first-child{font-size:32px;margin-bottom:8px;}
+.login-logo div:last-child{font-size:18px;font-weight:700;}
+.login-sub{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-bottom:24px;text-transform:uppercase;letter-spacing:0.1em;}
+.field-group{margin-bottom:12px;}
+.field-label{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;}
+.field-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:var(--display);outline:none;transition:border-color 0.15s;}
+.field-input:focus{border-color:var(--accent);}
+.field-input::placeholder{color:var(--muted);}
+.btn-primary{width:100%;background:var(--accent);color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;font-family:var(--display);cursor:pointer;margin-top:4px;}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+.signup-link{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;text-transform:uppercase;letter-spacing:0.1em;max-width:360px;width:100%;}
+.signup-link a{color:var(--accent2);text-decoration:none;}
+.signup-link a:hover{text-decoration:underline;}
+.needs-signup-banner{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:14px;margin-top:16px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--accent2);line-height:1.6;}
+.needs-signup-banner a{color:var(--accent2);font-weight:700;text-decoration:underline;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s ease;z-index:500;}
+.toast.success{background:var(--safe);color:white;}
+.toast.error{background:var(--danger);color:white;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div>🛡️</div>
+      <div>Atlas Ally</div>
+    </div>
+    <div class="login-sub">Sign In</div>
+
+    <!-- Step A: WhatsApp number + send code -->
+    <div id="otp-step-a">
+      <div class="field-group">
+        <div class="field-label">Your WhatsApp Number</div>
+        <input class="field-input" type="tel" id="wa-input" placeholder="+1 XXX XXX XXXX" onkeydown="if(event.key==='Enter')sendOtp()">
+      </div>
+      <button class="btn-primary" onclick="sendOtp()" id="send-otp-btn">Send Code</button>
+    </div>
+
+    <!-- Step B: enter the 6-digit code (hidden until step A succeeds) -->
+    <div id="otp-step-b" style="display:none;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);margin-bottom:12px;text-align:center;">
+        Code sent via WhatsApp to <span id="otp-wa-display"></span>
+      </div>
+      <div class="field-group">
+        <div class="field-label">6-Digit Code</div>
+        <input class="field-input" type="text" inputmode="numeric" maxlength="6" id="code-input" placeholder="123456" onkeydown="if(event.key==='Enter')verifyOtp()" style="text-align:center;letter-spacing:8px;font-size:18px;">
+      </div>
+      <button class="btn-primary" onclick="verifyOtp()" id="verify-otp-btn">Verify &amp; Sign In</button>
+      <button onclick="resetOtpFlow()" style="background:transparent;border:none;color:var(--accent2);font-family:var(--mono);font-size:11px;width:100%;margin-top:10px;cursor:pointer;">← Use a different number</button>
+    </div>
+
+    <div id="login-error" style="color:var(--danger2);font-family:var(--mono);font-size:12px;text-align:center;margin-top:12px;display:none;"></div>
+    <div id="needs-signup" class="needs-signup-banner" style="display:none;">
+      No account found for this number.<br>
+      <a href="#" id="signup-link-dynamic">Create an account →</a>
+    </div>
+  </div>
+  <div class="signup-link">
+    Don't have an account? <a href="/signup.html">Sign up</a>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+// Auto-redirect if already logged in. If the token is stale, the main app's
+// auth wrapper will bounce back to /login.html — accepted brief flicker.
+if (localStorage.getItem('atlas_token')) {
+  window.location.href = '/';
+}
+
+function showToast(msg, type) {
+  type = type || 'success';
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+
+async function sendOtp() {
+  const wa  = document.getElementById('wa-input').value.trim();
+  const btn = document.getElementById('send-otp-btn');
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  document.getElementById('needs-signup').style.display = 'none';
+  if (!wa) { err.textContent = 'Enter your WhatsApp number'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res  = await fetch(API + '/api/auth/send-otp', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ whatsapp: wa, purpose: 'login' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('otp-step-a').style.display = 'none';
+      document.getElementById('otp-step-b').style.display = 'block';
+      document.getElementById('otp-wa-display').textContent = wa;
+      document.getElementById('code-input').focus();
+    } else {
+      err.textContent = data.error || 'Failed to send code';
+      err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Send Code';
+}
+
+async function verifyOtp() {
+  const wa   = document.getElementById('wa-input').value.trim();
+  const code = document.getElementById('code-input').value.trim();
+  const btn  = document.getElementById('verify-otp-btn');
+  const err  = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!code || code.length !== 6) { err.textContent = 'Enter the 6-digit code'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const res  = await fetch(API + '/api/auth/verify-otp', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ whatsapp: wa, code: code, purpose: 'login' })
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      // Successful login — store token, redirect to home.
+      localStorage.setItem('atlas_token', data.token);
+      window.location.href = '/';
+    } else if (data.ok && data.needs_signup) {
+      // No account for this WhatsApp — show signup CTA with pre-filled phone.
+      // We can't reuse the login OTP for signup (different purpose required
+      // server-side), so the signup page re-triggers a 'signup' OTP.
+      const banner = document.getElementById('needs-signup');
+      const link   = document.getElementById('signup-link-dynamic');
+      link.href    = '/signup.html?wa=' + encodeURIComponent(data.whatsapp);
+      banner.style.display = 'block';
+      document.getElementById('otp-step-a').style.display = 'none';
+      document.getElementById('otp-step-b').style.display = 'none';
+    } else {
+      err.textContent = data.error || 'Invalid or expired code';
+      err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = 'Connection error';
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Verify & Sign In';
+}
+
+function resetOtpFlow() {
+  document.getElementById('otp-step-a').style.display = 'block';
+  document.getElementById('otp-step-b').style.display = 'none';
+  document.getElementById('needs-signup').style.display = 'none';
+  document.getElementById('code-input').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+</script>
+</body>
+</html>
