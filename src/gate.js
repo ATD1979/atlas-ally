@@ -8,6 +8,7 @@ const path         = require('path');
 const nodemailer   = require('nodemailer');
 const rateLimit    = require('express-rate-limit');
 const config       = require('./config');
+const { verifyToken } = require('./auth');
 
 const GATE_EMAIL     = 'info@atlas-ally.com';
 const GATE_PASSWORD  = config.GATE_PASSWORD;
@@ -147,6 +148,11 @@ function gateMiddleware(req, res, next) {
   if (isPublic(req)) return next();
   const cookie = req.cookies?.atlas_gate;
   if (cookie && validSessions.has(cookie)) return next();
+  // User auth bypass: once a user has logged in via WhatsApp OTP, the atlas_token
+  // cookie (signed JWT) grants gate access too. Without this, post-login redirect
+  // to '/' bounces straight back to /coming-soon.
+  const userToken = req.cookies?.atlas_token;
+  if (userToken && verifyToken(userToken)) return next();
   const accept = req.headers.accept || '';
   if (accept.includes('text/html')) return res.redirect('/coming-soon');
   return res.status(401).json({ error: 'Preview access required' });

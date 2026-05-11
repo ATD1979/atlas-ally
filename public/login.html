@@ -144,8 +144,11 @@ async function verifyOtp() {
     });
     const data = await res.json();
     if (data.ok && data.token) {
-      // Successful login — store token, redirect to home.
+      // Successful login — store token in localStorage (for fetch Authorization
+      // headers) AND as a cookie (so the pre-launch gate middleware can verify
+      // it server-side on navigation). max-age matches the 30d JWT expiry.
       localStorage.setItem('atlas_token', data.token);
+      document.cookie = 'atlas_token=' + data.token + '; path=/; max-age=2592000; SameSite=Lax; Secure';
       window.location.href = '/';
     } else if (data.ok && data.needs_signup) {
       // No account for this WhatsApp — show signup CTA with pre-filled phone.
