@@ -73,9 +73,9 @@ function seedAdminUsers() {
             trial_end = datetime('now', '+3650 days')
         WHERE whatsapp = @whatsapp
       `).run({ whatsapp: admin.whatsapp, email: admin.email, name: admin.name });
-      console.log(`✅ Admin ready: ${admin.name} (${admin.whatsapp})`);
+      console.log(`✅ Admin ready (***${admin.whatsapp.slice(-4)})`);
     } catch (e) {
-      console.warn(`Admin seed warning for ${admin.name}:`, e.message);
+      console.warn(`Admin seed warning (***${admin.whatsapp.slice(-4)}):`, e.message);
     }
   });
 }
