@@ -2103,6 +2103,31 @@
   }
 
   function init() {
+    // Hydrate auth state from atlas_token (JWT in localStorage)
+    window.authState = (function(){
+      var t = localStorage.getItem('atlas_token');
+      var c = null;
+      if (t) {
+        try {
+          var parts = t.split('.');
+          if (parts.length === 3) {
+            var p = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+            while (p.length % 4) p += '=';
+            c = JSON.parse(atob(p));
+          }
+        } catch(e) {}
+      }
+      return {
+        authenticated: !!(c && c.exp && c.exp * 1000 > Date.now()),
+        token: t || null,
+        id: c ? c.id : null,
+        whatsapp: c ? c.whatsapp : null,
+        role: c ? c.role : null,
+        plan: c ? c.plan : null,
+        expires_at: c && c.exp ? c.exp * 1000 : null
+      };
+    })();
+
     if(!document.getElementById('aa-nav-styles')){
       var st=document.createElement('style');
       st.id='aa-nav-styles';
