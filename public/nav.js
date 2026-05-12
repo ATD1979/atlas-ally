@@ -2154,6 +2154,7 @@
     window.openReport        = function(lat, lng){ showReportModal(lat||null, lng||null); };
     window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
+    window.logout            = function(){try{localStorage.removeItem('atlas_token');}catch(e){}document.cookie='atlas_token=; path=/; max-age=0; SameSite=Lax;';location.href='/login.html';};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
     window.toggleHeatmap     = function(){if(window.handleFlameBtn)window.handleFlameBtn();};
     window.toggleJourney     = function(){var b=document.getElementById('journey-toggle');if(b)b.textContent=b.textContent==='Start'?'Stop':'Start';};
