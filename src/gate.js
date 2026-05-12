@@ -132,7 +132,7 @@ sweepHandle.unref();
 
 const PUBLIC_PATHS = [
   '/gate', '/gate/login', '/gate/verify', '/gate/logout',
-  '/coming-soon', '/favicon.ico',
+  '/coming-soon', '/favicon.ico', '/manifest.json',
   '/login.html', '/signup.html',
 ];
 
