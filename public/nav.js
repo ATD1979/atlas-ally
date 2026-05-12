@@ -2155,6 +2155,7 @@
     window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
     window.logout            = function(){try{localStorage.removeItem('atlas_token');}catch(e){}document.cookie='atlas_token=; path=/; max-age=0; SameSite=Lax;';location.href='/login.html';};
+    window.authedFetch       = async function(url, options){options=Object.assign({},options||{});options.headers=Object.assign({},options.headers||{},{'Authorization':'Bearer '+(localStorage.getItem('atlas_token')||'')});var res=await fetch(url,options);if(res.status===401&&window.logout)window.logout();return res;};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
     window.toggleHeatmap     = function(){if(window.handleFlameBtn)window.handleFlameBtn();};
     window.toggleJourney     = function(){var b=document.getElementById('journey-toggle');if(b)b.textContent=b.textContent==='Start'?'Stop':'Start';};
