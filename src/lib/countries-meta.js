@@ -246,7 +246,7 @@ function passesNoiseFilter(title, code) {
     return false;
   }
   // Specific named people who collide with "Jordan"
-  if (/\b(michael jordan|air jordan|jordan brand|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan|barbara jordan|jordan davis|jordan love|jordan mailata|jordan belfort|jordan burroughs)\b/.test(t)) {
+  if (/\b(michael jordan|air jordan|jordan brand|jordan shoes|jordan shoe|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan|barbara jordan|jordan davis|jordan love|jordan mailata|jordan belfort|jordan burroughs)\b/.test(t)) {
     return false;
   }
   // Place names that share "Jordan" but aren't Jordan-the-country (N20 follow-up:
