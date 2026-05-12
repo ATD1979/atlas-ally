@@ -206,7 +206,7 @@
       var lng = (typeof currentLng !== 'undefined') ? currentLng : null;
       if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
       try {
-        var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+        var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('atlas_token') || '') } });
         var data = await res.json();
         var events = Array.isArray(data) ? data : (data && data.events) || [];
         var stats  = (data && data.stats7d) || null;
@@ -296,7 +296,7 @@
       var container = document.querySelector('#feed-news-body, #news-list, .news-list, #feed-body');
       if (container) container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;">⏳ Loading news for ' + countryCode + '...</div>';
       try {
-        var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+        var res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('atlas_token') || '') } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
         if (!container) container = document.querySelector('#feed-news-body');
