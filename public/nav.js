@@ -2103,6 +2103,31 @@
   }
 
   function init() {
+    // Hydrate auth state from atlas_token (JWT in localStorage)
+    window.authState = (function(){
+      var t = localStorage.getItem('atlas_token');
+      var c = null;
+      if (t) {
+        try {
+          var parts = t.split('.');
+          if (parts.length === 3) {
+            var p = parts[1].replace(/-/g,'+').replace(/_/g,'/');
+            while (p.length % 4) p += '=';
+            c = JSON.parse(atob(p));
+          }
+        } catch(e) {}
+      }
+      return {
+        authenticated: !!(c && c.exp && c.exp * 1000 > Date.now()),
+        token: t || null,
+        id: c ? c.id : null,
+        whatsapp: c ? c.whatsapp : null,
+        role: c ? c.role : null,
+        plan: c ? c.plan : null,
+        expires_at: c && c.exp ? c.exp * 1000 : null
+      };
+    })();
+
     if(!document.getElementById('aa-nav-styles')){
       var st=document.createElement('style');
       st.id='aa-nav-styles';
@@ -2154,6 +2179,8 @@
     window.openReport        = function(lat, lng){ showReportModal(lat||null, lng||null); };
     window.showReportModal   = showReportModal;
     window.locateUser        = function(){navigator.geolocation&&navigator.geolocation.getCurrentPosition(function(p){window.map&&window.map.setView([p.coords.latitude,p.coords.longitude],12);});};
+    window.logout            = function(){try{localStorage.removeItem('atlas_token');}catch(e){}document.cookie='atlas_token=; path=/; max-age=0; SameSite=Lax;';location.href='/login.html';};
+    window.authedFetch       = async function(url, options){options=Object.assign({},options||{});options.headers=Object.assign({},options.headers||{},{'Authorization':'Bearer '+(localStorage.getItem('atlas_token')||'')});var res=await fetch(url,options);if(res.status===401&&window.logout)window.logout();return res;};
     window.toggleCrimeLayer  = function(){var b=document.getElementById('crime-toggle');if(b)b.style.opacity=b.style.opacity==='0.4'?'1':'0.4';};
     window.toggleHeatmap     = function(){if(window.handleFlameBtn)window.handleFlameBtn();};
     window.toggleJourney     = function(){var b=document.getElementById('journey-toggle');if(b)b.textContent=b.textContent==='Start'?'Stop':'Start';};
