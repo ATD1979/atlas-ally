@@ -108,10 +108,15 @@ router.post('/verify-otp', (req, res) => {
   if (otp.purpose !== purpose)
     return res.status(401).json({ error: 'Code was not issued for this action' });
 
-  db.markOTPUsed.run(otp.id);
-
   let user = db.getUser(clean);
+  // For new signups (no existing user) the OTP must stay unused so /signup
+  // can find it via db.getOTP (which filters used = 0). The /signup endpoint
+  // marks it used itself after creating the user. Marking it here would
+  // orphan the OTP and signup would 401 with "Please verify your WhatsApp
+  // number before signing up".
   if (!user) return res.json({ ok: true, needs_signup: true, whatsapp: clean });
+
+  db.markOTPUsed.run(otp.id);
 
   db.updateUserVerified(clean);
   db.updateLastLogin(user.id);
