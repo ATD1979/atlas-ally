@@ -235,11 +235,20 @@ async function verifyOtp() {
       body:JSON.stringify({ whatsapp: wa, code: code, purpose: 'signup' })
     });
     const data = await res.json();
-    if (data.ok) {
-      // OTP verified — advance to profile step. The server should hold the
-      // verified state (in-memory set keyed by whatsapp, ~10min TTL) so the
-      // signup endpoint can confirm the user reached step C via a valid OTP
-      // flow rather than crafting a direct POST.
+    if (data.ok && data.token) {
+      // Existing user — verify-otp issued a token (admin, returning user, or
+      // anyone who already has an account). Treat as login: store credentials
+      // and redirect. /signup would 401 here anyway since the OTP was just
+      // consumed by verify-otp's existing-user path.
+      localStorage.setItem('atlas_token', data.token);
+      document.cookie = 'atlas_token=' + data.token + '; path=/; max-age=2592000; SameSite=Lax; Secure';
+      window.location.href = '/';
+    } else if (data.ok) {
+      // New user — OTP verified, no token issued (needs_signup). Advance to
+      // profile collection. The server should hold the verified state (in-memory
+      // set keyed by whatsapp, ~10min TTL) so the signup endpoint can confirm
+      // the user reached step C via a valid OTP flow rather than crafting a
+      // direct POST.
       document.getElementById('signup-step-b').style.display = 'none';
       document.getElementById('signup-step-c').style.display = 'block';
       document.getElementById('name-input').focus();
