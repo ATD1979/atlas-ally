@@ -19,6 +19,7 @@ const {
   securityHeaders, attachErrorLogger,
 } = require('./middleware');
 const { gateMiddleware, setupGateRoutes } = require('./gate');
+const { cleanWhatsapp } = require('./lib/clean-whatsapp');
 
 // Route modules
 const authRoutes     = require('./routes/auth');
@@ -199,7 +200,7 @@ app.post('/api/invite/:token/use', authLimiter, softAuth, (req, res) => {
 app.post('/api/register', authLimiter, softAuth, (req, res) => {
   const { whatsapp, name, countries } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'whatsapp required' });
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = cleanWhatsapp(whatsapp);
   try {
     db.upsertUser({ whatsapp: clean, name: name || null, email: null });
     const user = db.getUser(clean);

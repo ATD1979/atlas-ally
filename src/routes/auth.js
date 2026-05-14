@@ -5,6 +5,7 @@ const crypto  = require('crypto');
 const db      = require('../db');
 const { generateOTP, createToken, requireAuth, requireAdmin } = require('../auth');
 const { sendCheckinAlert } = require('../alerts');
+const { cleanWhatsapp } = require('../lib/clean-whatsapp');
 
 // ─── OTP rate limit (per phone, in-memory) ────────────────────────────────────
 const otpRateLimit       = new Map();
@@ -49,7 +50,7 @@ router.post('/send-otp', async (req, res) => {
   if (!validPurposes.includes(purpose))
     return res.status(400).json({ error: 'Invalid OTP purpose' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = cleanWhatsapp(whatsapp);
 
   if (purpose === 'admin-login') {
     const user = db.getUser(clean);
@@ -79,7 +80,7 @@ router.post('/admin-login', (req, res) => {
   const { whatsapp, code } = req.body;
   if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = cleanWhatsapp(whatsapp);
   const otp   = db.getOTP.get(clean);
 
   if (!otp || otp.code !== code.toString() || otp.purpose !== 'admin-login')
@@ -99,7 +100,7 @@ router.post('/verify-otp', (req, res) => {
   const { whatsapp, code, purpose = 'login' } = req.body;
   if (!whatsapp || !code) return res.status(400).json({ error: 'WhatsApp and code required' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = cleanWhatsapp(whatsapp);
   const otp   = db.getOTP.get(clean);
 
   if (!otp || otp.code !== code.toString())
@@ -134,7 +135,7 @@ router.post('/signup', (req, res) => {
   if (!db.isAdult(dob))
     return res.status(400).json({ error: 'You must be 18 or older to use Atlas Ally' });
 
-  const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean = cleanWhatsapp(whatsapp);
 
   const otp = db.getOTP.get(clean);
   if (!otp || otp.purpose !== 'signup')
@@ -231,7 +232,7 @@ router.post('/send-free-token', requireAdmin, async (req, res) => {
   const { whatsapp, days = 30 } = req.body;
   if (!whatsapp) return res.status(400).json({ error: 'WhatsApp number required' });
 
-  const clean     = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+  const clean     = cleanWhatsapp(whatsapp);
   const recipient = db.getUser(clean);
   if (!recipient) return res.status(404).json({ error: 'No user found with that WhatsApp number' });
 
