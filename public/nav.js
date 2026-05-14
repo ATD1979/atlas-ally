@@ -587,6 +587,27 @@
     });
   }
 
+  // Format an ISO timestamp (or anything new Date() can parse) as a short
+  // relative string: 'Just now', '2m ago', '1h ago', 'Yesterday', '3d ago',
+  // 'May 14', 'May 14, 2025'. Returns 'Recent' for null/invalid input,
+  // preserving the prior fallback so items with no timestamp don't regress.
+  function timeAgo(input) {
+    if (!input) return 'Recent';
+    var d = new Date(input);
+    if (isNaN(d.getTime())) return 'Recent';
+    var diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 0 || diff < 45) return 'Just now';
+    if (diff < 90)             return '1m ago';
+    if (diff < 3600)           return Math.round(diff / 60) + 'm ago';
+    if (diff < 5400)           return '1h ago';
+    if (diff < 86400)          return Math.round(diff / 3600) + 'h ago';
+    if (diff < 172800)         return 'Yesterday';
+    if (diff < 604800)         return Math.floor(diff / 86400) + 'd ago';
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var sameYear = d.getFullYear() === new Date().getFullYear();
+    return months[d.getMonth()] + ' ' + d.getDate() + (sameYear ? '' : ', ' + d.getFullYear());
+  }
+
   function loadNews(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
@@ -619,7 +640,7 @@
           articles.map(function(article) {
             var title = article.title || article.headline || 'Untitled';
             var source = article.source || article.source_name || 'Unknown';
-            var published = article.published || article.published_at || article.date || 'Recent';
+            var published = timeAgo(article.published || article.published_at || article.date);
             return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
               '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+title+'</div>'+
               '<div style="font-size:11px;color:'+T.muted+';">'+source+' · '+published+'</div>'+
@@ -697,7 +718,7 @@
             var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
             var title = event.title || event.description || event.summary || 'Security incident';
             var location = event.location || event.area || event.region || 'Unknown location';
-            var date = event.date || event.timestamp || event.occurred_at || 'Recent';
+            var date = timeAgo(event.date || event.timestamp || event.occurred_at);
             return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
               '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
                 '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
@@ -2244,7 +2265,7 @@
   // carried in the JWT). Four states:
   //   - Unauthed       -> 'Log in'        (default styling)
   //   - Premium        -> 'Premium'       (default styling)
-  //   - Trial active   -> 'Trial * Xd'    (amber tint when X < 3)
+  //   - Trial active   -> 'Trial • Xd'    (amber tint when X < 3)
   //   - Trial expired  -> 'Trial Expired' (red tint)
   function renderAuthPill() {
     var pill = document.getElementById('auth-pill');
