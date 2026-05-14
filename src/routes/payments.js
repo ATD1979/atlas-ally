@@ -4,6 +4,7 @@ const router = require('express').Router();
 const db      = require('../db');
 const config  = require('../config');
 const { getStripe } = require('../stripe');
+const { cleanWhatsapp } = require('../lib/clean-whatsapp');
 
 // Stripe checkout — creates a session or falls back to trial
 router.post('/checkout', async (req, res) => {
@@ -13,7 +14,7 @@ router.post('/checkout', async (req, res) => {
   if (!stripe) {
     // No Stripe configured — start trial instead
     if (whatsapp) {
-      const clean = whatsapp.replace(/\s/g, '').replace(/^00/, '+');
+      const clean = cleanWhatsapp(whatsapp);
       db.upsertUser({ whatsapp: clean, name: null, email: null });
       if (countries?.length) {
         const user = db.getUser(clean);
