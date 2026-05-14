@@ -2309,7 +2309,7 @@
   // Keep all missing functions that were referenced but not defined
   function showReportModal(lat, lng) {
     closeModal();
-    var modal=document.createElement('div');
+    modal=document.createElement('div');
     modal.style.cssText='position:fixed;inset:0;z-index:700000;background:rgba(0,0,0,0.55);'+
       'display:flex;align-items:flex-end;justify-content:center;pointer-events:all;';
     modal.innerHTML=
