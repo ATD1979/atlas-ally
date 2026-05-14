@@ -159,4 +159,25 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('Â
   setTimeout(fixSize, 800);
   setTimeout(fixSize, 2000);
   window.addEventListener('resize', function(){ setTimeout(fixSize, 200); });
+
+  // Mobile orientation changes can resize the viewport without firing 'resize'
+  // reliably on some browsers (older iOS Safari especially). Always re-invalidate
+  // after an orientation flip; 250ms delay covers the post-rotation reflow.
+  window.addEventListener('orientationchange', function(){ setTimeout(fixSize, 250); });
+
+  // Nav-panel (hamburger drawer) opening/closing changes the visible map area.
+  // MutationObserver on the panel's class attribute catches every toggle
+  // regardless of how it was triggered (hamburger click, click-outside, or
+  // toggleNav/closeNav helper calls). One listener, all paths covered.
+  function watchNavPanel(){
+    var panel = document.getElementById('nav-panel');
+    if(!panel){ return setTimeout(watchNavPanel, 300); }   // retry if not yet in DOM
+    var mo = new MutationObserver(function(){ setTimeout(fixSize, 250); });
+    mo.observe(panel, { attributes: true, attributeFilter: ['class'] });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', watchNavPanel);
+  } else {
+    watchNavPanel();
+  }
 })();
