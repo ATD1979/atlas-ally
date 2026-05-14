@@ -2233,7 +2233,78 @@
     if (!localStorage.getItem('atlas_setup_done')) {
       setTimeout(showOnboarding, 800);
     }
+
+    // Render auth status pill (login link, trial countdown, or plan name)
+    renderAuthPill();
   }
+
+  // --- Auth status pill ---
+  // Renders the small pill in the top bar. Reads window.authState (JWT decode)
+  // for auth flag + plan, then fetches /api/auth/me for trial_days_left (not
+  // carried in the JWT). Four states:
+  //   - Unauthed       -> 'Log in'        (default styling)
+  //   - Premium        -> 'Premium'       (default styling)
+  //   - Trial active   -> 'Trial * Xd'    (amber tint when X < 3)
+  //   - Trial expired  -> 'Trial Expired' (red tint)
+  function renderAuthPill() {
+    var pill = document.getElementById('auth-pill');
+    if (!pill) return;
+
+    var DEFAULT_BG = 'rgba(255,255,255,0.15)';
+    var DEFAULT_BD = 'rgba(255,255,255,0.25)';
+
+    // Unauthed: 'Log in'
+    if (!window.authState || !window.authState.authenticated) {
+      pill.textContent = 'Log in';
+      pill.style.background  = DEFAULT_BG;
+      pill.style.borderColor = DEFAULT_BD;
+      pill.style.display = '';
+      return;
+    }
+
+    // Authed: fetch /me for plan + trial_days_left
+    fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + window.authState.token }
+    })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data) return;   // /me failed; pill stays hidden
+
+      var label, bg = DEFAULT_BG, bd = DEFAULT_BD;
+      if (data.on_premium) {
+        label = 'Premium';
+      } else if (data.trial_active) {
+        label = 'Trial • ' + data.trial_days_left + 'd';
+        if (data.trial_days_left < 3) {
+          bg = 'rgba(245,158,11,0.25)';   // T.amber tint
+          bd = 'rgba(245,158,11,0.5)';
+        }
+      } else if (data.trial_expired) {
+        label = 'Trial Expired';
+        bg = 'rgba(239,68,68,0.25)';      // T.red tint
+        bd = 'rgba(239,68,68,0.5)';
+      } else {
+        return;   // unknown state, stay hidden
+      }
+
+      pill.textContent = label;
+      pill.style.background  = bg;
+      pill.style.borderColor = bd;
+      pill.style.display = '';
+    })
+    .catch(function() { /* network error - silent */ });
+  }
+
+  // Click handler - exposed globally for the inline onclick attribute
+  window.onAuthPillClick = function() {
+    if (!window.authState || !window.authState.authenticated) {
+      window.location.href = '/login.html';
+    } else {
+      // Authed: open hamburger nav drawer (where account/settings live)
+      var h = document.getElementById('hamburger');
+      if (h) h.click();
+    }
+  };
 
   // Keep all missing functions that were referenced but not defined
   function showReportModal(lat, lng) {
