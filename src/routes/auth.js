@@ -66,9 +66,12 @@ router.post('/send-otp', async (req, res) => {
   try {
     db.createOTP.run({ whatsapp: clean, code, purpose });
     db.cleanOTPs.run();
-    await sendCheckinAlert(clean,
+    const sent = await sendCheckinAlert(clean,
       `🌍 *Atlas Ally*\n\nYour verification code is:\n\n*${code}*\n\n_Expires in 10 minutes. Do not share this code._`
     );
+    if (!sent) {
+      return res.status(502).json({ error: 'Failed to send OTP. Check your WhatsApp number.' });
+    }
     res.json({ ok: true, message: 'OTP sent to your WhatsApp' });
   } catch (e) {
     req.logErr('otp_send', e);
