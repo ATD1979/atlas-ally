@@ -718,7 +718,7 @@
             var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
             var title = event.title || event.description || event.summary || 'Security incident';
             var location = event.location || event.area || event.region || 'Unknown location';
-            var date = timeAgo(event.date || event.timestamp || event.occurred_at);
+            var date = timeAgo(event.date || event.timestamp || event.occurred_at || event.created_at);
             return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
               '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
                 '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
