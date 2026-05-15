@@ -81,10 +81,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--display);min-heigh
 <script>
 const API = '';
 
-// Auto-redirect if already logged in. If the token is stale, the main app's
-// auth wrapper will bounce back to /login.html — accepted brief flicker.
-if (localStorage.getItem('atlas_token')) {
-  window.location.href = '/';
+// Auto-redirect if already logged in. Validate the token before redirecting
+// so a stale localStorage token doesn't trap the user in a redirect loop
+// (where /login.html → / → /coming-soon, with no way back).
+const existingToken = localStorage.getItem('atlas_token');
+if (existingToken) {
+  fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + existingToken } })
+    .then(r => {
+      if (r.ok) {
+        window.location.href = '/';
+      } else {
+        // Stale token — clear both localStorage and cookie, then show login form
+        localStorage.removeItem('atlas_token');
+        document.cookie = 'atlas_token=; path=/; max-age=0';
+      }
+    })
+    .catch(() => { /* Network error — keep showing the form */ });
 }
 
 function showToast(msg, type) {
