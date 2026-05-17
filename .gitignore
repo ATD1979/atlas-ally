@@ -41,3 +41,6 @@ data/*.db-wal
 
 # local diagnostic scripts
 /db-*.js
+
+# Local snapshot zips (uploaded for review, not for the repo)
+*.zip
