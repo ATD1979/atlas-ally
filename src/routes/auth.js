@@ -243,16 +243,18 @@ router.post('/send-free-token', requireAdmin, async (req, res) => {
   db.db.prepare(`INSERT INTO free_tokens (token, created_by, whatsapp, days) VALUES (?, ?, ?, ?)`)
     .run(token, req.user.id, clean, days);
 
+  const WA_DELIVERY_WARNING = 'Token created but WhatsApp delivery failed — share the token manually.';
+  let delivered = false;
   try {
-    await sendCheckinAlert(clean,
+    delivered = await sendCheckinAlert(clean,
       `🌍 *Atlas Ally*\n\nYou've been given *${days} days of free access* by an Atlas Ally admin.\n\nYour token: *${token}*\n\nRedeem it in the app under Account → Redeem Token.`
     );
-    res.json({ ok: true, token, days, sent_to: clean });
   } catch (e) {
     req.logErr('send_free_token', e);
-    res.json({ ok: true, token, days, sent_to: clean,
-               whatsapp_warning: 'Token created but WhatsApp delivery failed — share the token manually.' });
   }
+  const response = { ok: true, token, days, sent_to: clean };
+  if (!delivered) response.whatsapp_warning = WA_DELIVERY_WARNING;
+  res.json(response);
 });
 
 router.get('/me', requireAuth, (req, res) => {
