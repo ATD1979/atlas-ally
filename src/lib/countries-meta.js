@@ -144,6 +144,14 @@ function isRelevantToCountry(text, code) {
 const _LLM_CACHE_MAX = 10000;
 const _llmCache = new Map();
 
+// Token bucket gating LLM calls to stay under Anthropic's org rate limit.
+// Tier 1 Haiku is 50 req/min; 40 leaves a 10-call buffer for other callers
+// in the same org (Pack Assistant, etc.). Raising this requires upgrading
+// the Anthropic tier first.
+const _LLM_RATE_PER_MIN = 40;
+let _llmTokens = _LLM_RATE_PER_MIN;
+let _llmTokensResetMs = Date.now() + 60_000;
+
 function _cacheGet(key) {
   if (!_llmCache.has(key)) return undefined;
   const v = _llmCache.get(key);
@@ -158,6 +166,26 @@ function _cacheSet(key, v) {
     const oldest = _llmCache.keys().next().value;
     _llmCache.delete(oldest);
   }
+}
+
+// Acquire one rate-limit token; sleeps until the next bucket reset if empty.
+// Single-process gate — adequate for the single Railway instance Atlas Ally
+// runs today. If we ever scale to multiple instances this must move to a
+// shared store (Redis token bucket or Anthropic's own backoff).
+async function _acquireLlmToken() {
+  const now = Date.now();
+  if (now >= _llmTokensResetMs) {
+    _llmTokens = _LLM_RATE_PER_MIN;
+    _llmTokensResetMs = now + 60_000;
+  }
+  if (_llmTokens > 0) {
+    _llmTokens--;
+    return;
+  }
+  const waitMs = _llmTokensResetMs - now + 100;
+  await new Promise(r => setTimeout(r, waitMs));
+  _llmTokens = _LLM_RATE_PER_MIN - 1;
+  _llmTokensResetMs = Date.now() + 60_000;
 }
 
 // Returns true if the LLM judges the text genuinely about the country.
@@ -177,6 +205,8 @@ async function llmIsRelevantToCountry(text, code, url = null) {
     console.error(`[news/relevance] ANTHROPIC_API_KEY not configured â€” skipping LLM check for ${code}`);
     return false;
   }
+
+  await _acquireLlmToken();
 
   try {
     const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
