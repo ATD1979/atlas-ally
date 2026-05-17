@@ -242,11 +242,11 @@ function passesNoiseFilter(title, code) {
   if (code !== 'JO') return true;
   const t = String(title || '').toLowerCase();
   // Generic sports / product / motorsport terms (no game/court â€” too aggressive)
-  if (/\b(basketball|nba|wnba|sneaker|sports|athlete|premier league|champions league|nascar|racing)\b/.test(t)) {
+  if (/\b(basketball|nba|wnba|mlb|cricket|wickets?|\d+-run|sneaker|sports|athlete|premier league|champions league|nascar|racing)\b/.test(t)) {
     return false;
   }
   // Specific named people who collide with "Jordan"
-  if (/\b(michael jordan|air jordan|jordan brand|jordan shoes|jordan shoe|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan|barbara jordan|jordan davis|jordan love|jordan mailata|jordan belfort|jordan burroughs)\b/.test(t)) {
+  if (/\b(michael jordan|air jordan|jordan brand|jordan shoes|jordan shoe|jordan peterson|simon jordan|eddie jordan|jordan henderson|jordan pickford|jordan spieth|jordan clarkson|jordan poole|deandre jordan|vernon jordan|barbara jordan|jordan davis|jordan love|jordan mailata|jordan belfort|jordan burroughs|jordan walker|kaden jordan)\b/.test(t)) {
     return false;
   }
   // Place names that share "Jordan" but aren't Jordan-the-country (N20 follow-up:
@@ -255,6 +255,13 @@ function passesNoiseFilter(title, code) {
   // these phrases for the Jordanian side of the border will also be filtered;
   // acceptable until a counter-example surfaces.
   if (/\b(west jordan|south jordan|east jordan|jordan valley|jordan creek|jordan lake|jordan, minnesota|jordan, montana|jordan, utah|jordan, new york)\b/.test(t)) {
+    return false;
+  }
+  // Music / entertainment release patterns. "Jordan" surfaces frequently as a
+  // performer surname (Kaden Jordan etc.). Filter on phrase patterns specific
+  // to releases rather than the word "single" alone, which appears legitimately
+  // in non-music Jordan-the-country news.
+  if (/\b(debut single|new single|releases?\s+(?:debut|new)?\s*(?:single|album|ep|track)|record label|recording artist)\b/.test(t)) {
     return false;
   }
   return true;
