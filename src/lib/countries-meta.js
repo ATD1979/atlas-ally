@@ -225,6 +225,17 @@ async function llmIsRelevantToCountry(text, code, url = null) {
   }
 }
 
+// Convenience wrapper for cache-write paths: short-circuits on strong/none,
+// only invokes the LLM on weak matches. Use at ingest call sites instead of
+// isRelevantToCountry; isRelevantToCountry stays as the sync boolean for
+// serve-time defense-in-depth where async is not available.
+async function vetRelevance(text, code, url = null) {
+  const verdict = classifyRelevance(text, code);
+  if (verdict === 'strong') return true;
+  if (verdict === 'none')   return false;
+  return await llmIsRelevantToCountry(text, code, url);
+}
+
 // â”€â”€ Noise filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Country-specific noise pre-filter for news/events titles. Free, runs before LLM,
@@ -279,5 +290,6 @@ module.exports = {
   classifyRelevance,
   isRelevantToCountry,
   llmIsRelevantToCountry,
+  vetRelevance,
   passesNoiseFilter,
 };
