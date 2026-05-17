@@ -657,6 +657,34 @@
       });
   }
 
+  // Maps an event to its Live Feed visual treatment. Order matters: first match
+  // wins. Mirrors the Screen 01 mockup (docs/mockups/v1-redesign-2026-05.html).
+  function classifyFeedItem(event) {
+    var type = event.type || '';
+    var severity = event.severity || 'warn';
+    var title = (event.title || '').toLowerCase();
+
+    // Resolution / cleared events — render in green regardless of original severity
+    if (/\b(lifts|lifted|ends|ended|resolved|cleared|reopens|reopened|cancelled|canceled|restored)\b/.test(title)) {
+      return { icon: '\u2705', color: 'fi-green', pill: 'All Clear', pillColor: 'tg' };
+    }
+    // Weather domain
+    if (/^(earthquake|flood|fire|storm)$/.test(type) ||
+        /\b(storm|hurricane|typhoon|cyclone|earthquake|tsunami|wildfire)\b/.test(title)) {
+      return { icon: '\u26C8\uFE0F', color: 'fi-amber', pill: 'Weather', pillColor: 'ta' };
+    }
+    // Official government advisory
+    if (/\b(state dept|state department|embassy|consulate|travel advisory|level \d advisory)\b/.test(title)) {
+      return { icon: '\uD83D\uDCE1', color: 'fi-blue', pill: 'Advisory', pillColor: 'tb' };
+    }
+    // Critical / urgent — air threats, explosions, armed events, or anything tagged critical
+    if (severity === 'critical' || /^(missile|airstrike|drone|explosion|bomb|siren|shooting)$/.test(type)) {
+      return { icon: '\uD83D\uDD34', color: 'fi-red', pill: 'Urgent', pillColor: 'tr' };
+    }
+    // Default — news-style advisory
+    return { icon: '\uD83D\uDCF0', color: 'fi-amber', pill: 'Advisory', pillColor: 'ta' };
+  }
+
   function loadAlerts(country) {
     var body = document.getElementById('aa-feed-body');
     if (!body) return;
@@ -714,18 +742,18 @@
         }
         body.innerHTML = pillsHtml + '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
           events.map(function(event) {
-            var sev = event.severity || event.level || 'info';
-            var color = sev === 'critical' ? T.red : sev === 'high' ? T.amber : T.muted;
+            var cls = classifyFeedItem(event);
             var title = event.title || event.description || event.summary || 'Security incident';
-            var location = event.location || event.area || event.region || 'Unknown location';
-            var date = timeAgo(event.date || event.timestamp || event.occurred_at || event.created_at);
-            return '<div style="padding:14px 16px;background:#fff;border-bottom:1px solid '+T.border+';">'+
-              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'+
-                '<div style="width:6px;height:6px;border-radius:50%;background:'+color+';"></div>'+
-                '<div style="font-size:11px;color:'+color+';text-transform:uppercase;font-weight:700;">'+sev+'</div>'+
-              '</div>'+
-              '<div style="font-size:13px;font-weight:600;color:'+T.text+';line-height:1.4;margin-bottom:6px;">'+title+'</div>'+
-              '<div style="font-size:11px;color:'+T.muted+';">'+location+' · '+date+'</div>'+
+            var time = timeAgo(event.date || event.timestamp || event.occurred_at || event.created_at);
+            return '<div class="fitem">' +
+              '<div class="ficon ' + cls.color + '">' + cls.icon + '</div>' +
+              '<div class="fbody">' +
+                '<div class="fhead">' + title + '</div>' +
+                '<div class="fsub">' +
+                  '<span class="ftag ' + cls.pillColor + '">' + cls.pill + '</span>' +
+                  '<span class="ftime">' + time + '</span>' +
+                '</div>' +
+              '</div>' +
             '</div>';
           }).join('');
       })
