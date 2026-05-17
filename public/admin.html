@@ -262,6 +262,7 @@ function showToast(msg, type='success') {
 async function sendOtp() {
   const wa  = document.getElementById('wa-input').value.trim();
   const btn = document.getElementById('send-otp-btn');
+  if (btn.disabled) return;
   const err = document.getElementById('login-error');
   err.style.display = 'none';
   if (!wa) { err.textContent = 'Enter your WhatsApp number'; err.style.display = 'block'; return; }
@@ -295,6 +296,7 @@ async function verifyOtp() {
   const wa   = document.getElementById('wa-input').value.trim();
   const code = document.getElementById('code-input').value.trim();
   const btn  = document.getElementById('verify-otp-btn');
+  if (btn.disabled) return;
   const err  = document.getElementById('login-error');
   err.style.display = 'none';
   if (!code || code.length !== 6) { err.textContent = 'Enter the 6-digit code'; err.style.display = 'block'; return; }

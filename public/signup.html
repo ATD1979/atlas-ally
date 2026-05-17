@@ -171,6 +171,7 @@ function isAdult(dobString) {
 async function sendOtp() {
   const wa  = document.getElementById('wa-input').value.trim();
   const btn = document.getElementById('send-otp-btn');
+  if (btn.disabled) return;
   clearError();
   if (!wa) { showError('Enter your WhatsApp number'); return; }
 
@@ -199,6 +200,7 @@ async function sendOtp() {
 async function resendOtp() {
   const wa  = document.getElementById('wa-input').value.trim();
   const btn = document.getElementById('resend-btn');
+  if (btn.disabled) return;
   if (!wa) return;
   clearError();
   btn.disabled = true; btn.textContent = 'Sending…';
@@ -224,6 +226,7 @@ async function verifyOtp() {
   const wa   = document.getElementById('wa-input').value.trim();
   const code = document.getElementById('code-input').value.trim();
   const btn  = document.getElementById('verify-otp-btn');
+  if (btn.disabled) return;
   clearError();
   if (!code || code.length !== 6) { showError('Enter the 6-digit code'); return; }
 
