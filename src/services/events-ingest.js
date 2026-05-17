@@ -16,7 +16,7 @@ const xml2js = require('xml2js');
 const db     = require('../db');
 const config = require('../config');
 const { extractLocation } = require('../geocoder');
-const { isRelevantToCountry, passesNoiseFilter } = require('../lib/countries-meta');
+const { vetRelevance, passesNoiseFilter } = require('../lib/countries-meta');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -336,7 +336,7 @@ async function ingestGDELT(code) {
         // so results routinely include unrelated articles (e.g. US local news tagged
         // JO because "jo" appears somewhere in the text). Drop anything that doesn't
         // actually mention the country.
-        if (!isRelevantToCountry(title, code)) continue;
+        if (!await vetRelevance(title, code, art.url || null)) continue;
         const { type, severity } = classify(title);
         const geo = extractLocation(title, code);
         const ok  = insertEvent({

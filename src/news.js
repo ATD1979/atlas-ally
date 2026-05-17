@@ -7,7 +7,7 @@
 
 const db = require('./db');
 const { fetchRSS } = require('./lib/rss');
-const { getCountryName, isRelevantToCountry, passesNoiseFilter, META } = require('./lib/countries-meta');
+const { getCountryName, vetRelevance, passesNoiseFilter, META } = require('./lib/countries-meta');
 
 // Strip the trailing " - Source Name" that Google News appends to every title.
 function cleanTitle(raw) {
@@ -53,7 +53,7 @@ async function fetchCountryNews(code, lang = 'en') {
     if (url) seen.add(url);
 
     // Relevance filter — title must mention the country
-    if (!isRelevantToCountry(title + ' ' + item.description, code)) continue;
+    if (!await vetRelevance(title + ' ' + item.description, code, item.link)) continue;
     if (!passesNoiseFilter(title, code)) continue;
 
     let published = new Date().toISOString();
