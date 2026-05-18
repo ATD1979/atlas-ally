@@ -714,48 +714,103 @@
           body.innerHTML = '<div style="padding:20px;text-align:center;color:'+T.muted+';">'+t('noIncidents')+'</div>';
           return;
         }
-        var pillsHtml = '';
-        if (stats && stats.by_category) {
-          var catMeta = {
-            armed:     { icon: '\uD83D\uDCA5', label: 'Armed' },
-            explosion: { icon: '\uD83D\uDCA3', label: 'Explosion' },
-            weather:   { icon: '\uD83C\uDF0A', label: 'Weather' },
-            unrest:    { icon: '\u270A',       label: 'Unrest' },
-            crime:     { icon: '\uD83D\uDD2B', label: 'Crime' },
-            drug:      { icon: '\uD83D\uDC8A', label: 'Drug' },
-            air:       { icon: '\u2708\uFE0F',  label: 'Air' },
-            other:     { icon: '\uD83D\uDCCB', label: 'Other' }
-          };
-          var catEntries = Object.keys(stats.by_category)
-            .map(function(k){ return { key: k, count: stats.by_category[k] }; })
-            .filter(function(e){ return e.count > 0; })
-            .sort(function(a, b){ return b.count - a.count; });
-          if (catEntries.length) {
-            pillsHtml = '<div style="padding:10px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
-              catEntries.map(function(e){
-                var meta = catMeta[e.key] || { icon: '\u2753', label: e.key };
-                return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#fff;border:1px solid '+T.border+';border-radius:999px;font-size:11px;color:'+T.text+';"><span>'+meta.icon+'</span><span>'+meta.label+'</span><span style="font-weight:700;color:'+T.text+';">'+e.count+'</span></span>';
-              }).join('') +
-              '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS · '+stats.total+' TOTAL</span>' +
-            '</div>';
-          }
+        // ── Pill filter state (resets on every loadAlerts call / country change)
+        var activePill = null;
+
+        // Client-side mirror of EVENT_TYPE_TO_FEED_CAT from src/lib/classify.js.
+        // Anything not mapped here falls into 'other'. Keep in sync with the
+        // server-side map (otherwise filter and server count won't agree).
+        var TYPE_TO_CAT = {
+          missile: 'air', drone: 'air', siren: 'air', airstrike: 'air', rocket: 'air',
+          explosion: 'explosion', bomb: 'explosion', blast: 'explosion',
+          shooting: 'armed', gunfire: 'armed', armed: 'armed',
+          protest: 'unrest', riot: 'unrest', evacuation: 'unrest', demonstration: 'unrest',
+          earthquake: 'weather', flood: 'weather', fire: 'weather', storm: 'weather',
+          drug: 'drug', crime: 'crime', theft: 'crime', robbery: 'crime'
+        };
+        function categoryFor(ev) {
+          return TYPE_TO_CAT[ev.type] || 'other';
         }
-        body.innerHTML = pillsHtml + '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+events.length+' INCIDENTS</div>' +
-          events.map(function(event) {
-            var cls = classifyFeedItem(event);
-            var title = event.title || event.description || event.summary || 'Security incident';
-            var time = timeAgo(event.date || event.timestamp || event.occurred_at || event.created_at);
-            return '<div class="fitem">' +
-              '<div class="ficon ' + cls.color + '">' + cls.icon + '</div>' +
-              '<div class="fbody">' +
-                '<div class="fhead">' + title + '</div>' +
-                '<div class="fsub">' +
-                  '<span class="ftag ' + cls.pillColor + '">' + cls.pill + '</span>' +
-                  '<span class="ftime">' + time + '</span>' +
-                '</div>' +
-              '</div>' +
-            '</div>';
-          }).join('');
+
+        var catMeta = {
+          armed:     { icon: '\uD83D\uDCA5', label: 'Armed' },
+          explosion: { icon: '\uD83D\uDCA3', label: 'Explosion' },
+          weather:   { icon: '\uD83C\uDF0A', label: 'Weather' },
+          unrest:    { icon: '\u270A',       label: 'Unrest' },
+          crime:     { icon: '\uD83D\uDD2B', label: 'Crime' },
+          drug:      { icon: '\uD83D\uDC8A', label: 'Drug' },
+          air:       { icon: '\u2708\uFE0F',  label: 'Air' },
+          other:     { icon: '\uD83D\uDCCB', label: 'Other' }
+        };
+
+        function renderIncidents() {
+          // Filter events by active pill (if any)
+          var filtered = activePill
+            ? events.filter(function(ev){ return categoryFor(ev) === activePill; })
+            : events;
+
+          // Build pills with click affordance and active state
+          var pillsHtml = '';
+          if (stats && stats.by_category) {
+            var catEntries = Object.keys(stats.by_category)
+              .map(function(k){ return { key: k, count: stats.by_category[k] }; })
+              .filter(function(e){ return e.count > 0; })
+              .sort(function(a, b){ return b.count - a.count; });
+            if (catEntries.length) {
+              pillsHtml = '<div style="padding:10px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';display:flex;flex-wrap:wrap;gap:6px;align-items:center;">' +
+                catEntries.map(function(e){
+                  var meta = catMeta[e.key] || { icon: '\u2753', label: e.key };
+                  var isActive = activePill === e.key;
+                  var pillBg = isActive ? T.teal : '#fff';
+                  var pillFg = isActive ? '#fff' : T.text;
+                  var pillBorder = isActive ? T.teal : T.border;
+                  return '<span class="aa-incident-pill" data-cat="'+e.key+'" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:'+pillBg+';border:1px solid '+pillBorder+';border-radius:999px;font-size:11px;color:'+pillFg+';cursor:pointer;user-select:none;"><span>'+meta.icon+'</span><span>'+meta.label+'</span><span style="font-weight:700;">'+e.count+'</span></span>';
+                }).join('') +
+                '<span style="margin-left:auto;font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">PAST 7 DAYS \u00B7 '+stats.total+' TOTAL</span>' +
+              '</div>';
+            }
+          }
+
+          // Header line — show filter context when a pill is active
+          var headerLabel = activePill
+            ? filtered.length + ' SHOWING \u00B7 ' + ((catMeta[activePill] && catMeta[activePill].label) || activePill).toUpperCase()
+            : events.length + ' INCIDENTS';
+
+          // Empty-state message when filter has no matches
+          var listHtml = filtered.length
+            ? filtered.map(function(event) {
+                var cls = classifyFeedItem(event);
+                var title = event.title || event.description || event.summary || 'Security incident';
+                var time = timeAgo(event.date || event.timestamp || event.occurred_at || event.created_at);
+                return '<div class="fitem">' +
+                  '<div class="ficon ' + cls.color + '">' + cls.icon + '</div>' +
+                  '<div class="fbody">' +
+                    '<div class="fhead">' + title + '</div>' +
+                    '<div class="fsub">' +
+                      '<span class="ftag ' + cls.pillColor + '">' + cls.pill + '</span>' +
+                      '<span class="ftime">' + time + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>';
+              }).join('')
+            : '<div style="padding:20px;text-align:center;color:'+T.muted+';font-size:12px;">No '+(((catMeta[activePill] && catMeta[activePill].label) || activePill || '').toLowerCase())+' incidents in past 7 days</div>';
+
+          body.innerHTML = pillsHtml +
+            '<div style="padding:8px 16px;background:'+T.bg+';border-bottom:1px solid '+T.border+';font-size:10px;color:'+T.muted+';font-family:'+T.mono+';">'+headerLabel+'</div>' +
+            listHtml;
+
+          // Wire pill click handlers — toggle on/off, re-render on change
+          var pillNodes = body.querySelectorAll('.aa-incident-pill');
+          pillNodes.forEach(function(node) {
+            node.addEventListener('click', function() {
+              var cat = node.dataset.cat;
+              activePill = (activePill === cat) ? null : cat;
+              renderIncidents();
+            });
+          });
+        }
+
+        renderIncidents();
       })
       .catch(function(err) {
         console.error('Events API error:', err);
