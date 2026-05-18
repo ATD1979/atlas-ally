@@ -111,14 +111,15 @@ router.get('/events', async (req, res) => {
   let stored = [];
   try { stored = db.getEventsByCountry.all(code); } catch {}
 
-  // Serve-time relevance + noise filter, mirroring news.js. Two reasons to run
-  // these filters here in addition to ingest-write time:
-  //   (1) Stale rows inserted before alias/noise rules existed get filtered at
-  //       query time without requiring a DB flush.
-  //   (2) Defense-in-depth — alias/noise list updates take effect immediately
-  //       for the user-facing feed instead of waiting on re-ingestion.
+  // Serve-time filter: drop legacy NULL-verdict rows (ingested before the
+  // LLM-vetting wiring) and apply the noise filter for defense-in-depth
+  // against alias-list updates since ingest. The verdict column (set at
+  // cache-write time) is the source of truth for country relevance — fast,
+  // synchronous, and reflects the LLM vetting that happened at ingest.
+  // isRelevantToCountry remains in scope for the live Google News path below
+  // (rows that aren't persisted and therefore have no verdict).
   stored = stored.filter(e =>
-    isRelevantToCountry(e.title, code) &&
+    e.relevance_verdict !== null &&
     passesNoiseFilter(e.title, code)
   );
 

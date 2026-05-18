@@ -44,6 +44,30 @@ try {
   if (eventsExists) {
     safeAddColumn('events', 'submitted_user_id', 'INTEGER');
     safeAddColumn('events', 'is_test', 'INTEGER DEFAULT 0');
+    safeAddColumn('events', 'relevance_verdict', 'TEXT');
+    // Backfill: feed-trusted sources (US Embassy, UK FCDO, ReliefWeb, UCDP,
+    // InSight Crime, UNODC) bypass the relevance gate at ingest because their
+    // feeds are country-scoped. Mark legacy rows from these sources 'strong'
+    // so they pass the new serve-time verdict filter. GDELT-sourced rows
+    // (source = a news domain like 'cnn.com', or literally 'GDELT') stay
+    // NULL and get dropped at serve time — they're the source of person-name
+    // false positives we're filtering out (Cam Jordan, Jim Jordan, etc.).
+    try {
+      const r = db.prepare(`
+        UPDATE events
+        SET relevance_verdict = 'strong'
+        WHERE relevance_verdict IS NULL
+          AND (
+            source LIKE 'US Embassy %'
+            OR source = 'UK FCDO'
+            OR source = 'ReliefWeb / UN OCHA'
+            OR source = 'UCDP / Uppsala University'
+            OR source LIKE 'InSight Crime%'
+            OR source LIKE 'UNODC%'
+          )
+      `).run();
+      if (r.changes > 0) console.log(`✅ Migration: backfilled ${r.changes} feed-trusted events rows with relevance_verdict='strong'`);
+    } catch { /* column doesn't exist on fresh DB — fine */ }
   }
   // News cache migrations — safeAddColumn handles the only legitimate
   // schema drift (older prod DBs predating the lat/lng columns). The
@@ -52,6 +76,11 @@ try {
   if (newsExists) {
     safeAddColumn('news_cache', 'lat', 'REAL');
     safeAddColumn('news_cache', 'lng', 'REAL');
+    safeAddColumn('news_cache', 'relevance_verdict', 'TEXT');
+    // No backfill for news_cache — all rows are Google News which is the
+    // source of person-name false positives. Legacy NULL rows get dropped
+    // at serve time; next 30-min refresh re-fills via the LLM-vetted path.
+    // Cache age-out is 48h via clearOldNews, so full recovery within 2 days.
   }
 } catch(e) { console.warn('Migration warning (non-fatal):', e.message); }
 
@@ -138,7 +167,8 @@ db.exec(`
     is_test         INTEGER DEFAULT 0,
     notified        INTEGER DEFAULT 0,
     created_at      TEXT DEFAULT (datetime('now')),
-    approved_at     TEXT DEFAULT (datetime('now'))
+    approved_at     TEXT DEFAULT (datetime('now')),
+    relevance_verdict TEXT
   );
 
   CREATE TABLE IF NOT EXISTS crime_stats (
@@ -180,6 +210,7 @@ db.exec(`
     lng           REAL,
     published_at  TEXT,
     cached_at     TEXT DEFAULT (datetime('now')),
+    relevance_verdict TEXT,
     UNIQUE(url, lang)
   );
 
@@ -348,10 +379,10 @@ const helpers = {
   countUserCountries: db.prepare(`SELECT COUNT(*) as count FROM user_countries WHERE user_id = ?`),
 
   // Events
-  addEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test)`),
+  addEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test, relevance_verdict) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test, @relevance_verdict)`),
   // User-submitted events land in 'pending' awaiting admin review.
   // approved_at is NULL until the admin approve handler flips status.
-  addPendingEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test, status, approved_at) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test, 'pending', NULL)`),
+  addPendingEvent: db.prepare(`INSERT INTO events (country_code, type, title, description, location, lat, lng, severity, source, source_url, submitted_by, submitted_user_id, is_test, status, approved_at, relevance_verdict) VALUES (@country_code, @type, @title, @description, @location, @lat, @lng, @severity, @source, @source_url, @submitted_by, @submitted_user_id, @is_test, 'pending', NULL, 'strong')`),
   // Race-safe: the WHERE status='pending' clause means a second concurrent
   // approve/reject returns changes=0 and the handler can no-op.
   approvePendingEvent: db.prepare(`UPDATE events SET status='approved', approved_at=datetime('now') WHERE id = ? AND status='pending'`),
@@ -371,7 +402,7 @@ const helpers = {
   addCommunityCrime: db.prepare(`INSERT INTO community_crime (country_code, lat, lng, type, description, reported_by, severity) VALUES (@country_code, @lat, @lng, @type, @description, @reported_by, @severity)`),
 
   // News
-  cacheNews: db.prepare(`INSERT OR IGNORE INTO news_cache (country_code, lang, source_name, title, description, url, lat, lng, published_at) VALUES (@country_code, @lang, @source_name, @title, @description, @url, @lat, @lng, @published_at)`),
+  cacheNews: db.prepare(`INSERT OR IGNORE INTO news_cache (country_code, lang, source_name, title, description, url, lat, lng, published_at, relevance_verdict) VALUES (@country_code, @lang, @source_name, @title, @description, @url, @lat, @lng, @published_at, @relevance_verdict)`),
   getNewsByCountry: (code, lang) => db.prepare(`SELECT * FROM news_cache WHERE country_code = ? AND lang = ? ORDER BY published_at DESC LIMIT 20`).all(code, lang || 'en'),
   getNewsForCrime:  (code) => db.prepare(`SELECT title, published_at FROM news_cache WHERE country_code = ? AND cached_at > datetime('now', '-7 days') ORDER BY published_at DESC LIMIT 100`).all(code),
   clearOldNews: db.prepare(`DELETE FROM news_cache WHERE cached_at < datetime('now', '-48 hours')`),

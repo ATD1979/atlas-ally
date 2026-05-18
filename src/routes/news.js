@@ -33,14 +33,13 @@ router.get('/news', (req, res) => {
     items = [];
   }
 
-  // Serve-time relevance + noise filter. Two reasons to run noise filter here in
-  // addition to cache-write time:
-  //   (1) Stale cache rows inserted before passesNoiseFilter rules existed get
-  //       filtered at query time without requiring a cache flush.
-  //   (2) Defense-in-depth — alias/noise list updates take effect immediately for
-  //       the user-facing feed instead of waiting on the next refresh tick.
+  // Serve-time filter: drop legacy NULL-verdict rows (ingested before the
+  // LLM-vetting wiring) and apply the noise filter for defense-in-depth
+  // against alias-list updates since ingest. The verdict column (set at
+  // cache-write time) is the source of truth for country relevance — fast,
+  // synchronous, and reflects the LLM vetting that happened at ingest.
   items = items.filter(a =>
-    isRelevantToCountry(a.title, code) &&
+    a.relevance_verdict !== null &&
     passesNoiseFilter(a.title, code)
   );
 
