@@ -117,6 +117,7 @@ function insertEvent(ev) {
       submitted_by:      'auto-ingest',
       submitted_user_id: null,
       is_test:           0,
+      relevance_verdict: ev.relevance_verdict || 'strong',
     });
     return true;
   } catch { return false; }
@@ -336,7 +337,8 @@ async function ingestGDELT(code) {
         // so results routinely include unrelated articles (e.g. US local news tagged
         // JO because "jo" appears somewhere in the text). Drop anything that doesn't
         // actually mention the country.
-        if (!await vetRelevance(title, code, art.url || null)) continue;
+        const verdict = await vetRelevance(title, code, art.url || null);
+        if (!verdict) continue;
         const { type, severity } = classify(title);
         const geo = extractLocation(title, code);
         const ok  = insertEvent({
@@ -344,6 +346,7 @@ async function ingestGDELT(code) {
           description: art.seendate ? `Reported: ${art.seendate}` : '',
           location: geo?.location || null, lat: geo?.lat || null, lng: geo?.lng || null,
           source: art.domain || 'GDELT', source_url: art.url || 'https://api.gdeltproject.org',
+          relevance_verdict: verdict,
         });
         if (ok) total++;
       }

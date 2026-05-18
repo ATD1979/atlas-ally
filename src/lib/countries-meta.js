@@ -255,15 +255,17 @@ async function llmIsRelevantToCountry(text, code, url = null) {
   }
 }
 
-// Convenience wrapper for cache-write paths: short-circuits on strong/none,
-// only invokes the LLM on weak matches. Use at ingest call sites instead of
-// isRelevantToCountry; isRelevantToCountry stays as the sync boolean for
-// serve-time defense-in-depth where async is not available.
+// Convenience wrapper for cache-write paths: returns the verdict string for
+// persistence. Short-circuits on strong/none, only invokes the LLM on weak
+// matches. Returns 'strong' | 'verified' | null. Use at ingest call sites;
+// isRelevantToCountry stays as the sync boolean for synchronous serve-time
+// checks where async/persisted verdict isn't available (e.g. live Google News).
 async function vetRelevance(text, code, url = null) {
   const verdict = classifyRelevance(text, code);
-  if (verdict === 'strong') return true;
-  if (verdict === 'none')   return false;
-  return await llmIsRelevantToCountry(text, code, url);
+  if (verdict === 'strong') return 'strong';
+  if (verdict === 'none')   return null;
+  const passed = await llmIsRelevantToCountry(text, code, url);
+  return passed ? 'verified' : null;
 }
 
 // â”€â”€ Noise filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

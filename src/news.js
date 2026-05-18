@@ -53,7 +53,8 @@ async function fetchCountryNews(code, lang = 'en') {
     if (url) seen.add(url);
 
     // Relevance filter — title must mention the country
-    if (!await vetRelevance(title + ' ' + item.description, code, item.link)) continue;
+    const verdict = await vetRelevance(title + ' ' + item.description, code, item.link);
+    if (!verdict) continue;
     if (!passesNoiseFilter(title, code)) continue;
 
     let published = new Date().toISOString();
@@ -72,6 +73,7 @@ async function fetchCountryNews(code, lang = 'en') {
       lat: null,
       lng: null,
       published_at: published,
+      relevance_verdict: verdict,
     });
   }
 
