@@ -744,9 +744,17 @@
         };
 
         function renderIncidents() {
-          // Filter events by active pill (if any)
+          // Filter events by active pill (if any). When a pill is selected
+          // we also clip to the last 7 days to match the scope of
+          // stats.by_category (which is where the pill counts come from);
+          // without this, the filtered list size won't match the pill count.
+          var sevenAgo = Date.now() - 7 * 86400e3;
           var filtered = activePill
-            ? events.filter(function(ev){ return categoryFor(ev) === activePill; })
+            ? events.filter(function(ev){
+                if (categoryFor(ev) !== activePill) return false;
+                var t = new Date(ev.date || ev.timestamp || ev.occurred_at || ev.created_at || 0).getTime();
+                return t > sevenAgo;
+              })
             : events;
 
           // Build pills with click affordance and active state
