@@ -77,10 +77,16 @@ try {
     safeAddColumn('news_cache', 'lat', 'REAL');
     safeAddColumn('news_cache', 'lng', 'REAL');
     safeAddColumn('news_cache', 'relevance_verdict', 'TEXT');
-    // No backfill for news_cache — all rows are Google News which is the
-    // source of person-name false positives. Legacy NULL rows get dropped
-    // at serve time; next 30-min refresh re-fills via the LLM-vetted path.
-    // Cache age-out is 48h via clearOldNews, so full recovery within 2 days.
+    // Legacy rows from Google News (the false-positive source) have NULL
+    // verdict and would otherwise persist for up to 48h until clearOldNews
+    // ages them out, because cacheNews uses INSERT OR IGNORE — re-ingestion
+    // of an existing URL won't overwrite the NULL. Scrub them outright so
+    // the next refresh refills the cache with vetted rows within ~30 min.
+    // Idempotent: matches zero rows on subsequent deploys once cleared.
+    try {
+      const r = db.prepare(`DELETE FROM news_cache WHERE relevance_verdict IS NULL`).run();
+      if (r.changes > 0) console.log(`✅ Migration: scrubbed ${r.changes} legacy NULL-verdict news_cache rows`);
+    } catch { /* column doesn't exist on totally fresh DB — fine */ }
   }
 } catch(e) { console.warn('Migration warning (non-fatal):', e.message); }
 
