@@ -7,7 +7,7 @@
 const router = require('express').Router();
 const db = require('../db');
 const { fetchRSS } = require('../lib/rss');
-const { getCountryName, isRelevantToCountry, passesNoiseFilter } = require('../lib/countries-meta');
+const { getCountryName, classifyRelevance, passesNoiseFilter } = require('../lib/countries-meta');
 const { classifyEvent, EVENT_TYPE_TO_FEED_CAT } = require('../lib/classify');
 
 // Per-language "security" query fragments for the live Google News augmentation.
@@ -63,12 +63,13 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
 
     if (title.length < 10 || (url && seen.has(url)) || seen.has(key)) continue;
 
-    // Country-relevance gate — stricter than news.js's title+description check
-    // because Google News search is extremely loose. Require the country name
-    // or an alias to appear in the TITLE specifically (a "Jordan" mention
-    // buried in the description of a US local news story isn't enough).
+    // Country-relevance gate — STRONG matches only at serve time. Weak matches
+    // could be person-name garbage ("Jim Jordan", "Cam Jordan") since we can't
+    // run the async LLM verifier in the request hot path. The persisted news
+    // cache flows through the LLM-vetted path in news.js, but live gnews here
+    // is real-time and must rely on the cheap synchronous classifier alone.
     const description = String(item.description || '').replace(/<[^>]*>/g, '').trim();
-    if (!isRelevantToCountry(title, countryCode)) continue;
+    if (classifyRelevance(title, countryCode) !== 'strong') continue;
     if (!passesNoiseFilter(title, countryCode)) continue;
 
     if (url) seen.add(url);
