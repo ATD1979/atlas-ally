@@ -51,6 +51,7 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
   const allItems = batches.flat();
   const seen = new Set();
   const results = [];
+  const sevenAgo = Date.now() - 7 * 86400e3;
 
   for (const item of allItems) {
     const raw = item.title;
@@ -72,14 +73,25 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
     if (classifyRelevance(title, countryCode) !== 'strong') continue;
     if (!passesNoiseFilter(title, countryCode)) continue;
 
+    // Date filter — drop articles older than 7 days to align with the pill
+    // scope (stats.by_category server-side is also 7-day). Google News RSS
+    // can return articles from years back when they match the search; keeping
+    // them inflates the "INCIDENTS" header count while pills only reflect the
+    // last week. Undated items are kept (treated as current via the fallback
+    // below, matching prior behavior).
+    let publishedMs = null;
+    try {
+      const d = new Date(item.published);
+      if (!isNaN(d.getTime())) publishedMs = d.getTime();
+    } catch { /* unparseable; keep as undated */ }
+    if (publishedMs !== null && publishedMs < sevenAgo) continue;
+
     if (url) seen.add(url);
     seen.add(key);
 
-    let published = new Date().toISOString();
-    try {
-      const d = new Date(item.published);
-      if (!isNaN(d.getTime())) published = d.toISOString();
-    } catch {}
+    const published = publishedMs !== null
+      ? new Date(publishedMs).toISOString()
+      : new Date().toISOString();
 
     const { type, severity } = classifyEvent(title);
     results.push({
