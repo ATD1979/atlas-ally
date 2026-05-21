@@ -64,6 +64,17 @@ module.exports = [
     },
   },
 
+  // Test files — add Jest globals so describe/test/expect/beforeEach/etc.
+  // don't trip no-undef. Only applies to files under test/.
+  {
+    files: ['test/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+
   // Disable ESLint rules that conflict with Prettier.
   // This block must come LAST so it wins.
   prettier,
