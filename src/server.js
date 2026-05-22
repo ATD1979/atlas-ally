@@ -34,11 +34,6 @@ const paymentRoutes  = require('./routes/payments');
 const packRoutes     = require('./routes/pack');
 const incidentsRoutes = require('./routes/incidents');
 
-// ── Startup ───────────────────────────────────────────────────────────────────
-ensureRuntimeTables();
-seedCrimeData();
-seedAdminUsers();
-
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1);
@@ -246,56 +241,70 @@ app.get('/admin',   (req, res) => res.sendFile(path.join(__dirname, '..', 'publi
 app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'privacy.html')));
 app.get('/terms',   (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'terms.html')));
 
-// ── Scheduled jobs ────────────────────────────────────────────────────────────
-// Interval IDs captured in `intervals` so the shutdown handler can clearInterval
-// on each. Without this, Node won't exit cleanly on SIGTERM because the event
-// loop still has active timers.
-refreshAllNews().catch(e => console.error('Initial news refresh failed:', e.message));
-ingestSecurityEvents().catch(e => console.error('Initial event ingest failed:', e.message));
-checkAllWeather(db).catch(() => {});
+// ── Export app for testing ────────────────────────────────────────────────────
+// Tests require this file to get a fully-configured Express app without
+// triggering the side effects below (DB seeding, network fires, intervals,
+// port binding, signal handlers). The require.main === module guard ensures
+// those only run when the file is executed directly (node src/server.js).
+module.exports = app;
 
-const intervals = [
-  setInterval(() => refreshAllNews().catch(e => console.error('News refresh:', e.message)), 30 * 60 * 1000),       // every 30 min
-  setInterval(() => ingestSecurityEvents().catch(e => console.error('Event ingest:', e.message)), 15 * 60 * 1000), // every 15 min
-  setInterval(() => checkAllWeather(db).catch(() => {}), 6 * 60 * 60 * 1000),                                       // every 6 hours
-];
+if (require.main === module) {
+  // ── Startup ────────────────────────────────────────────────────────────────
+  ensureRuntimeTables();
+  seedCrimeData();
+  seedAdminUsers();
 
-// ── Start ─────────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => console.log(`🌍 Atlas Ally running on port ${PORT}`));
+  // ── Scheduled jobs ─────────────────────────────────────────────────────────
+  // Interval IDs captured in `intervals` so the shutdown handler can clearInterval
+  // on each. Without this, Node won't exit cleanly on SIGTERM because the event
+  // loop still has active timers.
+  refreshAllNews().catch(e => console.error('Initial news refresh failed:', e.message));
+  ingestSecurityEvents().catch(e => console.error('Initial event ingest failed:', e.message));
+  checkAllWeather(db).catch(() => {});
 
-// ── Graceful shutdown ─────────────────────────────────────────────────────────
-// Railway sends SIGTERM on deploy/restart (default grace ~30s). We clear the
-// interval timers first so no cron fires mid-shutdown, then stop accepting new
-// connections via server.close() (which drains in-flight requests), then close
-// the SQLite handle. A 10s safety-valve timeout force-exits if anything hangs.
-// `shuttingDown` guards against double-invocation (e.g. if both SIGTERM and
-// SIGINT arrive, or the handler is re-entered).
-let shuttingDown = false;
-function shutdown(signal) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(`[shutdown] received ${signal}, closing gracefully`);
+  const intervals = [
+    setInterval(() => refreshAllNews().catch(e => console.error('News refresh:', e.message)), 30 * 60 * 1000),       // every 30 min
+    setInterval(() => ingestSecurityEvents().catch(e => console.error('Event ingest:', e.message)), 15 * 60 * 1000), // every 15 min
+    setInterval(() => checkAllWeather(db).catch(() => {}), 6 * 60 * 60 * 1000),                                       // every 6 hours
+  ];
 
-  intervals.forEach(clearInterval);
+  // ── Start ──────────────────────────────────────────────────────────────────
+  const PORT = process.env.PORT || 3000;
+  const server = app.listen(PORT, () => console.log(`🌍 Atlas Ally running on port ${PORT}`));
 
-  server.close((err) => {
-    if (err) console.error('[shutdown] server.close error:', err.message);
-    else     console.log('[shutdown] http server closed');
+  // ── Graceful shutdown ──────────────────────────────────────────────────────
+  // Railway sends SIGTERM on deploy/restart (default grace ~30s). We clear the
+  // interval timers first so no cron fires mid-shutdown, then stop accepting new
+  // connections via server.close() (which drains in-flight requests), then close
+  // the SQLite handle. A 10s safety-valve timeout force-exits if anything hangs.
+  // `shuttingDown` guards against double-invocation (e.g. if both SIGTERM and
+  // SIGINT arrive, or the handler is re-entered).
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[shutdown] received ${signal}, closing gracefully`);
 
-    if (db.db && typeof db.db.close === 'function') {
-      try { db.db.close(); console.log('[shutdown] db closed'); }
-      catch (e) { console.error('[shutdown] db.close error:', e.message); }
-    }
-    process.exit(0);
-  });
+    intervals.forEach(clearInterval);
 
-  // Safety valve — force exit if graceful close hangs (long-lived keep-alive,
-  // stuck DB write, etc.). .unref() so the timer itself doesn't keep us alive.
-  setTimeout(() => {
-    console.error('[shutdown] forced exit after 10s timeout');
-    process.exit(1);
-  }, 10_000).unref();
+    server.close((err) => {
+      if (err) console.error('[shutdown] server.close error:', err.message);
+      else     console.log('[shutdown] http server closed');
+
+      if (db.db && typeof db.db.close === 'function') {
+        try { db.db.close(); console.log('[shutdown] db closed'); }
+        catch (e) { console.error('[shutdown] db.close error:', e.message); }
+      }
+      process.exit(0);
+    });
+
+    // Safety valve — force exit if graceful close hangs (long-lived keep-alive,
+    // stuck DB write, etc.). .unref() so the timer itself doesn't keep us alive.
+    setTimeout(() => {
+      console.error('[shutdown] forced exit after 10s timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  }
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT',  () => shutdown('SIGINT'));
 }
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT',  () => shutdown('SIGINT'));
