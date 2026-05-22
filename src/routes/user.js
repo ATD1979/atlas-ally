@@ -96,7 +96,7 @@ router.delete('/delete', (req, res) => {
     res.json({ ok: true, message: 'Account deleted successfully' });
   } catch (e) {
     req.logErr('account_delete', e);
-    res.status(500).json({ error: 'Failed to delete account. Please contact support@atlas-ally.com' });
+    res.status(500).json({ error: 'Failed to delete account. Please contact support [at] atlas-ally.com' });
   }
 });
 
