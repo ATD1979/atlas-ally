@@ -4,8 +4,6 @@
 // Returns stored security events merged with a live Google News "security" fetch
 // in the user's language, plus a 7-day rolling stats summary. Deduped by source_url.
 
-const router = require('express').Router();
-const db = require('../db');
 const { fetchRSS } = require('../lib/rss');
 const { getCountryName, classifyRelevance, passesNoiseFilter } = require('../lib/countries-meta');
 const { classifyEvent, EVENT_TYPE_TO_FEED_CAT } = require('../lib/classify');
@@ -114,79 +112,85 @@ async function fetchSecurityNewsInLang(countryName, countryCode, lang) {
   return results;
 }
 
-router.get('/events', async (req, res) => {
-  const { country_code, lat, lng, lang = 'en' } = req.query;
-  if (!country_code) return res.status(400).json({ error: 'country_code required' });
-  const code = country_code.toUpperCase();
-  const countryName = getCountryName(code);
+function buildRouter(db) {
+  const router = require('express').Router();
 
-  // Stored events from DB
-  let stored = [];
-  try { stored = db.getEventsByCountry.all(code); } catch {}
+  router.get('/events', async (req, res) => {
+    const { country_code, lat, lng, lang = 'en' } = req.query;
+    if (!country_code) return res.status(400).json({ error: 'country_code required' });
+    const code = country_code.toUpperCase();
+    const countryName = getCountryName(code);
 
-  // Serve-time filter: drop legacy NULL-verdict rows (ingested before the
-  // LLM-vetting wiring) and apply the noise filter for defense-in-depth
-  // against alias-list updates since ingest. The verdict column (set at
-  // cache-write time) is the source of truth for country relevance — fast,
-  // synchronous, and reflects the LLM vetting that happened at ingest.
-  // isRelevantToCountry remains in scope for the live Google News path below
-  // (rows that aren't persisted and therefore have no verdict).
-  stored = stored.filter(e =>
-    e.relevance_verdict !== null &&
-    passesNoiseFilter(e.title, code)
-  );
+    // Stored events from DB
+    let stored = [];
+    try { stored = db.getEventsByCountry.all(code); } catch {}
 
-  // If DB is empty, nudge the ingest job (fire-and-forget, wrapped — the
-  // service can be slow or not loaded)
-  if (!stored.length) {
-    try {
-      const { ingestSecurityEvents } = require('../services/events-ingest');
-      ingestSecurityEvents().catch(() => {});
-    } catch {}
-  }
+    // Serve-time filter: drop legacy NULL-verdict rows (ingested before the
+    // LLM-vetting wiring) and apply the noise filter for defense-in-depth
+    // against alias-list updates since ingest. The verdict column (set at
+    // cache-write time) is the source of truth for country relevance — fast,
+    // synchronous, and reflects the LLM vetting that happened at ingest.
+    // isRelevantToCountry remains in scope for the live Google News path below
+    // (rows that aren't persisted and therefore have no verdict).
+    stored = stored.filter(e =>
+      e.relevance_verdict !== null &&
+      passesNoiseFilter(e.title, code)
+    );
 
-  // Augment with live Google News
-  let gnews = [];
-  try { gnews = await fetchSecurityNewsInLang(countryName, code, lang); } catch (e) {
-    console.error(`Security news fetch failed for ${code}:`, e.message);
-  }
+    // If DB is empty, nudge the ingest job (fire-and-forget, wrapped — the
+    // service can be slow or not loaded)
+    if (!stored.length) {
+      try {
+        const { ingestSecurityEvents } = require('../services/events-ingest');
+        ingestSecurityEvents().catch(() => {});
+      } catch {}
+    }
 
-  // Dedupe stored vs gnews by source_url
-  const seen = new Set(stored.map(e => e.source_url).filter(Boolean));
-  const merged = [...stored, ...gnews.filter(e => e.source_url && !seen.has(e.source_url))];
-  merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    // Augment with live Google News
+    let gnews = [];
+    try { gnews = await fetchSecurityNewsInLang(countryName, code, lang); } catch (e) {
+      console.error(`Security news fetch failed for ${code}:`, e.message);
+    }
 
-  // 7-day rolling stats
-  const sevenAgo = Date.now() - 7 * 86400e3;
-  const last7 = merged.filter(e => new Date(e.created_at || 0).getTime() > sevenAgo);
+    // Dedupe stored vs gnews by source_url
+    const seen = new Set(stored.map(e => e.source_url).filter(Boolean));
+    const merged = [...stored, ...gnews.filter(e => e.source_url && !seen.has(e.source_url))];
+    merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-  const catCounts = {};
-  last7.forEach(ev => {
-    const cat = EVENT_TYPE_TO_FEED_CAT[ev.type] || 'other';
-    catCounts[cat] = (catCounts[cat] || 0) + 1;
+    // 7-day rolling stats
+    const sevenAgo = Date.now() - 7 * 86400e3;
+    const last7 = merged.filter(e => new Date(e.created_at || 0).getTime() > sevenAgo);
+
+    const catCounts = {};
+    last7.forEach(ev => {
+      const cat = EVENT_TYPE_TO_FEED_CAT[ev.type] || 'other';
+      catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    const stats7d = {
+      total:       last7.length,
+      per_day:     parseFloat((last7.length / 7).toFixed(1)),
+      by_category: catCounts,
+      critical:    last7.filter(e => e.severity === 'critical').length,
+      high:        last7.filter(e => e.severity === 'high').length,
+    };
+
+    // GPS sort
+    const userLat = parseFloat(lat), userLng = parseFloat(lng);
+    if (!isNaN(userLat) && !isNaN(userLng)) {
+      const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
+      const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
+      const enriched = merged.map(ev => ({
+        ...ev,
+        distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),
+      })).sort((a, b) => a.distance_km - b.distance_km);
+      return res.json({ events: enriched, stats7d });
+    }
+
+    res.json({ events: merged, stats7d });
   });
 
-  const stats7d = {
-    total:       last7.length,
-    per_day:     parseFloat((last7.length / 7).toFixed(1)),
-    by_category: catCounts,
-    critical:    last7.filter(e => e.severity === 'critical').length,
-    high:        last7.filter(e => e.severity === 'high').length,
-  };
+  return router;
+}
 
-  // GPS sort
-  const userLat = parseFloat(lat), userLng = parseFloat(lng);
-  if (!isNaN(userLat) && !isNaN(userLng)) {
-    const { distanceKm, COUNTRY_CENTERS } = require('../geocoder');
-    const center = COUNTRY_CENTERS[code] || { lat: userLat, lng: userLng };
-    const enriched = merged.map(ev => ({
-      ...ev,
-      distance_km: Math.round(distanceKm(userLat, userLng, ev.lat || center.lat, ev.lng || center.lng)),
-    })).sort((a, b) => a.distance_km - b.distance_km);
-    return res.json({ events: enriched, stats7d });
-  }
-
-  res.json({ events: merged, stats7d });
-});
-
-module.exports = router;
+module.exports = buildRouter;
