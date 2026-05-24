@@ -2345,7 +2345,15 @@
       var _saved = localStorage.getItem('atlas_last_country');
       var _home  = localStorage.getItem('atlas_origin');
       var _initialCountry = _saved || _home || null;
-      if (_initialCountry) window.setActiveCountry(_initialCountry);
+      if (_initialCountry) {
+        // Hydrate from storage and paint via applyActiveCountry — bypasses
+        // setActiveCountry so no localStorage write fires on init (prevents
+        // cold-load re-persistence of any pre-existing corrupt value).
+        window.activeCountry = _initialCountry;
+        if (typeof window.applyActiveCountry === 'function') {
+          window.applyActiveCountry(_initialCountry);
+        }
+      }
     } catch (e) { /* storage unavailable — silent */ }
 
     switchTab('map');
