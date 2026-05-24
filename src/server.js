@@ -222,6 +222,7 @@ app.get('/unsubscribe', (req, res) => {
 // Static files — root serves the app (gate middleware already protects it)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'landing.html')));
+app.get('/v2-feed', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'v2-feed.html')));
 
 // Capture launch interest emails
 app.post('/api/notify-interest', (req, res) => {

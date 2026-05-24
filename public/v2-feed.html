@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas Ally — Live Feed</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0E7490;--teal-light:#E0F2F7;
+  --gold:#F59E0B;--gold-light:#FEF3C7;
+  --bg:#F8FAFB;--card:#fff;--border:#E5EAEF;
+  --text:#1A2332;--muted:#6B7C93;--subtle:#A8B5C4;
+  --red:#EF4444;--red-light:#FEF2F2;
+  --green:#10B981;--green-light:#ECFDF5;
+}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+
+.topbar{background:var(--teal);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-0.2px}
+.topbar-sub{color:rgba(255,255,255,0.65);font-size:9px;letter-spacing:1.2px;text-transform:uppercase}
+.topbar-icon{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+
+.feed-tabs{display:flex;background:#fff;border-bottom:1px solid var(--border)}
+.ftab{flex:1;padding:10px 0;text-align:center;font-size:11px;font-weight:600;color:var(--muted)}
+.ftab.on{color:var(--teal);border-bottom:2px solid var(--teal)}
+
+.feed-meta{display:flex;justify-content:space-between;padding:8px 14px 4px;background:var(--bg)}
+.fmeta{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);display:inline-block;margin-right:3px}
+
+.fitem{padding:10px 14px;border-bottom:1px solid var(--border);background:#fff;display:flex;gap:9px;align-items:flex-start}
+.ficon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.fi-red{background:var(--red-light)}
+.fi-amber{background:var(--gold-light)}
+.fi-green{background:var(--green-light)}
+.fi-blue{background:var(--teal-light)}
+.fbody{flex:1}
+.fhead{font-size:11px;font-weight:500;color:var(--text);line-height:1.3;margin-bottom:3px}
+.fsub{display:flex;gap:6px;align-items:center}
+.ftag{padding:2px 6px;border-radius:8px;font-size:8px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+.tr{background:var(--red-light);color:var(--red)}
+.ta{background:var(--gold-light);color:#92400E}
+.tg{background:var(--green-light);color:#065F46}
+.tb{background:var(--teal-light);color:var(--teal)}
+.ftime{font-size:9px;color:var(--subtle);font-family:'DM Mono',monospace}
+
+.tabbar{background:#fff;border-top:1px solid var(--border);padding:6px 0 3px;display:flex;justify-content:space-around;position:sticky;bottom:0}
+.tbi{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tbi-icon{font-size:17px;color:var(--subtle)}
+.tbi-icon.on{color:var(--teal)}
+.tbi-label{font-size:8px;color:var(--subtle);font-weight:500}
+.tbi-label.on{color:var(--teal);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Atlas Ally</div>
+    <div class="topbar-sub">Global Intelligence</div>
+  </div>
+  <div class="topbar-icon">🔔</div>
+</div>
+
+<div class="feed-tabs">
+  <div class="ftab on">📰 News</div>
+  <div class="ftab">⚠️ Incidents</div>
+  <div class="ftab">🔴 Crime</div>
+</div>
+
+<div class="feed-meta">
+  <span class="fmeta"><span class="ldot"></span>LIVE · just now</span>
+  <span class="fmeta">🌍 Global</span>
+</div>
+
+<div id="feed-list"></div>
+
+<div class="tabbar">
+  <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+  <div class="tbi"><div class="tbi-icon on">📡</div><div class="tbi-label on">Feed</div></div>
+  <div class="tbi"><div class="tbi-icon">🎒</div><div class="tbi-label">Packing</div></div>
+  <div class="tbi"><div class="tbi-icon">🌍</div><div class="tbi-label">Countries</div></div>
+  <div class="tbi"><div class="tbi-icon">👤</div><div class="tbi-label">Account</div></div>
+</div>
+
+<script>
+// Dummy data matching the events table schema (db-factory.js:168-188).
+// Designed to exercise all 5 visual branches of classifyFeedItem.
+const FEED = {
+  events: [
+    { id: 'dummy-IL01', country_code: 'IL', type: 'siren', severity: 'high',
+      title: 'Air sirens in northern Israel — shelter advised',
+      description: '', location: 'Israel', lat: null, lng: null,
+      source: 'US Embassy Israel', source_url: 'https://example.invalid/dummy/il-sirens',
+      created_at: new Date(Date.now() -  2 *  60 * 1000).toISOString(),
+      status: 'approved', is_test: 0, notified: 0, relevance_verdict: 'strong' },
+    { id: 'dummy-JO01', country_code: 'JO', type: 'incident', severity: 'warn',
+      title: 'Jordan tightens border controls amid tensions',
+      description: '', location: 'Jordan', lat: null, lng: null,
+      source: 'Reuters', source_url: 'https://example.invalid/dummy/jo-border',
+      created_at: new Date(Date.now() - 11 *  60 * 1000).toISOString(),
+      status: 'approved', is_test: 0, notified: 0, relevance_verdict: 'strong' },
+    { id: 'dummy-TH01', country_code: 'TH', type: 'flood', severity: 'high',
+      title: 'Thailand lifts flood emergency in Chiang Mai',
+      description: '', location: 'Thailand', lat: null, lng: null,
+      source: 'Bangkok Post', source_url: 'https://example.invalid/dummy/th-flood',
+      created_at: new Date(Date.now() - 34 *  60 * 1000).toISOString(),
+      status: 'approved', is_test: 0, notified: 0, relevance_verdict: 'strong' },
+    { id: 'dummy-EC01', country_code: 'EC', type: 'incident', severity: 'warn',
+      title: 'US State Dept Level 2 advisory for Ecuador',
+      description: '', location: 'Ecuador', lat: null, lng: null,
+      source: 'US Dept of State', source_url: 'https://example.invalid/dummy/ec-advisory',
+      created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      status: 'approved', is_test: 0, notified: 0, relevance_verdict: 'strong' },
+    { id: 'dummy-PH01', country_code: 'PH', type: 'incident', severity: 'warn',
+      title: 'Severe weather system tracking toward Philippines',
+      description: '', location: 'Philippines', lat: null, lng: null,
+      source: 'PAGASA', source_url: 'https://example.invalid/dummy/ph-storm',
+      created_at: new Date(Date.now() -  2 * 60 * 60 * 1000).toISOString(),
+      status: 'approved', is_test: 0, notified: 0, relevance_verdict: 'strong' },
+  ],
+  stats7d: { total: 5, per_day: 0.7, by_category: { air: 1, weather: 1, other: 3 }, critical: 0, high: 2 }
+};
+
+// Ported verbatim from public/nav.js:662 (classifyFeedItem). Maps an event
+// to its visual treatment. First-match-wins on 5 ordered branches.
+function classifyFeedItem(event) {
+  var type = event.type || '';
+  var severity = event.severity || 'warn';
+  var title = (event.title || '').toLowerCase();
+
+  if (/\b(lifts|lifted|ends|ended|resolved|cleared|reopens|reopened|cancelled|canceled|restored)\b/.test(title)) {
+    return { icon: '✅', color: 'fi-green', pill: 'All Clear', pillColor: 'tg' };
+  }
+  if (/^(earthquake|flood|fire|storm)$/.test(type) ||
+      /\b(storm|hurricane|typhoon|cyclone|earthquake|tsunami|wildfire)\b/.test(title)) {
+    return { icon: '⛈️', color: 'fi-amber', pill: 'Weather', pillColor: 'ta' };
+  }
+  if (/\b(state dept|state department|embassy|consulate|travel advisory|level \d advisory)\b/.test(title)) {
+    return { icon: '📡', color: 'fi-blue', pill: 'Advisory', pillColor: 'tb' };
+  }
+  if (severity === 'critical' || /^(missile|airstrike|drone|explosion|bomb|siren|shooting)$/.test(type)) {
+    return { icon: '🔴', color: 'fi-red', pill: 'Urgent', pillColor: 'tr' };
+  }
+  return { icon: '📰', color: 'fi-amber', pill: 'Advisory', pillColor: 'ta' };
+}
+
+function timeAgo(iso) {
+  var ms = Date.now() - new Date(iso).getTime();
+  var m  = Math.round(ms / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return m + 'm ago';
+  var h = Math.round(m / 60);
+  if (h < 24) return h + 'h ago';
+  var d = Math.round(h / 24);
+  return d + 'd ago';
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+(function render() {
+  var list = document.getElementById('feed-list');
+  list.innerHTML = FEED.events.map(function(ev) {
+    var cls = classifyFeedItem(ev);
+    return '<div class="fitem">' +
+      '<div class="ficon ' + cls.color + '">' + cls.icon + '</div>' +
+      '<div class="fbody">' +
+        '<div class="fhead">' + escapeHtml(ev.title) + '</div>' +
+        '<div class="fsub">' +
+          '<span class="ftag ' + cls.pillColor + '">' + escapeHtml(cls.pill) + '</span>' +
+          '<span class="ftime">' + escapeHtml(timeAgo(ev.created_at)) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+})();
+</script>
+</body>
+</html>
