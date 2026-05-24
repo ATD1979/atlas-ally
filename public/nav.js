@@ -2312,8 +2312,17 @@
       var r=_origSet?_origSet(code,pos):null;
       window.activeCountry=code;
       window.activeCountryPos=pos;
-      // 3e — persist last-selected country (silent on storage errors)
-      try { if (code) localStorage.setItem('atlas_last_country', code); } catch (e) {}
+      // 3e — persist last-selected country, gated on monitored list so a
+      // non-monitored code can't poison localStorage. Gate falls open before
+      // allCountries loads (silent on storage errors).
+      try {
+        if (code) {
+          var monitored = window.allCountries || [];
+          if (!monitored.length || monitored.some(function(c){ return c.code === code; })) {
+            localStorage.setItem('atlas_last_country', code);
+          }
+        }
+      } catch (e) {}
       // 3e — switched-country banner: only on real change, never on initial set
       if (prev && code && prev !== code) {
         showSwitchBanner(prev, code);
