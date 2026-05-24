@@ -223,6 +223,7 @@ app.get('/unsubscribe', (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 app.get('/landing', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'landing.html')));
 app.get('/v2-feed', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'v2-feed.html')));
+app.get('/v2-countries', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'v2-countries.html')));
 
 // Capture launch interest emails
 app.post('/api/notify-interest', (req, res) => {

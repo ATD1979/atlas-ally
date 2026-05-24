@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas Ally — My Countries</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0E7490;--teal-light:#E0F2F7;
+  --gold:#F59E0B;--gold-light:#FEF3C7;
+  --bg:#F8FAFB;--card:#fff;--border:#E5EAEF;
+  --text:#1A2332;--muted:#6B7C93;--subtle:#A8B5C4;
+  --red:#EF4444;--red-light:#FEF2F2;
+  --green:#10B981;--green-light:#ECFDF5;
+}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+
+.topbar{background:var(--teal);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-0.2px}
+.topbar-sub{color:rgba(255,255,255,0.65);font-size:9px;letter-spacing:1.2px;text-transform:uppercase}
+.topbar-icon{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+
+.country-wrap{background:var(--bg);padding:8px 0 12px}
+.ccard{margin:8px 12px 0;background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.ctop{padding:10px 12px;display:flex;align-items:center;gap:8px}
+.cflag{font-size:20px}
+.cinfo{flex:1}
+.cname{font-size:12px;font-weight:600;color:var(--text)}
+.cscore{font-size:10px;color:var(--muted);margin-top:1px}
+.sbadge{padding:3px 8px;border-radius:16px;font-size:9px;font-weight:700}
+.ss{background:var(--green-light);color:#065F46}
+.sw{background:var(--gold-light);color:#92400E}
+.sd{background:var(--red-light);color:var(--red)}
+.cbar{height:3px;background:var(--border);margin:0 12px 10px}
+.cfill{height:100%;border-radius:2px}
+.cacts{display:flex;border-top:1px solid var(--border)}
+.cact{flex:1;padding:7px;text-align:center;font-size:10px;font-weight:600;color:var(--teal);background:none;border:none;cursor:pointer;font-family:inherit}
+.cact+.cact{border-left:1px solid var(--border)}
+
+.tabbar{background:#fff;border-top:1px solid var(--border);padding:6px 0 3px;display:flex;justify-content:space-around;position:sticky;bottom:0}
+.tbi{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tbi-icon{font-size:17px;color:var(--subtle)}
+.tbi-icon.on{color:var(--teal)}
+.tbi-label{font-size:8px;color:var(--subtle);font-weight:500}
+.tbi-label.on{color:var(--teal);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">My Countries</div>
+    <div class="topbar-sub">5 Monitored</div>
+  </div>
+  <div class="topbar-icon">+</div>
+</div>
+
+<div id="country-list" class="country-wrap"></div>
+
+<div class="tabbar">
+  <div class="tbi"><div class="tbi-icon">🗺️</div><div class="tbi-label">Map</div></div>
+  <div class="tbi"><div class="tbi-icon">📡</div><div class="tbi-label">Feed</div></div>
+  <div class="tbi"><div class="tbi-icon">🎒</div><div class="tbi-label">Packing</div></div>
+  <div class="tbi"><div class="tbi-icon on">🌍</div><div class="tbi-label on">Countries</div></div>
+  <div class="tbi"><div class="tbi-icon">👤</div><div class="tbi-label">Account</div></div>
+</div>
+
+<script>
+// Dummy data — shape mirrors the /api/countries endpoint response that
+// the existing client (public/countries.js) consumes, plus a synthesized
+// `score` field.
+//
+// TODO session-2: `score` is not in /api/countries response today.
+// Decide whether to derive (from advisoryEmoji / crime_stats), compute
+// server-side, or add as a column. See dual-classifier decision doc
+// (docs/decisions/2026-05-23-dual-classifier.md) for the deferred-
+// architecture pattern. Per the country-scoring memory: this is a
+// load-bearing future arc — a defensible formula tied to tangible
+// signals (advisory level, crime stats, news event density, UCDP),
+// not session-2 polish. Scope a dedicated session before shipping
+// scores to real users.
+const COUNTRIES = [
+  { code: 'JO', name: 'Jordan',     flag: '🇯🇴',
+    advisoryLabel: 'Level 2 Advisory', advisoryEmoji: '🟡',
+    capital: 'Amman',  language: 'Arabic',  currency: 'JOD',
+    center: [31.95, 35.93],
+    score: 78 },
+  { code: 'TH', name: 'Thailand',   flag: '🇹🇭',
+    advisoryLabel: 'Level 2 Advisory', advisoryEmoji: '🟡',
+    capital: 'Bangkok', language: 'Thai',   currency: 'THB',
+    center: [13.75, 100.50],
+    score: 72 },
+  { code: 'MX', name: 'Mexico',     flag: '🇲🇽',
+    advisoryLabel: 'Level 3 Advisory', advisoryEmoji: '🟠',
+    capital: 'Mexico City', language: 'Spanish', currency: 'MXN',
+    center: [19.43, -99.13],
+    score: 52 },
+  { code: 'CO', name: 'Colombia',   flag: '🇨🇴',
+    advisoryLabel: 'Level 3 Advisory', advisoryEmoji: '🟠',
+    capital: 'Bogotá', language: 'Spanish', currency: 'COP',
+    center: [4.71, -74.07],
+    score: 41 },
+  { code: 'YE', name: 'Yemen',      flag: '🇾🇪',
+    advisoryLabel: 'Level 4 Advisory', advisoryEmoji: '🔴',
+    capital: "Sana'a",  language: 'Arabic', currency: 'YER',
+    center: [15.35, 44.21],
+    score: 14 },
+];
+
+// Tier function — thresholds from the mockup (Jordan 78 SAFE, Mexico 52
+// CAUTION, Yemen 14 DANGER). First-match-wins on the 3 ordered branches.
+function tierFor(score) {
+  if (score >= 70) return { badge: 'SAFE',    cls: 'ss', fillColor: 'var(--green)', label: 'Low risk'      };
+  if (score >= 30) return { badge: 'CAUTION', cls: 'sw', fillColor: 'var(--gold)',  label: 'Moderate risk' };
+  return                  { badge: 'DANGER',  cls: 'sd', fillColor: 'var(--red)',   label: 'High risk'     };
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+(function render() {
+  var list = document.getElementById('country-list');
+  list.innerHTML = COUNTRIES.map(function(c) {
+    var t = tierFor(c.score);
+    return '<div class="ccard">' +
+      '<div class="ctop">' +
+        '<div class="cflag">' + c.flag + '</div>' +
+        '<div class="cinfo">' +
+          '<div class="cname">' + escapeHtml(c.name) + '</div>' +
+          '<div class="cscore">Score ' + c.score + ' · ' + escapeHtml(t.label) + '</div>' +
+        '</div>' +
+        '<div class="sbadge ' + t.cls + '">' + escapeHtml(t.badge) + '</div>' +
+      '</div>' +
+      '<div class="cbar"><div class="cfill" style="background:' + t.fillColor + ';width:' + c.score + '%"></div></div>' +
+      '<div class="cacts">' +
+        '<button class="cact">📡 Feed</button>' +
+        '<button class="cact">📋 Brief</button>' +
+        '<button class="cact">🗺️ Map</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+})();
+</script>
+</body>
+</html>
