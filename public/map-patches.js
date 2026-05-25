@@ -102,6 +102,7 @@ L.control.attribution({position: 'bottomleft', prefix: false}).addAttribution('Â
   function register(){
     if(typeof window.setActiveCountry === 'undefined') return setTimeout(register, 300);
     window.map.on('click', async function(e){
+      if (!e.originalEvent || !e.originalEvent.isTrusted) return;
       var lat = e.latlng.lat, lng = e.latlng.lng;
       try {
         var res = await fetch('/api/detect-country', {
