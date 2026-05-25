@@ -1899,11 +1899,7 @@
       var row=e.target.closest('.aa-crow');
       if(!row) return;
       // 3e — route through setActiveCountry so persistence + banner fire centrally
-      if (typeof window.setActiveCountry === 'function') {
-        window.setActiveCountry(row.dataset.code);
-      } else {
-        window.activeCountry = row.dataset.code;
-      }
+      window.setActiveCountry(row.dataset.code);
       if(window.map&&row.dataset.lat&&row.dataset.lng) window.map.setView([parseFloat(row.dataset.lat),parseFloat(row.dataset.lng)],6);
       switchTab('map');
     });
@@ -2305,34 +2301,13 @@
     window.loadNews          = loadNews;
     window.loadAlerts        = loadAlerts;
     window.loadCrime         = loadCrime;
-
-    var _origSet=window.setActiveCountry;
-    window.setActiveCountry=function(code,pos){
-      var prev = window.activeCountry || null; // 3e — capture before any update
-      var r=_origSet?_origSet(code,pos):null;
-      window.activeCountry=code;
-      window.activeCountryPos=pos;
-      // 3e — persist last-selected country, gated on monitored list so a
-      // non-monitored code can't poison localStorage. Gate falls open before
-      // allCountries loads (silent on storage errors).
-      try {
-        if (code) {
-          var monitored = window.allCountries || [];
-          if (!monitored.length || monitored.some(function(c){ return c.code === code; })) {
-            localStorage.setItem('atlas_last_country', code);
-          }
-        }
-      } catch (e) {}
-      // 3e — switched-country banner: only on real change, never on initial set
-      if (prev && code && prev !== code) {
-        showSwitchBanner(prev, code);
-      }
+    window.showSwitchBanner  = showSwitchBanner;
+    window.refreshActiveCountryFeed = function(code) {
       if(overlay&&overlay.style.display!=='none'&&document.getElementById('aa-feed-body')){
         if(_feedTab==='news')   loadNews(code);
         if(_feedTab==='alerts') loadAlerts(code);
         if(_feedTab==='crime')  loadCrime(code);
       }
-      return r;
     };
 
     // 3e — Restore pack state from previous session (must precede any pack render)
