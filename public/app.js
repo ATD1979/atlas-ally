@@ -45,7 +45,7 @@
     var eventsBody = document.getElementById('feed-events-body');
     var crimeBody = document.getElementById('feed-crime-body');
     var loc = getFeedLocation();
-    var country = window.activeCountry || (typeof currentCountry !== 'undefined' ? currentCountry : null);
+    var country = window.activeCountry || null;
     if (ctx) {
       if (country) ctx.textContent = 'Monitoring ' + country + ' · 300km radius';
       else if (loc) ctx.textContent = 'Current location: ' + loc.lat.toFixed(2) + ', ' + loc.lng.toFixed(2);
@@ -103,22 +103,21 @@
   function openCountryDetail(code) {
     if (!code) return;
     if (typeof setActiveCountry === 'function') setActiveCountry(code);
+    var data = (window.allCountries || []).find(function(c){ return c.code === code; });
+    var displayName = data ? (data.flag + ' ' + data.name) : code;
     var title = document.getElementById('cd-title');
-    if (title) title.textContent = code;
+    if (title) title.textContent = displayName;
     var body = document.getElementById('cd-body');
-    if (body) body.innerHTML = '<div style="padding:14px;">Country: ' + code + '</div>';
+    if (body) body.innerHTML = '<div style="padding:14px;">' + displayName + '</div>';
     var sheet = document.getElementById('cdetail');
     if (sheet) sheet.classList.add('open');
   }
   window.openCountryDetail = window.openCountryDetail || openCountryDetail;
 
-  function setActiveCountry(code, pos) {
-    window.activeCountry = code;
-    if (pos && pos.lat && pos.lng) {
-      window.activeCountryPos = { lat: pos.lat, lng: pos.lng };
-    }
-
-    // Find country data for flag and name
+  // Idempotent paint: refresh every UI surface for the given code. No state
+  // writes, no persistence, no side effects. Use when you just need the UI
+  // to match window.activeCountry (e.g. init hydrating from storage).
+  function applyActiveCountry(code, pos) {
     var countryData = (window.allCountries || []).find(function(c){ return c.code === code; });
     var flag = countryData ? countryData.flag : '🌍';
     var name = countryData ? countryData.name : code;
@@ -152,9 +151,40 @@
       }).addTo(window.map);
       window.map.setView([pos.lat, pos.lng], Math.max(window.map.getZoom(), 5));
     }
+  }
+  window.applyActiveCountry = applyActiveCountry;
+
+  function setActiveCountry(code, pos) {
+    var prev = window.activeCountry || null;
+    window.activeCountry = code;
+    if (pos && pos.lat && pos.lng) {
+      window.activeCountryPos = { lat: pos.lat, lng: pos.lng };
+    }
+    applyActiveCountry(code, pos);
+
+    // Persist on monitored list; gate falls open before allCountries loads.
+    try {
+      if (code) {
+        var monitored = window.allCountries || [];
+        if (!monitored.length || monitored.some(function(c){ return c.code === code; })) {
+          localStorage.setItem('atlas_last_country', code);
+        }
+      }
+    } catch (e) {}
+
+    // Switched-country banner: only on a real change.
+    if (prev && code && prev !== code && typeof window.showSwitchBanner === 'function') {
+      window.showSwitchBanner(prev, code);
+    }
+
+    // Refresh feed overlay if open (nav.js wraps the IIFE-local state).
+    if (typeof window.refreshActiveCountryFeed === 'function') {
+      window.refreshActiveCountryFeed(code);
+    }
+
     return code;
   }
-  window.setActiveCountry = window.setActiveCountry || setActiveCountry;
+  window.setActiveCountry = setActiveCountry;
 
   window.switchFeedTab = window.switchFeedTab || function(tab) { switchFeedTab(tab); };
   window.refreshFeedPanel = refreshFeedPanel; // CRITICAL: expose so nav.js can call it
@@ -254,8 +284,7 @@
       if (!target) return;
       var label = (target.dataset.tab || target.getAttribute('onclick') || '').toLowerCase();
       if (label.includes('incident') || label.includes('event')) {
-        var country = (typeof activeCountry !== 'undefined') ? activeCountry : null;
-        if (!country && typeof currentCountry !== 'undefined') country = currentCountry;
+        var country = window.activeCountry || null;
         if (country) setTimeout(function() { loadEventsWithGPS(country); }, 150);
       }
     });
@@ -265,7 +294,7 @@
       set: function(fn) {
         _origLoadFeed = function() {
           if (fn) fn.apply(this, arguments);
-          var country = (typeof activeCountry !== 'undefined') ? activeCountry : (typeof currentCountry !== 'undefined') ? currentCountry : null;
+          var country = window.activeCountry || null;
           if (country) loadEventsWithGPS(country);
         };
       },
@@ -352,7 +381,7 @@
       if (!target) return;
       var label = (target.dataset.tab || target.getAttribute('onclick') || '').toLowerCase();
       if (label.includes('news')) {
-        var country = (typeof activeCountry !== 'undefined') ? activeCountry : (typeof currentCountry !== 'undefined') ? currentCountry : null;
+        var country = window.activeCountry || null;
         if (country) setTimeout(function() { loadNewsWithGPS(country); }, 150);
       }
     });
@@ -363,7 +392,7 @@
       set: function(fn) {
         _origLoadFeedNews = function() {
           if (fn) fn.apply(this, arguments);
-          var country = (typeof activeCountry !== 'undefined') ? activeCountry : (typeof currentCountry !== 'undefined') ? currentCountry : null;
+          var country = window.activeCountry || null;
           if (country) loadNewsWithGPS(country);
         };
       },

@@ -113,8 +113,10 @@
   });
 
   document.addEventListener('click', function(e) {
-    // Handle country card selection in picker
-    var card = e.target.closest('[data-code], .ccard, .country-card, .cpcard');
+    // Scope to picker sheet: the world panel's .aa-crow rows have their own
+    // handler in nav.js, and bare [data-code] was too permissive.
+    if (!e.target.closest('#cpicker, #cplist')) return;
+    var card = e.target.closest('.ccard, .cpcard, [data-code]');
     if (!card) return;
     var code = card.dataset.code || card.getAttribute('data-code');
     if (!code) return;

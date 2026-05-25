@@ -1899,11 +1899,7 @@
       var row=e.target.closest('.aa-crow');
       if(!row) return;
       // 3e — route through setActiveCountry so persistence + banner fire centrally
-      if (typeof window.setActiveCountry === 'function') {
-        window.setActiveCountry(row.dataset.code);
-      } else {
-        window.activeCountry = row.dataset.code;
-      }
+      window.setActiveCountry(row.dataset.code);
       if(window.map&&row.dataset.lat&&row.dataset.lng) window.map.setView([parseFloat(row.dataset.lat),parseFloat(row.dataset.lng)],6);
       switchTab('map');
     });
@@ -2305,25 +2301,13 @@
     window.loadNews          = loadNews;
     window.loadAlerts        = loadAlerts;
     window.loadCrime         = loadCrime;
-
-    var _origSet=window.setActiveCountry;
-    window.setActiveCountry=function(code,pos){
-      var prev = window.activeCountry || null; // 3e — capture before any update
-      var r=_origSet?_origSet(code,pos):null;
-      window.activeCountry=code;
-      window.activeCountryPos=pos;
-      // 3e — persist last-selected country (silent on storage errors)
-      try { if (code) localStorage.setItem('atlas_last_country', code); } catch (e) {}
-      // 3e — switched-country banner: only on real change, never on initial set
-      if (prev && code && prev !== code) {
-        showSwitchBanner(prev, code);
-      }
+    window.showSwitchBanner  = showSwitchBanner;
+    window.refreshActiveCountryFeed = function(code) {
       if(overlay&&overlay.style.display!=='none'&&document.getElementById('aa-feed-body')){
         if(_feedTab==='news')   loadNews(code);
         if(_feedTab==='alerts') loadAlerts(code);
         if(_feedTab==='crime')  loadCrime(code);
       }
-      return r;
     };
 
     // 3e — Restore pack state from previous session (must precede any pack render)
@@ -2336,7 +2320,15 @@
       var _saved = localStorage.getItem('atlas_last_country');
       var _home  = localStorage.getItem('atlas_origin');
       var _initialCountry = _saved || _home || null;
-      if (_initialCountry) window.setActiveCountry(_initialCountry);
+      if (_initialCountry) {
+        // Hydrate from storage and paint via applyActiveCountry — bypasses
+        // setActiveCountry so no localStorage write fires on init (prevents
+        // cold-load re-persistence of any pre-existing corrupt value).
+        window.activeCountry = _initialCountry;
+        if (typeof window.applyActiveCountry === 'function') {
+          window.applyActiveCountry(_initialCountry);
+        }
+      }
     } catch (e) { /* storage unavailable — silent */ }
 
     switchTab('map');
