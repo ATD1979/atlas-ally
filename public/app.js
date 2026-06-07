@@ -104,11 +104,11 @@
     if (!code) return;
     if (typeof setActiveCountry === 'function') setActiveCountry(code);
     var data = (window.allCountries || []).find(function(c){ return c.code === code; });
-    var displayName = data ? (data.flag + ' ' + data.name) : code;
+    var displayName = data ? data.name : code;
     var title = document.getElementById('cd-title');
     if (title) title.textContent = displayName;
     var body = document.getElementById('cd-body');
-    if (body) body.innerHTML = '<div style="padding:14px;">' + displayName + '</div>';
+    if (body) body.innerHTML = '<div style="padding:14px;display:flex;align-items:center;gap:8px;">' + (data ? flagImg(data.code, 22) : '') + '<span>' + displayName + '</span></div>';
     var sheet = document.getElementById('cdetail');
     if (sheet) sheet.classList.add('open');
   }
@@ -119,21 +119,21 @@
   // to match window.activeCountry (e.g. init hydrating from storage).
   function applyActiveCountry(code, pos) {
     var countryData = (window.allCountries || []).find(function(c){ return c.code === code; });
-    var flag = countryData ? countryData.flag : '🌍';
+    var flagHtml = countryData ? flagImg(code, 26) : flagImg(null, 26);
     var name = countryData ? countryData.name : code;
 
     // Update map badge
     var badgeFlag = document.getElementById('badge-flag');
     var badgeName = document.getElementById('badge-name');
     var badgeAdv  = document.getElementById('badge-adv');
-    if (badgeFlag) badgeFlag.textContent = flag;
+    if (badgeFlag) badgeFlag.innerHTML = flagHtml;
     if (badgeName) badgeName.textContent = name;
     if (badgeAdv && countryData) badgeAdv.textContent = countryData.advisoryLabel || '';
 
     // Update header country button
     var hdrFlag    = document.getElementById('hdr-flag');
     var hdrCountry = document.getElementById('hdr-country');
-    if (hdrFlag)    hdrFlag.textContent    = flag;
+    if (hdrFlag)    hdrFlag.innerHTML      = flagHtml;
     if (hdrCountry) hdrCountry.textContent = code;
 
     // Place marker on map

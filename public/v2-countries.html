@@ -68,6 +68,16 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:var(--text);max-widt
 </div>
 
 <script>
+// Country flag image helper (standalone copy of /flag.js — this page is
+// self-contained and does not load the main app's scripts).
+function flagImg(code, size) {
+  var px = size || 22;
+  if (!code) return '<span style="display:inline-block;width:' + px + 'px;text-align:center;">\uD83C\uDF0D</span>';
+  var c = String(code).toLowerCase();
+  return '<img class="flag" src="/flags/' + c + '.svg" alt="' + String(code).toUpperCase() + '" loading="lazy" ' +
+    'style="width:' + px + 'px;height:' + (px * 0.75) + 'px;border-radius:4px;' +
+    'border:0.5px solid rgba(0,0,0,0.18);object-fit:cover;vertical-align:middle;display:inline-block;" />';
+}
 // Dummy data — shape mirrors the /api/countries endpoint response that
 // the existing client (public/countries.js) consumes, plus a synthesized
 // `score` field.
@@ -129,7 +139,7 @@ function escapeHtml(s) {
     var t = tierFor(c.score);
     return '<div class="ccard">' +
       '<div class="ctop">' +
-        '<div class="cflag">' + c.flag + '</div>' +
+        '<div class="cflag">' + flagImg(c.code, 28) + '</div>' +
         '<div class="cinfo">' +
           '<div class="cname">' + escapeHtml(c.name) + '</div>' +
           '<div class="cscore">Score ' + c.score + ' · ' + escapeHtml(t.label) + '</div>' +
