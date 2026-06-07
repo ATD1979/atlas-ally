@@ -10,7 +10,7 @@
       pinned.innerHTML = pinnedList.length ? '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--dm);">Pinned countries</div>' + pinnedList.map(function(country){
         var active = (window.activeCountry === country.code);
         return '<div style="padding:14px;border-radius:16px;background:rgba(14,116,144,0.06);display:flex;justify-content:space-between;align-items:center;gap:14px;">' +
-               '<div><div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+               '<div><div style="font-size:15px;font-weight:700;">' + flagImg(country.code, 22) + ' ' + country.name + '</div>' +
                '<div style="font-size:12px;color:var(--dm);margin-top:5px;">' + country.advisoryLabel + ' · ' + country.capital + '</div></div>' +
                '<button onclick="togglePinnedCountry(\'' + country.code + '\')" style="border:none;padding:8px 12px;border-radius:12px;background:' + (active ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (active ? '#fff' : 'var(--text)') + ';cursor:pointer;font-size:13px;">' + (active ? 'Selected' : 'Remove') + '</button>' +
                '</div>';
@@ -21,7 +21,7 @@
         var pinned = (window.pinnedCountries || []).includes(country.code);
         return '<div style="padding:14px;border-radius:16px;background:rgba(255,255,255,0.95);border:1px solid var(--border);display:grid;gap:10px;">' +
                '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
-               '<div><div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+               '<div><div style="font-size:15px;font-weight:700;">' + flagImg(country.code, 22) + ' ' + country.name + '</div>' +
                '<div style="font-size:12px;color:var(--dm);margin-top:4px;">' + country.advisoryLabel + ' | ' + country.capital + '</div></div>' +
                '<button onclick="togglePinnedCountry(\'' + country.code + '\')" style="border:none;padding:8px 12px;border-radius:12px;background:' + (pinned ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (pinned ? '#fff' : 'var(--text)') + ';cursor:pointer;font-size:13px;">' + (pinned ? 'Unpin' : 'Pin') + '</button>' +
                '</div>' +
@@ -43,7 +43,7 @@
       var pinned = (window.pinnedCountries || []).includes(country.code);
       return '<div class="ccard" data-code="' + country.code + '" style="padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;">' +
              '<div>' +
-             '<div style="font-size:15px;font-weight:700;">' + country.flag + ' ' + country.name + '</div>' +
+             '<div style="font-size:15px;font-weight:700;">' + flagImg(country.code, 22) + ' ' + country.name + '</div>' +
              '<div style="font-size:12px;color:var(--dm);margin-top:4px;">' + country.advisoryLabel + ' · ' + country.capital + '</div>' +
              '</div>' +
              '<button style="border:none;padding:8px 10px;border-radius:12px;background:' + (pinned ? 'var(--teal)' : 'rgba(14,116,144,0.12)') + ';color:' + (pinned ? '#fff' : 'var(--text)') + ';font-size:13px;">' + (pinned ? 'Pinned' : 'Pin') + '</button>' +

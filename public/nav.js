@@ -1887,7 +1887,7 @@
       return '<div class="aa-crow" data-code="'+c.code+'" data-lat="'+lat+'" data-lng="'+lng+'" '+
         'style="display:flex;align-items:center;gap:12px;padding:14px 0;'+
         'border-bottom:1px solid '+T.border+';cursor:pointer;-webkit-tap-highlight-color:transparent;">'+
-        '<div style="font-size:28px;width:44px;text-align:center;flex-shrink:0;pointer-events:none;">'+(c.flag||'🌍')+'</div>'+
+        '<div style="width:44px;text-align:center;flex-shrink:0;pointer-events:none;">'+flagImg(c.code,34)+'</div>'+
         '<div style="flex:1;pointer-events:none;">'+
           '<div style="font-size:14px;font-weight:600;color:'+T.text+';">'+c.name+'</div>'+
           '<div style="font-size:11px;color:'+T.muted+';margin-top:2px;">'+(c.advisoryLabel||'')+(c.capital?' · '+c.capital:'')+'</div>'+
