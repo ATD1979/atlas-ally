@@ -17,6 +17,7 @@ const db     = require('../db');
 const config = require('../config');
 const { extractLocation } = require('../geocoder');
 const { vetRelevance, passesNoiseFilter } = require('../lib/countries-meta');
+const { recomputeAllRiskScores } = require('./risk');
 
 const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: false });
 
@@ -615,6 +616,13 @@ async function ingestSecurityEvents() {
   // }
 
   console.log(`⚡ Ingestion complete — ${total} new events added`);
+  try {
+    const n = recomputeAllRiskScores();
+    console.log(`Risk scores recomputed for ${n} countries`);
+  } catch (e) {
+    console.error('Risk recompute failed:', e.message);
+  }
+
   return total;
 }
 

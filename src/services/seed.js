@@ -82,6 +82,15 @@ function seedAdminUsers() {
 
 function ensureRuntimeTables() {
   db.db.exec(`
+    CREATE TABLE IF NOT EXISTS risk_scores (
+      country_code TEXT PRIMARY KEY,
+      score        INTEGER,
+      band         TEXT,
+      factors_json TEXT,
+      computed_at  TEXT
+    );
+  `);
+  db.db.exec(`
     CREATE TABLE IF NOT EXISTS feedback (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id     INTEGER,
