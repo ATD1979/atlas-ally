@@ -86,6 +86,17 @@
     renderPickerList(filtered);
   }
 
+  // Once allCountries is first populated, re-paint the active country so the
+  // map centers on it. Init hydration paints the chip before country data is
+  // available; this fires the map-follow once the data (and its center) exist.
+  // Resolve branch only — not the cached path — so opening the picker later
+  // doesn't snap the map back if the user has panned away.
+  function reapplyActiveCountry() {
+    if (window.activeCountry && typeof window.applyActiveCountry === 'function') {
+      window.applyActiveCountry(window.activeCountry);
+    }
+  }
+
   function loadCountries() {
     if (window.allCountries && window.allCountries.length) {
       renderCountryBrowser();
@@ -96,6 +107,7 @@
       window.allCountries = Array.isArray(data) ? data : [];
       renderCountryBrowser();
       renderPickerList();
+      reapplyActiveCountry();
     }).catch(function(){
       window.allCountries = window.allCountries || [];
       renderCountryBrowser();

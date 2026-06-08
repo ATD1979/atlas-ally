@@ -122,6 +122,12 @@
     var flagHtml = countryData ? flagImg(code, 26) : flagImg(null, 26);
     var name = countryData ? countryData.name : code;
 
+    // Map-follow fallback: hydration (and any other no-pos call) still centers
+    // the map on the active country, using the country's own center coordinate.
+    if ((!pos || !pos.lat || !pos.lng) && countryData && Array.isArray(countryData.center) && countryData.center.length === 2) {
+      pos = { lat: countryData.center[0], lng: countryData.center[1] };
+    }
+
     // Update map badge
     var badgeFlag = document.getElementById('badge-flag');
     var badgeName = document.getElementById('badge-name');
