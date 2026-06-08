@@ -33,6 +33,7 @@ const adminRoutes    = require('./routes/admin');
 const paymentRoutes  = require('./routes/payments');
 const packRoutes     = require('./routes/pack');
 const incidentsRoutes = require('./routes/incidents');
+const riskRoutes     = require('./routes/risk');
 
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
@@ -115,6 +116,9 @@ app.use('/api', softAuth, routePlanningRoutes);
 
 // AI pack list
 app.use('/api', softAuth, packRoutes);
+
+// Per-country risk score (cached; cron-computed). Premium gate added in PR #2.
+app.use('/api', softAuth, riskRoutes);
 
 // Stripe checkout (webhook is mounted earlier, before express.json())
 app.use('/api', softAuth, paymentRoutes);

@@ -44,3 +44,4 @@ data/*.db-wal
 
 # Local snapshot zips (uploaded for review, not for the repo)
 *.zip
+.claude/
